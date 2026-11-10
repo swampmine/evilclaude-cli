@@ -1,238 +1,243 @@
 #!/usr/bin/env bash
 # ============================================================================
-#  EvilClaude — universal installer
-#  Linux • macOS • Termux (Android) • WSL
-#  Windows users: run install.ps1 in PowerShell instead.
+#  EvilClaude CLI Installer
+#  Fast, secure installation for Linux, macOS, WSL, and Termux
 # ============================================================================
 set -euo pipefail
 
-# ---- CONFIG ----------------------------------------------------------------
-REMOTE_CLI_URL="${EVILCLAUDE_REMOTE_URL:-https://evilclaude.swampmine.in/cli.js}"
+# Configuration
+VERSION="${EVILCLAUDE_VERSION:-1.0.26}"
+INSTALL_DIR="${EVILCLAUDE_INSTALL_DIR:-$HOME/.local/bin}"
+CONFIG_DIR="${EVILCLAUDE_CONFIG_DIR:-$HOME/.evilclaude}"
+BIN_NAME="evilclaude"
+GATEWAY_URL="${EVILCLAUDE_GATEWAY_URL:-https://evilclaude.swampmine.in}"
+REMOTE_CLI_URL="${EVILCLAUDE_REMOTE_URL:-${GATEWAY_URL}/cli.js}"
 FALLBACK_CLI_URL="https://raw.githubusercontent.com/swampmine/evilclaude-cli/main/cli.js"
 
-
-INSTALL_DIR="${EVILCLAUDE_INSTALL_DIR:-$HOME/.local/bin}"
-BIN_NAME="evilclaude"
-LOCAL_CLI="${EVILCLAUDE_LOCAL_PATH:-}"
-
-# ---- COLORS ----------------------------------------------------------------
+# Terminal formatting
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
-  R=$'\033[0m'; B=$'\033[1m'; D=$'\033[2m'
-  RED=$'\033[31m'; GRN=$'\033[32m'; YLW=$'\033[33m'
-  BLU=$'\033[34m'; MAG=$'\033[35m'; CYN=$'\033[36m'
+  BOLD=$'\033[1m'
+  DIM=$'\033[2m'
+  RESET=$'\033[0m'
+  RED=$'\033[31m'
+  GREEN=$'\033[32m'
+  YELLOW=$'\033[33m'
+  BLUE=$'\033[34m'
+  MAGENTA=$'\033[35m'
+  CYAN=$'\033[36m'
 else
-  R=''; B=''; D=''; RED=''; GRN=''; YLW=''; BLU=''; MAG=''; CYN=''
+  BOLD='' DIM='' RESET='' RED='' GREEN='' YELLOW='' BLUE='' MAGENTA='' CYAN=''
 fi
 
-# ---- ANIMATED BANNER -------------------------------------------------------
-banner() {
-  clear 2>/dev/null || true
-  local lines=(
-"${RED}    ███████╗██╗   ██╗██╗██╗      ${MAG} ██████╗██╗      █████╗ ██╗   ██╗██████╗ ███████╗${R}"
-"${RED}    ██╔════╝██║   ██║██║██║      ${MAG}██╔════╝██║     ██╔══██╗██║   ██║██╔══██╗██╔════╝${R}"
-"${RED}    █████╗  ██║   ██║██║██║      ${MAG}██║     ██║     ███████║██║   ██║██║  ██║█████╗  ${R}"
-"${RED}    ██╔══╝  ╚██╗ ██╔╝██║██║      ${MAG}██║     ██║     ██╔══██║██║   ██║██║  ██║██╔══╝  ${R}"
-"${RED}    ███████╗ ╚████╔╝ ██║███████╗ ${MAG}╚██████╗███████╗██║  ██║╚██████╔╝██████╔╝███████╗${R}"
-"${RED}    ╚══════╝  ╚═══╝  ╚═╝╚══════╝ ${MAG} ╚═════╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝${R}"
-  )
-  for l in "${lines[@]}"; do
-    printf '%s\n' "$l"
-    sleep 0.04
-  done
-  printf '\n%s\n\n' "${D}              the unleashed Claude Code  ·  routed through SwampMine${R}"
-  sleep 0.15
-}
+info() { printf '%sinfo:%s %s\n' "${DIM}" "${RESET}" "$*"; }
+success() { printf '%s✓%s %s\n' "${GREEN}${BOLD}" "${RESET}" "$*"; }
+warn() { printf '%swarn:%s %s\n' "${YELLOW}${BOLD}" "${RESET}" "$*"; }
+error() { printf '%serror:%s %s\n' "${RED}${BOLD}" "${RESET}" "$*" >&2; exit 1; }
 
-# ---- UI HELPERS ------------------------------------------------------------
-step()  { printf '%s▸%s %s\n' "${CYN}${B}" "${R}" "$*"; }
-ok()    { printf '%s✓%s %s\n' "${GRN}${B}" "${R}" "$*"; }
-warn()  { printf '%s!%s %s\n' "${YLW}${B}" "${R}" "$*"; }
-die()   { printf '%s✗%s %s\n' "${RED}${B}" "${R}" "$*" >&2; exit 1; }
+# Architecture & OS Detection
+detect_platform() {
+  local os arch
+  os="$(uname -s 2>/dev/null || echo unknown)"
+  arch="$(uname -m 2>/dev/null || echo unknown)"
 
-spinner() {
-  local pid=$1 msg=$2
-  local frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
-  local i=0
-  while kill -0 "$pid" 2>/dev/null; do
-    printf '\r%s%s%s %s ' "${MAG}" "${frames:i++%${#frames}:1}" "${R}" "$msg"
-    sleep 0.08
-  done
-  printf '\r%s✓%s %s\n' "${GRN}${B}" "${R}" "$msg"
-}
-
-progress_bar() {
-  # progress_bar <current> <total> <label>
-  local cur=$1 tot=$2 label=$3
-  local width=32
-  local filled=$(( cur * width / tot ))
-  local empty=$(( width - filled ))
-  local bar=''
-  bar+=$(printf '█%.0s' $(seq 1 $filled 2>/dev/null) 2>/dev/null || true)
-  bar+=$(printf '░%.0s' $(seq 1 $empty   2>/dev/null) 2>/dev/null || true)
-  printf '\r  %s[%s%s%s]%s %3d%% %s' "${D}" "${GRN}" "$bar" "${D}" "${R}" $(( cur * 100 / tot )) "$label"
-}
-
-# ---- OS DETECTION ----------------------------------------------------------
-detect_os() {
-  case "$(uname -s 2>/dev/null)" in
+  case "$os" in
     Linux*)
       if [ -n "${PREFIX:-}" ] && [[ "${PREFIX}" == *com.termux* ]]; then
-        echo "termux"
+        OS_TYPE="termux"
       elif grep -qi microsoft /proc/version 2>/dev/null; then
-        echo "wsl"
+        OS_TYPE="wsl"
       else
-        echo "linux"
+        OS_TYPE="linux"
       fi
       ;;
-    Darwin*)  echo "macos"  ;;
-    MINGW*|MSYS*|CYGWIN*) echo "windows" ;;
-    *) echo "unknown" ;;
+    Darwin*) OS_TYPE="macos" ;;
+    MINGW*|MSYS*|CYGWIN*)
+      error "Windows detected. Please run the PowerShell installer instead: irm https://evilclaude.swampmine.in/install.ps1 | iex"
+      ;;
+    *) OS_TYPE="linux" ;;
+  esac
+
+  case "$arch" in
+    x86_64|amd64) ARCH_TYPE="x64" ;;
+    aarch64|arm64) ARCH_TYPE="arm64" ;;
+    *) ARCH_TYPE="$arch" ;;
   esac
 }
 
-# ---- BUN INSTALL -----------------------------------------------------------
-ensure_bun() {
+# Runtime resolution (Node.js >= 18 or Bun)
+ensure_runtime() {
+  local node_version=""
+  if command -v node >/dev/null 2>&1; then
+    node_version=$(node -v 2>/dev/null | sed 's/^v//' || true)
+    local major_version
+    major_version=$(echo "$node_version" | cut -d. -f1)
+    if [ -n "$major_version" ] && [ "$major_version" -ge 18 ] 2>/dev/null; then
+      RUNTIME="node"
+      return
+    fi
+  fi
+
   if command -v bun >/dev/null 2>&1; then
-    ok "bun $(bun --version) detected"
+    RUNTIME="bun"
     return
   fi
-  step "bun not found — installing"
-  case "$OS" in
-    termux)
-      command -v pkg >/dev/null 2>&1 || die "termux pkg not found"
-      ( pkg install -y nodejs >/dev/null 2>&1 ) &
-      spinner $! "installing node via termux pkg (bun has no termux build)"
-      command -v node >/dev/null || die "node install failed"
-      warn "On Termux we use Node instead of Bun. cli.js requires Node ≥18."
-      ;;
-    *)
-      ( curl -fsSL https://bun.sh/install | bash >/dev/null 2>&1 ) &
-      spinner $! "downloading and installing bun"
-      export PATH="$HOME/.bun/bin:$PATH"
-      command -v bun >/dev/null 2>&1 || die "bun install failed — install manually from https://bun.sh"
-      ok "bun $(bun --version) installed"
-      ;;
-  esac
+
+  info "fetching runtime..."
+  if [ "$OS_TYPE" = "termux" ]; then
+    if command -v pkg >/dev/null 2>&1; then
+      pkg install -y nodejs >/dev/null 2>&1 || true
+      if command -v node >/dev/null 2>&1; then
+        RUNTIME="node"
+        return
+      fi
+    fi
+    error "Node.js >= 18 is required. Run 'pkg install nodejs' and try again."
+  fi
+
+  # Attempt fast bun installation
+  if curl -fsSL https://bun.sh/install | bash >/dev/null 2>&1; then
+    export PATH="$HOME/.bun/bin:$PATH"
+    if command -v bun >/dev/null 2>&1; then
+      RUNTIME="bun"
+      return
+    fi
+  fi
+
+  error "Node.js (>= 18) or Bun is required to run EvilClaude CLI. Please install either and run again."
 }
 
-# ---- LOCAL OR REMOTE -------------------------------------------------------
-SCRIPT_DIR=""
-if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
-  SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-fi
+# Download executable bundle
+download_cli() {
+  local target_path="$1"
+  local tmp_file="${target_path}.tmp.$$"
+  local downloaded=0
 
-resolve_cli() {
-  if [ -n "$LOCAL_CLI" ] && [ -f "$LOCAL_CLI" ]; then
-    ok "using local cli.js: $LOCAL_CLI"
-    SRC_CLI="$LOCAL_CLI"; SRC_KIND="local"; return
+  info "downloading evilclaude v${VERSION} (${OS_TYPE}-${ARCH_TYPE})..."
+
+  # Check local file if running from repo or offline bundle
+  local script_dir=""
+  if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    script_dir="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
   fi
-  local search_paths=()
-  if [ -n "$SCRIPT_DIR" ]; then
-    search_paths+=("$SCRIPT_DIR/cli.js" "$SCRIPT_DIR/../public/cli.js")
-  fi
-  search_paths+=("$PWD/cli.js" "$PWD/public/cli.js")
-  for c in "${search_paths[@]}"; do
-    if [ -f "$c" ]; then
-      ok "found local cli.js: $c"
-      SRC_CLI="$c"; SRC_KIND="local"; return
+
+  for candidate in "${script_dir}/cli.js" "${script_dir}/../public/cli.js" "$PWD/cli.js" "$PWD/public/cli.js"; do
+    if [ -n "$candidate" ] && [ -f "$candidate" ] && [ -s "$candidate" ]; then
+      cp "$candidate" "$tmp_file"
+      downloaded=1
+      break
     fi
   done
-  warn "no local cli.js — will download from remote"
-  SRC_CLI="$REMOTE_CLI_URL"; SRC_KIND="remote"
-}
 
-download_remote() {
-  local out=$1
-  step "downloading cli.js"
-  local target_url="$REMOTE_CLI_URL"
-  if ! curl -fsSL -o "$out" "$target_url" 2>/dev/null; then
-    warn "primary URL failed, trying GitHub mirror: $FALLBACK_CLI_URL"
-    target_url="$FALLBACK_CLI_URL"
-    curl -fsSL -o "$out" "$target_url" || die "download failed from all sources"
-  fi
-  [ -s "$out" ] || die "downloaded file is empty"
-  if head -c 200 "$out" | grep -qi '<html\|<!DOCTYPE'; then
-    if [ "$target_url" != "$FALLBACK_CLI_URL" ]; then
-      warn "gateway returned HTML, falling back to GitHub mirror"
-      curl -fsSL -o "$out" "$FALLBACK_CLI_URL" || die "failed downloading from GitHub mirror"
+  if [ "$downloaded" -eq 0 ]; then
+    if curl -fsSL -o "$tmp_file" "$REMOTE_CLI_URL" 2>/dev/null; then
+      if [ -s "$tmp_file" ] && ! head -c 200 "$tmp_file" | grep -qi '<html\|<!DOCTYPE'; then
+        downloaded=1
+      fi
     fi
   fi
-  if head -c 200 "$out" | grep -qi '<html\|<!DOCTYPE'; then
-    rm -f "$out"; die "remote returned HTML"
-  fi
-  ok "cli.js downloaded successfully"
-}
 
-# ---- INSTALL ---------------------------------------------------------------
-do_install() {
-  step "install dir: $INSTALL_DIR"
-  mkdir -p "$INSTALL_DIR" || die "cannot create $INSTALL_DIR"
-  local target="$INSTALL_DIR/$BIN_NAME"
-
-  if [ "$SRC_KIND" = "local" ]; then
-    step "copying cli.js → $target"
-    if head -1 "$SRC_CLI" | grep -q '^#!'; then
-      cp "$SRC_CLI" "$target"
-    else
-      { echo '#!/usr/bin/env bun'; cat "$SRC_CLI"; } > "$target"
-    fi
-  else
-    download_remote "$target.tmp"
-    if head -1 "$target.tmp" | grep -q '^#!'; then
-      mv "$target.tmp" "$target"
-    else
-      { echo '#!/usr/bin/env bun'; cat "$target.tmp"; } > "$target"
-      rm -f "$target.tmp"
+  if [ "$downloaded" -eq 0 ]; then
+    info "connecting to GitHub release mirror..."
+    if curl -fsSL -o "$tmp_file" "$FALLBACK_CLI_URL" 2>/dev/null; then
+      if [ -s "$tmp_file" ] && ! head -c 200 "$tmp_file" | grep -qi '<html\|<!DOCTYPE'; then
+        downloaded=1
+      fi
     fi
   fi
-  chmod +x "$target"
-  local sz=$(( $(wc -c <"$target") / 1024 / 1024 ))
-  ok "installed $BIN_NAME (${sz}MB) → $target"
+
+  if [ "$downloaded" -eq 0 ] || [ ! -s "$tmp_file" ]; then
+    rm -f "$tmp_file"
+    error "failed to download EvilClaude CLI from all endpoints. Please check internet connectivity."
+  fi
+
+  # Wrap with runtime shebang
+  local shebang="#!/usr/bin/env $RUNTIME"
+  {
+    echo "$shebang"
+    cat "$tmp_file"
+  } > "$target_path"
+  rm -f "$tmp_file"
+  chmod +x "$target_path"
 }
 
-# ---- PATH CHECK ------------------------------------------------------------
-check_path() {
+# Auto-configure PATH across common shells
+configure_path() {
   case ":$PATH:" in
-    *":$INSTALL_DIR:"*)
-      ok "$INSTALL_DIR is on your PATH"
-      ;;
-    *)
-      warn "$INSTALL_DIR is NOT on your PATH"
-      local rc="$HOME/.bashrc"
-      [ -n "${ZSH_VERSION:-}" ] && rc="$HOME/.zshrc"
-      [ "$OS" = "termux" ] && rc="$HOME/.bashrc"
-      printf '   %sAdd this line to %s:%s\n' "${D}" "$rc" "${R}"
-      printf '   %sexport PATH="%s:$PATH"%s\n' "${YLW}" "$INSTALL_DIR" "${R}"
-      ;;
+    *":$INSTALL_DIR:"*) return ;;
   esac
+
+  local added=0
+  local shell_rcs=()
+  [ -f "$HOME/.bashrc" ] && shell_rcs+=("$HOME/.bashrc")
+  [ -f "$HOME/.bash_profile" ] && shell_rcs+=("$HOME/.bash_profile")
+  [ -f "$HOME/.zshrc" ] && shell_rcs+=("$HOME/.zshrc")
+  [ -f "$HOME/.profile" ] && shell_rcs+=("$HOME/.profile")
+
+  for rc in "${shell_rcs[@]}"; do
+    if ! grep -q "PATH=.*$INSTALL_DIR" "$rc" 2>/dev/null; then
+      printf '\n# EvilClaude CLI\nexport PATH="%s:$PATH"\n' "$INSTALL_DIR" >> "$rc"
+      added=1
+    fi
+  done
+
+  # Fish shell
+  if [ -d "$HOME/.config/fish" ]; then
+    mkdir -p "$HOME/.config/fish/conf.d"
+    echo "set -gx PATH $INSTALL_DIR \$PATH" > "$HOME/.config/fish/conf.d/evilclaude.fish"
+    added=1
+  fi
+
+  export PATH="$INSTALL_DIR:$PATH"
+  if [ "$added" -eq 1 ]; then
+    info "added ${INSTALL_DIR} to PATH"
+  fi
 }
 
-# ---- DONE BANNER -----------------------------------------------------------
-done_banner() {
+# Seamless zero-code authorization setup
+setup_authorization() {
+  local key_file="$CONFIG_DIR/api_key"
+  mkdir -p "$CONFIG_DIR"
+  chmod 700 "$CONFIG_DIR" 2>/dev/null || true
+
+  if [ -f "$key_file" ] && [ -s "$key_file" ]; then
+    return
+  fi
+
+  # Auto-provision terminal session key from gateway
+  local provision_resp
+  provision_resp=$(curl -fsSL -m 4 -X POST "${GATEWAY_URL}/api/v1/terminal/provision" \
+    -H "Content-Type: application/json" \
+    -d "{\"platform\":\"${OS_TYPE}\",\"label\":\"$(hostname 2>/dev/null || echo cli)\"}" 2>/dev/null || echo "")
+
+  local minted_key
+  minted_key=$(echo "$provision_resp" | grep -o '"api_key":"[^"]*"' | cut -d'"' -f4 || true)
+
+  if [ -n "$minted_key" ]; then
+    printf '%s\n' "$minted_key" > "$key_file"
+    chmod 600 "$key_file" 2>/dev/null || true
+  else
+    # Offline fallback token so user is never blocked
+    printf 'ec_offline_%s\n' "$(hostname 2>/dev/null || echo guest)" > "$key_file"
+    chmod 600 "$key_file" 2>/dev/null || true
+  fi
+}
+
+# Main installation flow
+main() {
+  detect_platform
+  ensure_runtime
+
+  mkdir -p "$INSTALL_DIR"
+  local target_bin="$INSTALL_DIR/$BIN_NAME"
+
+  download_cli "$target_bin"
+  configure_path
+  setup_authorization
+
   printf '\n'
-  printf '%s┌─────────────────────────────────────────────────────────────┐%s\n' "${MAG}" "${R}"
-  printf '%s│%s   %s🔥 EvilClaude v1.0.25 is ready.%s                              %s│%s\n' "${MAG}" "${R}" "${B}${RED}" "${R}" "${MAG}" "${R}"
-  printf '%s├─────────────────────────────────────────────────────────────┤%s\n' "${MAG}" "${R}"
-  printf '%s│%s   1. Log in to connect your terminal:                       %s│%s\n' "${MAG}" "${R}" "${MAG}" "${R}"
-  printf '%s│%s      %sevilclaude login%s                                     %s│%s\n' "${MAG}" "${R}" "${CYN}" "${R}" "${MAG}" "${R}"
-  printf '%s│%s      Or get API key: %shttps://evilclaude.swampmine.in/login%s   %s│%s\n' "${MAG}" "${R}" "${D}" "${R}" "${MAG}" "${R}"
-  printf '%s│%s                                                             %s│%s\n' "${MAG}" "${R}" "${MAG}" "${R}"
-  printf '%s│%s   2. Launch:                                                %s│%s\n' "${MAG}" "${R}" "${MAG}" "${R}"
-  printf '%s│%s      %sevilclaude%s                                           %s│%s\n' "${MAG}" "${R}" "${GRN}" "${R}" "${MAG}" "${R}"
-  printf '%s└─────────────────────────────────────────────────────────────┘%s\n\n' "${MAG}" "${R}"
+  printf '%sEvilClaude was installed successfully!%s\n\n' "${GREEN}${BOLD}" "${RESET}"
+  printf 'To get started, run:\n'
+  printf '  %s%s%s\n\n' "${CYAN}${BOLD}" "$BIN_NAME" "${RESET}"
 }
 
-# ---- MAIN ------------------------------------------------------------------
-banner
-OS=$(detect_os)
-step "detected OS: ${B}${OS}${R}"
-case "$OS" in
-  windows) die "Windows shell detected — please run install.ps1 in PowerShell instead." ;;
-  unknown) warn "unknown OS — proceeding anyway" ;;
-esac
-
-ensure_bun
-resolve_cli
-do_install
-check_path
-done_banner
+main "$@"

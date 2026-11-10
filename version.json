@@ -1,11 +1,11 @@
 {
-  "version": "1.0.25",
+  "version": "1.0.26",
   "name": "evilclaude",
   "channel": "latest",
-  "published_at": "2026-11-10T10:32:00.000Z",
+  "published_at": "2026-11-10T11:10:43Z",
   "min_version": "1.0.0",
   "download_url": "https://evilclaude.swampmine.in/downloads/evilclaude-linux-x64.tar.gz",
-  "cli_bundle_url": "https://raw.githubusercontent.com/swampmine/evilclaude-cli/main/cli.js",
+  "cli_bundle_url": "https://evilclaude.swampmine.in/cli.js",
   "github_repo": "https://github.com/swampmine/evilclaude-cli",
-  "sha256": "8690d9103b060130adbd0bd7badc75854f2b06b3fb778f9a5edff8749e7ce2e8"
+  "sha256": "bd9d68cd58c5a80b7023aed795702e0d753d86c62c5592f9b459a9fb8165291b"
 }

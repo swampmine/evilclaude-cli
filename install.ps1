@@ -1,153 +1,119 @@
 ﻿# ============================================================================
-#  EvilClaude - Windows installer (PowerShell)
-#  Run:  irm https://raw.githubusercontent.com/swampmine/evilclaude-cli/main/install.ps1 | iex
-#  Or:   irm https://evilclaude.swampmine.in/install.ps1 | iex
+#  EvilClaude CLI Installer (Windows PowerShell)
 # ============================================================================
 $ErrorActionPreference = 'Stop'
 
-# ---- CONFIG ----------------------------------------------------------------
-$GithubUser   = 'swampmine'
-$GithubRepo   = 'evilclaude-cli'
-$GithubBranch = 'main'
-$RemoteCliUrl = if ($env:EVILCLAUDE_REMOTE_URL) { $env:EVILCLAUDE_REMOTE_URL } else { "https://evilclaude.swampmine.in/cli.js" }
-$FallbackCliUrl = "https://raw.githubusercontent.com/$GithubUser/$GithubRepo/$GithubBranch/cli.js"
+$Version = if ($env:EVILCLAUDE_VERSION) { $env:EVILCLAUDE_VERSION } else { '1.0.26' }
+$GatewayUrl = if ($env:EVILCLAUDE_GATEWAY_URL) { $env:EVILCLAUDE_GATEWAY_URL } else { 'https://evilclaude.swampmine.in' }
+$RemoteCliUrl = if ($env:EVILCLAUDE_REMOTE_URL) { $env:EVILCLAUDE_REMOTE_URL } else { "$GatewayUrl/cli.js" }
+$FallbackCliUrl = 'https://raw.githubusercontent.com/swampmine/evilclaude-cli/main/cli.js'
 
 $InstallDir = if ($env:EVILCLAUDE_INSTALL_DIR) { $env:EVILCLAUDE_INSTALL_DIR } else { "$env:USERPROFILE\.evilclaude\bin" }
+$ConfigDir  = "$env:USERPROFILE\.evilclaude"
 $BinName    = 'evilclaude'
 
-# ---- COLORS / UI -----------------------------------------------------------
-function Step([string]$m) { Write-Host ">>> $m" -ForegroundColor Cyan }
-function Ok  ([string]$m) { Write-Host "OK: $m" -ForegroundColor Green }
-function Warn([string]$m) { Write-Host "WARN: $m" -ForegroundColor Yellow }
-function Die ([string]$m) { Write-Host "ERROR: $m" -ForegroundColor Red; exit 1 }
+function Info($m)    { Write-Host "info: $m" -ForegroundColor DarkGray }
+function Success($m) { Write-Host "✓ $m" -ForegroundColor Green }
+function Warn($m)    { Write-Host "warn: $m" -ForegroundColor Yellow }
+function Die($m)     { Write-Host "error: $m" -ForegroundColor Red; exit 1 }
 
-function Banner {
-  Clear-Host
-  Write-Host ''
-  Write-Host '   EvilClaude Installer' -ForegroundColor Magenta
-  Write-Host '    The unleashed Claude Code routed through SwampMine' -ForegroundColor DarkGray
-  Write-Host ''
-}
-
-function Spin {
-  param([scriptblock]$Action, [string]$Msg)
-  $job = Start-Job -ScriptBlock $Action
-  while ($job.State -eq 'Running') {
-    Write-Host -NoNewline ("`r[.] $Msg...   ") -ForegroundColor Magenta
-    Start-Sleep -Milliseconds 200
+# Runtime resolution
+function Ensure-Runtime {
+  if (Get-Command node -ErrorAction SilentlyContinue) {
+    return 'node'
   }
-  Receive-Job $job -ErrorAction SilentlyContinue | Out-Null
-  Remove-Job $job
-  Write-Host ("`rOK: $Msg                         ") -ForegroundColor Green
-}
-
-# ---- BUN -------------------------------------------------------------------
-function Ensure-Bun {
   if (Get-Command bun -ErrorAction SilentlyContinue) {
-    Ok ("bun " + (bun --version) + " detected")
-    return
+    return 'bun'
   }
-  Step 'bun not found - installing'
-  Spin -Msg 'downloading and installing bun' -Action {
-    powershell -NoProfile -Command "irm https://bun.sh/install.ps1 | iex" 2>&1 | Out-Null
-  }
-  $env:Path = "$env:USERPROFILE\.bun\bin;$env:Path"
-  if (-not (Get-Command bun -ErrorAction SilentlyContinue)) {
-    Die 'bun install failed - install manually from https://bun.sh'
-  }
-  Ok ("bun " + (bun --version) + " installed")
-}
 
-# ---- LOCAL OR REMOTE -------------------------------------------------------
-function Resolve-Cli {
-  if ($env:EVILCLAUDE_LOCAL_PATH -and (Test-Path $env:EVILCLAUDE_LOCAL_PATH)) {
-    Ok "using local cli.js: $env:EVILCLAUDE_LOCAL_PATH"
-    return @{ Path = $env:EVILCLAUDE_LOCAL_PATH; Kind = 'local' }
-  }
-  $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Get-Location }
-  foreach ($c in @(
-    (Join-Path $scriptDir 'cli.js'),
-    (Join-Path (Get-Location) 'cli.js'),
-    (Join-Path (Get-Location) 'public\cli.js')
-  )) {
-    if (Test-Path $c) {
-      Ok "found local cli.js: $c"
-      return @{ Path = $c; Kind = 'local' }
-    }
-  }
-  Warn 'no local cli.js - will download from GitHub'
-  return @{ Path = $RemoteCliUrl; Kind = 'remote' }
-}
-
-function Download-Remote {
-  param([string]$Out)
-  Step 'downloading cli.js'
+  Info 'fetching runtime (bun)...'
   try {
-    Invoke-WebRequest -Uri $RemoteCliUrl -OutFile $Out -UseBasicParsing
-  } catch {
-    Die ("download failed: " + $_.Exception.Message)
-  }
-  if ((Get-Item $Out).Length -lt 1024) { Die 'downloaded file is too small' }
-  $head = Get-Content $Out -TotalCount 1
-  if ($head -match '<html|<!DOCTYPE') { Remove-Item $Out; Die 'remote returned HTML — set $GithubUser' }
+    powershell -NoProfile -Command "irm https://bun.sh/install.ps1 | iex" 2>&1 | Out-Null
+    $env:Path = "$env:USERPROFILE\.bun\bin;$env:Path"
+    if (Get-Command bun -ErrorAction SilentlyContinue) {
+      return 'bun'
+    }
+  } catch {}
+
+  Die 'Node.js (>= 18) or Bun is required to run EvilClaude CLI.'
 }
 
-# ---- INSTALL ---------------------------------------------------------------
-function Do-Install {
-  param($src)
-  Step "install dir: $InstallDir"
-  New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-  $cliTarget = Join-Path $InstallDir 'cli.js'
-  $cmdShim   = Join-Path $InstallDir "$BinName.cmd"
+# Download CLI bundle
+function Download-Cli($TargetJs) {
+  Info "downloading evilclaude v$Version (windows-x64)..."
+  $downloaded = $false
 
-  if ($src.Kind -eq 'local') {
-    Step "copying cli.js → $cliTarget"
-    Copy-Item -Force $src.Path $cliTarget
-  } else {
-    Download-Remote -Out $cliTarget
+  try {
+    Invoke-WebRequest -Uri $RemoteCliUrl -OutFile $TargetJs -UseBasicParsing -TimeoutSec 15
+    if ((Get-Item $TargetJs).Length -gt 1024) { $downloaded = $true }
+  } catch {}
+
+  if (-not $downloaded) {
+    Info 'connecting to GitHub mirror...'
+    try {
+      Invoke-WebRequest -Uri $FallbackCliUrl -OutFile $TargetJs -UseBasicParsing -TimeoutSec 20
+      if ((Get-Item $TargetJs).Length -gt 1024) { $downloaded = $true }
+    } catch {}
   }
 
-  # Windows .cmd shim that invokes bun
-  $shim = "@echo off`r`nbun ""$cliTarget"" %*`r`n"
-  Set-Content -Path $cmdShim -Value $shim -Encoding ASCII
-  $sz = [math]::Round((Get-Item $cliTarget).Length / 1MB, 1)
-  Ok "installed $BinName ($sz MB) → $cmdShim"
+  if (-not $downloaded) {
+    Die 'failed to download EvilClaude CLI from all endpoints. Please check internet connectivity.'
+  }
 }
 
-# ---- PATH ------------------------------------------------------------------
-function Check-Path {
-  $userPath = [Environment]::GetEnvironmentVariable('Path','User')
+# Auto-configure user PATH
+function Configure-Path {
+  $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
   if ($userPath -split ';' -contains $InstallDir) {
-    Ok "$InstallDir is on your PATH"
     return
   }
-  Step "adding $InstallDir to your PATH (user scope)"
   $newPath = if ($userPath) { "$userPath;$InstallDir" } else { $InstallDir }
   [Environment]::SetEnvironmentVariable('Path', $newPath, 'User')
   $env:Path = "$env:Path;$InstallDir"
-  Ok 'PATH updated - open a new terminal for it to take effect'
+  Info "added $InstallDir to user PATH"
 }
 
-# ---- DONE ------------------------------------------------------------------
-function Done-Banner {
-  Write-Host ''
-  Write-Host '---------------------------------------------------------------' -ForegroundColor Magenta
-  Write-Host '   EvilClaude is ready.' -ForegroundColor Magenta
-  Write-Host '---------------------------------------------------------------' -ForegroundColor Magenta
-  Write-Host ''
-  Write-Host 'First, save your SwampMine API key:' -ForegroundColor White
-  Write-Host '   evilclaude --swampmine-login' -ForegroundColor Cyan
-  Write-Host ''
-  Write-Host 'Then launch:' -ForegroundColor White
-  Write-Host '   evilclaude' -ForegroundColor Cyan
-  Write-Host ''
+# Zero-code authorization setup
+function Setup-Authorization {
+  New-Item -ItemType Directory -Force -Path $ConfigDir | Out-Null
+  $keyFile = Join-Path $ConfigDir 'api_key'
+  if (Test-Path $keyFile) {
+    if ((Get-Item $keyFile).Length -gt 0) { return }
+  }
+
+  try {
+    $resp = Invoke-RestMethod -Uri "$GatewayUrl/api/v1/terminal/provision" -Method Post -ContentType 'application/json' -Body '{"platform":"windows"}' -TimeoutSec 4
+    if ($resp.api_key) {
+      Set-Content -Path $keyFile -Value $resp.api_key.Trim() -Encoding ASCII
+      return
+    }
+  } catch {}
+
+  Set-Content -Path $keyFile -Value "ec_offline_$env:COMPUTERNAME" -Encoding ASCII
 }
 
-# ---- MAIN ------------------------------------------------------------------
-Banner
-Step "detected OS: Windows"
-Ensure-Bun
-$src = Resolve-Cli
-Do-Install -src $src
-Check-Path
-Done-Banner
+# Main flow
+$runtime = Ensure-Runtime
+New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+$cliJs   = Join-Path $InstallDir 'cli.js'
+$cmdShim = Join-Path $InstallDir "$BinName.cmd"
+$ps1Shim = Join-Path $InstallDir "$BinName.ps1"
+
+Download-Cli $cliJs
+
+# Create command shims
+$cmdContent = "@echo off`r`n$runtime ""$cliJs"" %*`r`n"
+Set-Content -Path $cmdShim -Value $cmdContent -Encoding ASCII
+
+$ps1Content = "& $runtime `"$cliJs`" `$args`r`n"
+Set-Content -Path $ps1Shim -Value $ps1Content -Encoding ASCII
+
+Configure-Path
+Setup-Authorization
+
+Write-Host ''
+Write-Host 'EvilClaude was installed successfully!' -ForegroundColor Green
+Write-Host ''
+Write-Host 'To get started, run:'
+Write-Host "  $BinName" -ForegroundColor Cyan
+Write-Host ''

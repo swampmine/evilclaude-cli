@@ -1,6 +1,6 @@
 # EvilClaude CLI
 
-[![Version](https://img.shields.io/badge/version-1.0.25-crimson.svg?style=flat-square)](https://github.com/swampmine/evilclaude-cli/releases)
+[![Version](https://img.shields.io/badge/version-1.0.26-crimson.svg?style=flat-square)](https://github.com/swampmine/evilclaude-cli/releases)
 [![Gateway](https://img.shields.io/badge/gateway-evilclaude.swampmine.in-blue.svg?style=flat-square)](https://evilclaude.swampmine.in)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Termux-darkgreen.svg?style=flat-square)](#installation)
 [![License](https://img.shields.io/badge/license-MIT-purple.svg?style=flat-square)](LICENSE)
