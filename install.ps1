@@ -4,7 +4,7 @@
 $ErrorActionPreference = 'Stop'
 
 $GatewayUrl   = if ($env:EVILCLAUDE_GATEWAY_URL) { $env:EVILCLAUDE_GATEWAY_URL } else { 'https://evilclaude.swampmine.in' }
-$Version      = if ($env:EVILCLAUDE_VERSION) { $env:EVILCLAUDE_VERSION } else { '1.0.27' }
+$Version      = if ($env:EVILCLAUDE_VERSION) { $env:EVILCLAUDE_VERSION } else { '1.0.28' }
 $RemoteCliUrl = if ($env:EVILCLAUDE_REMOTE_URL) { $env:EVILCLAUDE_REMOTE_URL } else { "$GatewayUrl/cli.js" }
 $FallbackCliUrl = 'https://raw.githubusercontent.com/swampmine/evilclaude-cli/main/cli.js'
 

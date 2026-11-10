@@ -1,6 +1,6 @@
 {
   "name": "evilclaude",
-  "version": "1.0.27",
+  "version": "1.0.28",
   "description": "EvilClaude — The unleashed AI coding agent CLI routed through SwampMine",
   "bin": {
     "evilclaude": "./cli.js"
