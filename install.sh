@@ -328,15 +328,11 @@ show_done() {
   success "Done"
 }
 
-# 5. Colorful "You can run EvilClaude" banner
+# 5. Colorful "You can run EvilClaude" finish
 show_colorful_finish() {
   printf '\n'
-  printf '%s┌─────────────────────────────────────────────────────────────┐%s\n' "${MAGENTA}" "${RESET}"
-  printf '%s│%s   %s🔥 EvilClaude is ready!%s                                   %s│%s\n' "${MAGENTA}" "${RESET}" "${BOLD}${RED}" "${RESET}" "${MAGENTA}" "${RESET}"
-  printf '%s│%s                                                             %s│%s\n' "${MAGENTA}" "${RESET}" "${MAGENTA}" "${RESET}"
-  printf '%s│%s   You can run %sEvilClaude%s with:                                %s│%s\n' "${MAGENTA}" "${RESET}" "${BOLD}${MAGENTA}" "${RESET}" "${MAGENTA}" "${RESET}"
-  printf '%s│%s     %s%sevilclaude%s                                           %s│%s\n' "${MAGENTA}" "${RESET}" "${CYAN}${BOLD}" "" "${RESET}" "${MAGENTA}" "${RESET}"
-  printf '%s└─────────────────────────────────────────────────────────────┘%s\n\n' "${MAGENTA}" "${RESET}"
+  printf 'You can run %sEvilClaude%s with:\n' "${BOLD}${MAGENTA}" "${RESET}"
+  printf '  %s%sevilclaude%s\n\n' "${CYAN}${BOLD}" "" "${RESET}"
 }
 
 main() {

@@ -149,15 +149,13 @@ function Show-Done {
   Write-Host '✓ Done' -ForegroundColor Green
 }
 
-# 5. Colorful banner
+# 5. Colorful finish
 function Show-Colorful-Finish {
   Write-Host ''
-  Write-Host '┌─────────────────────────────────────────────────────────────┐' -ForegroundColor Magenta
-  Write-Host '│   🔥 EvilClaude is ready!                                   │' -ForegroundColor Magenta
-  Write-Host '│                                                             │' -ForegroundColor Magenta
-  Write-Host '│   You can run EvilClaude with:                              │' -ForegroundColor Magenta
-  Write-Host '│     evilclaude                                              │' -ForegroundColor Cyan
-  Write-Host '└─────────────────────────────────────────────────────────────┘' -ForegroundColor Magenta
+  Write-Host 'You can run ' -NoNewline
+  Write-Host 'EvilClaude' -ForegroundColor Magenta -NoNewline
+  Write-Host ' with:'
+  Write-Host '  evilclaude' -ForegroundColor Cyan
   Write-Host ''
 }
 
