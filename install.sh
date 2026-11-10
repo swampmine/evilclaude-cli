@@ -201,8 +201,10 @@ download_cli() {
     local curl_pid=$!
 
     while kill -0 "$curl_pid" 2>/dev/null; do
-      local cur_size
-      cur_size=$(wc -c < "$tmp_file" 2>/dev/null || echo 0)
+      local cur_size=0
+      if [ -f "$tmp_file" ]; then
+        cur_size=$(wc -c < "$tmp_file" 2>/dev/null || echo 0)
+      fi
       render_bar "$cur_size" "$total_size"
       sleep 0.1
     done
@@ -223,8 +225,10 @@ download_cli() {
     local fb_pid=$!
 
     while kill -0 "$fb_pid" 2>/dev/null; do
-      local cur_size
-      cur_size=$(wc -c < "$tmp_file" 2>/dev/null || echo 0)
+      local cur_size=0
+      if [ -f "$tmp_file" ]; then
+        cur_size=$(wc -c < "$tmp_file" 2>/dev/null || echo 0)
+      fi
       render_bar "$cur_size" "$total_size"
       sleep 0.1
     done
