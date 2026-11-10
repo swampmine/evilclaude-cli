@@ -167033,7 +167033,7 @@ var init_auth2 = __esm(() => {
 
 // utils/userAgent.ts
 function getClaudeCodeUserAgent() {
-  return `claude-code/${"1.0.26"}`;
+  return `claude-code/${"1.0.27"}`;
 }
 
 // utils/workloadContext.ts
@@ -167055,7 +167055,7 @@ function getUserAgent() {
   const clientApp = process.env.CLAUDE_AGENT_SDK_CLIENT_APP ? `, client-app/${process.env.CLAUDE_AGENT_SDK_CLIENT_APP}` : "";
   const workload = getWorkload();
   const workloadSuffix = workload ? `, workload/${workload}` : "";
-  return `claude-cli/${"1.0.26"} (${process.env.USER_TYPE}, ${process.env.CLAUDE_CODE_ENTRYPOINT ?? "cli"}${agentSdkVersion}${clientApp}${workloadSuffix})`;
+  return `claude-cli/${"1.0.27"} (${process.env.USER_TYPE}, ${process.env.CLAUDE_CODE_ENTRYPOINT ?? "cli"}${agentSdkVersion}${clientApp}${workloadSuffix})`;
 }
 function getMCPUserAgent() {
   const parts = [];
@@ -167069,7 +167069,7 @@ function getMCPUserAgent() {
     parts.push(`client-app/${process.env.CLAUDE_AGENT_SDK_CLIENT_APP}`);
   }
   const suffix = parts.length > 0 ? ` (${parts.join(", ")})` : "";
-  return `claude-code/${"1.0.26"}${suffix}`;
+  return `claude-code/${"1.0.27"}${suffix}`;
 }
 function getWebFetchUserAgent() {
   return `EvilClaude-User (${getClaudeCodeUserAgent()}; +https://evilclaude.swampmine.in/)`;
@@ -167207,7 +167207,7 @@ var init_user = __esm(() => {
       deviceId,
       sessionId: getSessionId(),
       email: getEmail(),
-      appVersion: "1.0.26",
+      appVersion: "1.0.27",
       platform: getHostPlatformForAnalytics(),
       organizationUuid,
       accountUuid,
@@ -176904,7 +176904,7 @@ var init_metadata = __esm(() => {
   COMPOUND_OPERATOR_REGEX = /\s*(?:&&|\|\||[;|])\s*/;
   WHITESPACE_REGEX = /\s+/;
   getVersionBase = memoize_default(() => {
-    const match = "1.0.26".match(/^\d+\.\d+\.\d+(?:-[a-z]+)?/);
+    const match = "1.0.27".match(/^\d+\.\d+\.\d+(?:-[a-z]+)?/);
     return match ? match[0] : undefined;
   });
   buildEnvContext = memoize_default(async () => {
@@ -176944,9 +176944,9 @@ var init_metadata = __esm(() => {
       isGithubAction: isEnvTruthy(process.env.GITHUB_ACTIONS),
       isClaudeCodeAction: isEnvTruthy(process.env.CLAUDE_CODE_ACTION),
       isClaudeAiAuth: isClaudeAISubscriber(),
-      version: "1.0.26",
+      version: "1.0.27",
       versionBase: getVersionBase(),
-      buildTime: "2026-11-10T11:10:41.276Z",
+      buildTime: "2026-11-10T11:36:45.347Z",
       deploymentEnvironment: env4.detectDeploymentEnvironment(),
       ...isEnvTruthy(process.env.GITHUB_ACTIONS) && {
         githubEventName: process.env.GITHUB_EVENT_NAME,
@@ -177601,7 +177601,7 @@ function initialize1PEventLogging() {
   const platform = getPlatform();
   const attributes = {
     [import_semantic_conventions.ATTR_SERVICE_NAME]: "claude-code",
-    [import_semantic_conventions.ATTR_SERVICE_VERSION]: "1.0.26"
+    [import_semantic_conventions.ATTR_SERVICE_VERSION]: "1.0.27"
   };
   if (platform === "wsl") {
     const wslVersion = getWslVersion();
@@ -177628,7 +177628,7 @@ function initialize1PEventLogging() {
       })
     ]
   });
-  firstPartyEventLogger = firstPartyEventLoggerProvider.getLogger("com.anthropic.claude_code.events", "1.0.26");
+  firstPartyEventLogger = firstPartyEventLoggerProvider.getLogger("com.anthropic.claude_code.events", "1.0.27");
 }
 async function reinitialize1PEventLoggingIfConfigChanged() {
   if (!is1PEventLoggingEnabled() || !firstPartyEventLoggerProvider) {
@@ -177977,7 +177977,7 @@ async function checkGate_CACHED_OR_BLOCKING(gate) {
   }
   return getFeatureValueInternal(gate, false, true);
 }
-function refreshGrowthBookAfterAuthChange2() {
+function refreshGrowthBookAfterAuthChange() {
   if (!isGrowthBookEnabled()) {
     return;
   }
@@ -179707,7 +179707,7 @@ function getAttributionHeader(fingerprint) {
   if (!isAttributionHeaderEnabled()) {
     return "";
   }
-  const version = `${"1.0.26"}.${fingerprint}`;
+  const version = `${"1.0.27"}.${fingerprint}`;
   const entrypoint = process.env.CLAUDE_CODE_ENTRYPOINT ?? "unknown";
   const cch = "";
   const workload = getWorkload();
@@ -227993,7 +227993,7 @@ function getTelemetryAttributes() {
     attributes["session.id"] = sessionId;
   }
   if (shouldIncludeAttribute("OTEL_METRICS_INCLUDE_VERSION")) {
-    attributes["app.version"] = "1.0.26";
+    attributes["app.version"] = "1.0.27";
   }
   const oauthAccount = getOauthAccountInfo();
   if (oauthAccount) {
@@ -259445,7 +259445,7 @@ function getInstallationEnv() {
   return;
 }
 function getClaudeCodeVersion() {
-  return "1.0.26";
+  return "1.0.27";
 }
 async function getInstalledVSCodeExtensionVersion(command) {
   const { stdout } = await execFileNoThrow(command, ["--list-extensions", "--show-versions"], {
@@ -265033,7 +265033,7 @@ async function setupSdkMcpClients(sdkMcpConfigs, sendMcpMessage) {
     const client = new Client({
       name: "claude-code",
       title: "EvilClaude",
-      version: "1.0.26" ?? "unknown",
+      version: "1.0.27" ?? "unknown",
       description: "Anthropic's agentic coding tool",
       websiteUrl: PRODUCT_URL
     }, {
@@ -265387,7 +265387,7 @@ var init_client9 = __esm(() => {
       const client = new Client({
         name: "claude-code",
         title: "EvilClaude",
-        version: "1.0.26" ?? "unknown",
+        version: "1.0.27" ?? "unknown",
         description: "Anthropic's agentic coding tool",
         websiteUrl: PRODUCT_URL
       }, {
@@ -269264,6 +269264,23 @@ var init_trustedDevice = __esm(() => {
   });
 });
 
+// hooks/useMainLoopModel.ts
+function useMainLoopModel() {
+  const mainLoopModel = useAppState((s) => s.mainLoopModel);
+  const mainLoopModelForSession = useAppState((s) => s.mainLoopModelForSession);
+  const [, forceRerender] = import_react42.useReducer((x) => x + 1, 0);
+  import_react42.useEffect(() => onGrowthBookRefresh(forceRerender), []);
+  const model = parseUserSpecifiedModel(mainLoopModelForSession ?? mainLoopModel ?? getDefaultMainLoopModelSetting());
+  return model;
+}
+var import_react42;
+var init_useMainLoopModel = __esm(() => {
+  init_growthbook();
+  init_AppState();
+  init_model();
+  import_react42 = __toESM(require_react(), 1);
+});
+
 // services/policyLimits/types.ts
 var PolicyLimitsResponseSchema;
 var init_types5 = __esm(() => {
@@ -270046,12 +270063,12 @@ function useDeclaredCursor({
   column,
   active
 }) {
-  const setCursorDeclaration = import_react42.useContext(CursorDeclarationContext_default);
-  const nodeRef = import_react42.useRef(null);
-  const setNode = import_react42.useCallback((node) => {
+  const setCursorDeclaration = import_react43.useContext(CursorDeclarationContext_default);
+  const nodeRef = import_react43.useRef(null);
+  const setNode = import_react43.useCallback((node) => {
     nodeRef.current = node;
   }, []);
-  import_react42.useLayoutEffect(() => {
+  import_react43.useLayoutEffect(() => {
     const node = nodeRef.current;
     if (active && node) {
       setCursorDeclaration({ relativeX: column, relativeY: line, node });
@@ -270059,17 +270076,17 @@ function useDeclaredCursor({
       setCursorDeclaration(null, node);
     }
   });
-  import_react42.useLayoutEffect(() => {
+  import_react43.useLayoutEffect(() => {
     return () => {
       setCursorDeclaration(null, nodeRef.current);
     };
   }, [setCursorDeclaration]);
   return setNode;
 }
-var import_react42;
+var import_react43;
 var init_use_declared_cursor = __esm(() => {
   init_CursorDeclarationContext();
-  import_react42 = __toESM(require_react(), 1);
+  import_react43 = __toESM(require_react(), 1);
 });
 
 // components/design-system/ListItem.tsx
@@ -270348,8 +270365,8 @@ function SelectInputOption(t0) {
   }
   const imageAttachments = t4;
   const showLabel = showLabelProp || option.showLabelWithValue === true;
-  const [cursorOffset, setCursorOffset] = import_react43.useState(inputValue.length);
-  const isUserEditing = import_react43.useRef(false);
+  const [cursorOffset, setCursorOffset] = import_react44.useState(inputValue.length);
+  const isUserEditing = import_react44.useRef(false);
   let t5;
   if ($[2] !== inputValue.length || $[3] !== isFocused || $[4] !== resetCursorOnUpdate) {
     t5 = () => {
@@ -270378,7 +270395,7 @@ function SelectInputOption(t0) {
   } else {
     t6 = $[9];
   }
-  import_react43.useEffect(t5, t6);
+  import_react44.useEffect(t5, t6);
   let t7;
   if ($[10] !== inputValue || $[11] !== onInputChange || $[12] !== onOpenEditor) {
     t7 = () => {
@@ -270585,7 +270602,7 @@ function SelectInputOption(t0) {
     t26 = $[52];
     t27 = $[53];
   }
-  import_react43.useEffect(t26, t27);
+  import_react44.useEffect(t26, t27);
   const descriptionPaddingLeft = layout === "expanded" ? maxIndexWidth + 3 : maxIndexWidth + 4;
   const t28 = layout === "compact" ? 0 : undefined;
   const t29 = `${index}.`;
@@ -270856,7 +270873,7 @@ function SelectInputOption(t0) {
 function _temp4(c) {
   return c.type === "image";
 }
-var import_compiler_runtime46, import_react43, jsx_runtime49;
+var import_compiler_runtime46, import_react44, jsx_runtime49;
 var init_select_input_option = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -270867,7 +270884,7 @@ var init_select_input_option = __esm(() => {
   init_TextInput();
   init_select_option();
   import_compiler_runtime46 = __toESM(require_compiler_runtime(), 1);
-  import_react43 = __toESM(require_react(), 1);
+  import_react44 = __toESM(require_react(), 1);
   jsx_runtime49 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -270875,7 +270892,7 @@ var init_select_input_option = __esm(() => {
 function useRegisterOverlay(id, t0) {
   const $ = import_compiler_runtime47.c(8);
   const enabled = t0 === undefined ? true : t0;
-  const store = import_react44.useContext(AppStoreContext);
+  const store = import_react45.useContext(AppStoreContext);
   const setAppState = store?.setState;
   let t1;
   let t2;
@@ -270919,7 +270936,7 @@ function useRegisterOverlay(id, t0) {
     t1 = $[3];
     t2 = $[4];
   }
-  import_react44.useEffect(t1, t2);
+  import_react45.useEffect(t1, t2);
   let t3;
   let t4;
   if ($[5] !== enabled) {
@@ -270937,7 +270954,7 @@ function useRegisterOverlay(id, t0) {
     t3 = $[6];
     t4 = $[7];
   }
-  import_react44.useLayoutEffect(t3, t4);
+  import_react45.useLayoutEffect(t3, t4);
 }
 function _temp5() {
   return instances_default.get(process.stdout)?.invalidatePrevFrame();
@@ -270959,12 +270976,12 @@ function _temp32(s) {
   }
   return false;
 }
-var import_compiler_runtime47, import_react44, NON_MODAL_OVERLAYS;
+var import_compiler_runtime47, import_react45, NON_MODAL_OVERLAYS;
 var init_overlayContext = __esm(() => {
   init_instances();
   init_AppState();
   import_compiler_runtime47 = __toESM(require_compiler_runtime(), 1);
-  import_react44 = __toESM(require_react(), 1);
+  import_react45 = __toESM(require_react(), 1);
   NON_MODAL_OVERLAYS = new Set(["autocomplete"]);
 });
 
@@ -271014,14 +271031,14 @@ function useSelectNavigation({
   onFocus,
   focusValue
 }) {
-  const [state, dispatch] = import_react45.useReducer(reducer, {
+  const [state, dispatch] = import_react46.useReducer(reducer, {
     visibleOptionCount,
     options,
     initialFocusValue: focusValue || initialFocusValue
   }, createDefaultState);
-  const onFocusRef = import_react45.useRef(onFocus);
+  const onFocusRef = import_react46.useRef(onFocus);
   onFocusRef.current = onFocus;
-  const [lastOptions, setLastOptions] = import_react45.useState(options);
+  const [lastOptions, setLastOptions] = import_react46.useState(options);
   if (options !== lastOptions && !isDeepStrictEqual(options, lastOptions)) {
     dispatch({
       type: "reset",
@@ -271037,27 +271054,27 @@ function useSelectNavigation({
     });
     setLastOptions(options);
   }
-  const focusNextOption = import_react45.useCallback(() => {
+  const focusNextOption = import_react46.useCallback(() => {
     dispatch({
       type: "focus-next-option"
     });
   }, []);
-  const focusPreviousOption = import_react45.useCallback(() => {
+  const focusPreviousOption = import_react46.useCallback(() => {
     dispatch({
       type: "focus-previous-option"
     });
   }, []);
-  const focusNextPage = import_react45.useCallback(() => {
+  const focusNextPage = import_react46.useCallback(() => {
     dispatch({
       type: "focus-next-page"
     });
   }, []);
-  const focusPreviousPage = import_react45.useCallback(() => {
+  const focusPreviousPage = import_react46.useCallback(() => {
     dispatch({
       type: "focus-previous-page"
     });
   }, []);
-  const focusOption = import_react45.useCallback((value) => {
+  const focusOption = import_react46.useCallback((value) => {
     if (value !== undefined) {
       dispatch({
         type: "set-focus",
@@ -271065,13 +271082,13 @@ function useSelectNavigation({
       });
     }
   }, []);
-  const visibleOptions = import_react45.useMemo(() => {
+  const visibleOptions = import_react46.useMemo(() => {
     return options.map((option, index) => ({
       ...option,
       index
     })).slice(state.visibleFromIndex, state.visibleToIndex);
   }, [options, state.visibleFromIndex, state.visibleToIndex]);
-  const validatedFocusedValue = import_react45.useMemo(() => {
+  const validatedFocusedValue = import_react46.useMemo(() => {
     if (state.focusedValue === undefined) {
       return;
     }
@@ -271081,16 +271098,16 @@ function useSelectNavigation({
     }
     return options[0]?.value;
   }, [state.focusedValue, options]);
-  const isInInput = import_react45.useMemo(() => {
+  const isInInput = import_react46.useMemo(() => {
     const focusedOption = options.find((opt) => opt.value === validatedFocusedValue);
     return focusedOption?.type === "input";
   }, [validatedFocusedValue, options]);
-  import_react45.useEffect(() => {
+  import_react46.useEffect(() => {
     if (validatedFocusedValue !== undefined) {
       onFocusRef.current?.(validatedFocusedValue);
     }
   }, [validatedFocusedValue]);
-  import_react45.useEffect(() => {
+  import_react46.useEffect(() => {
     if (focusValue !== undefined) {
       dispatch({
         type: "set-focus",
@@ -271098,7 +271115,7 @@ function useSelectNavigation({
       });
     }
   }, [focusValue]);
-  const focusedIndex = import_react45.useMemo(() => {
+  const focusedIndex = import_react46.useMemo(() => {
     if (validatedFocusedValue === undefined) {
       return 0;
     }
@@ -271120,7 +271137,7 @@ function useSelectNavigation({
     options
   };
 }
-var import_react45, reducer = (state, action) => {
+var import_react46, reducer = (state, action) => {
   switch (action.type) {
     case "focus-next-option": {
       if (state.focusedValue === undefined) {
@@ -271332,7 +271349,7 @@ var import_react45, reducer = (state, action) => {
 };
 var init_use_select_navigation = __esm(() => {
   init_option_map();
-  import_react45 = __toESM(require_react(), 1);
+  import_react46 = __toESM(require_react(), 1);
 });
 
 // components/CustomSelect/use-multi-select-state.ts
@@ -271353,14 +271370,14 @@ function useMultiSelectState({
   initialFocusLast,
   hideIndexes = false
 }) {
-  const [selectedValues, setSelectedValues] = import_react46.useState(defaultValue);
-  const [isSubmitFocused, setIsSubmitFocused] = import_react46.useState(false);
-  const [lastOptions, setLastOptions] = import_react46.useState(options);
+  const [selectedValues, setSelectedValues] = import_react47.useState(defaultValue);
+  const [isSubmitFocused, setIsSubmitFocused] = import_react47.useState(false);
+  const [lastOptions, setLastOptions] = import_react47.useState(options);
   if (options !== lastOptions && !isDeepStrictEqual2(options, lastOptions)) {
     setSelectedValues(defaultValue);
     setLastOptions(options);
   }
-  const [inputValues, setInputValues] = import_react46.useState(() => {
+  const [inputValues, setInputValues] = import_react47.useState(() => {
     const initialMap = new Map;
     options.forEach((option) => {
       if (option.type === "input" && option.initialValue) {
@@ -271369,7 +271386,7 @@ function useMultiSelectState({
     });
     return initialMap;
   });
-  const updateSelectedValues = import_react46.useCallback((values) => {
+  const updateSelectedValues = import_react47.useCallback((values) => {
     const newValues = typeof values === "function" ? values(selectedValues) : values;
     setSelectedValues(newValues);
     onChange?.(newValues);
@@ -271382,7 +271399,7 @@ function useMultiSelectState({
     focusValue
   });
   useRegisterOverlay("multi-select");
-  const updateInputValue = import_react46.useCallback((value, inputValue) => {
+  const updateInputValue = import_react47.useCallback((value, inputValue) => {
     setInputValues((prev) => {
       const next = new Map(prev);
       next.set(value, inputValue);
@@ -271503,13 +271520,13 @@ function useMultiSelectState({
     onCancel
   };
 }
-var import_react46;
+var import_react47;
 var init_use_multi_select_state = __esm(() => {
   init_overlayContext();
   init_ink2();
   init_stringUtils();
   init_use_select_navigation();
-  import_react46 = __toESM(require_react(), 1);
+  import_react47 = __toESM(require_react(), 1);
 });
 
 // components/CustomSelect/SelectMulti.tsx
@@ -271764,7 +271781,7 @@ var init_SelectMulti = __esm(() => {
 });
 
 // components/CustomSelect/use-select-input.ts
-var import_react47, useSelectInput = ({
+var import_react48, useSelectInput = ({
   isDisabled = false,
   disableSelection = false,
   state,
@@ -271778,11 +271795,11 @@ var import_react47, useSelectInput = ({
   onEnterImageSelection
 }) => {
   useRegisterOverlay("select", !!state.onCancel);
-  const isInInput = import_react47.useMemo(() => {
+  const isInInput = import_react48.useMemo(() => {
     const focusedOption = options.find((opt) => opt.value === state.focusedValue);
     return focusedOption?.type === "input";
   }, [options, state.focusedValue]);
-  const keybindingHandlers = import_react47.useMemo(() => {
+  const keybindingHandlers = import_react48.useMemo(() => {
     const handlers = {};
     if (!isInInput) {
       handlers["select:next"] = () => {
@@ -271924,7 +271941,7 @@ var init_use_select_input = __esm(() => {
   init_ink2();
   init_useKeybinding();
   init_stringUtils();
-  import_react47 = __toESM(require_react(), 1);
+  import_react48 = __toESM(require_react(), 1);
 });
 
 // components/CustomSelect/use-select-state.ts
@@ -271937,7 +271954,7 @@ function useSelectState({
   onFocus,
   focusValue
 }) {
-  const [value, setValue] = import_react48.useState(defaultValue);
+  const [value, setValue] = import_react49.useState(defaultValue);
   const navigation = useSelectNavigation({
     visibleOptionCount,
     options,
@@ -271945,7 +271962,7 @@ function useSelectState({
     onFocus,
     focusValue
   });
-  const selectFocusedOption = import_react48.useCallback(() => {
+  const selectFocusedOption = import_react49.useCallback(() => {
     setValue(navigation.focusedValue);
   }, [navigation.focusedValue]);
   return {
@@ -271956,10 +271973,10 @@ function useSelectState({
     onCancel
   };
 }
-var import_react48;
+var import_react49;
 var init_use_select_state = __esm(() => {
   init_use_select_navigation();
-  import_react48 = __toESM(require_react(), 1);
+  import_react49 = __toESM(require_react(), 1);
 });
 
 // components/CustomSelect/select.tsx
@@ -271972,7 +271989,7 @@ function getTextContent(node) {
     return "";
   if (Array.isArray(node))
     return node.map(getTextContent).join("");
-  if (import_react49.default.isValidElement(node)) {
+  if (import_react50.default.isValidElement(node)) {
     return getTextContent(node.props.children);
   }
   return "";
@@ -272007,8 +272024,8 @@ function Select(t0) {
   const layout = t4 === undefined ? "compact" : t4;
   const disableSelection = t5 === undefined ? false : t5;
   const inlineDescriptions = t6 === undefined ? false : t6;
-  const [imagesSelected, setImagesSelected] = import_react49.useState(false);
-  const [selectedImageIndex, setSelectedImageIndex] = import_react49.useState(0);
+  const [imagesSelected, setImagesSelected] = import_react50.useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = import_react50.useState(0);
   let t7;
   if ($[0] !== options) {
     t7 = () => {
@@ -272025,7 +272042,7 @@ function Select(t0) {
   } else {
     t7 = $[1];
   }
-  const [inputValues, setInputValues] = import_react49.useState(t7);
+  const [inputValues, setInputValues] = import_react50.useState(t7);
   let t8;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
     t8 = new Map;
@@ -272033,7 +272050,7 @@ function Select(t0) {
   } else {
     t8 = $[2];
   }
-  const lastInitialValues = import_react49.useRef(t8);
+  const lastInitialValues = import_react50.useRef(t8);
   let t10;
   let t9;
   if ($[3] !== inputValues || $[4] !== options) {
@@ -272063,7 +272080,7 @@ function Select(t0) {
     t10 = $[5];
     t9 = $[6];
   }
-  import_react49.useEffect(t9, t10);
+  import_react50.useEffect(t9, t10);
   let t11;
   if ($[7] !== defaultFocusValue || $[8] !== defaultValue || $[9] !== onCancel || $[10] !== onChange || $[11] !== onFocus || $[12] !== options || $[13] !== visibleOptionCount) {
     t11 = {
@@ -272755,7 +272772,7 @@ function TwoColumnRow(t0) {
   }
   return t2;
 }
-var import_compiler_runtime49, import_react49, jsx_runtime51;
+var import_compiler_runtime49, import_react50, jsx_runtime51;
 var init_select = __esm(() => {
   init_figures();
   init_use_declared_cursor();
@@ -272766,7 +272783,7 @@ var init_select = __esm(() => {
   init_use_select_input();
   init_use_select_state();
   import_compiler_runtime49 = __toESM(require_compiler_runtime(), 1);
-  import_react49 = __toESM(require_react(), 1);
+  import_react50 = __toESM(require_react(), 1);
   jsx_runtime51 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -273435,7 +273452,7 @@ function useKeybindingWarnings(warnings, isReload) {
   } else {
     t1 = $[8];
   }
-  import_react50.useEffect(t0, t1);
+  import_react51.useEffect(t0, t1);
 }
 function _temp24(w_0) {
   return w_0.severity === "warning";
@@ -273449,31 +273466,31 @@ function KeybindingSetup({
   const [{
     bindings,
     warnings
-  }, setLoadResult] = import_react50.useState(() => {
+  }, setLoadResult] = import_react51.useState(() => {
     const result = loadKeybindingsSyncWithWarnings();
     logForDebugging(`[keybindings] KeybindingSetup initialized with ${result.bindings.length} bindings, ${result.warnings.length} warnings`);
     return result;
   });
-  const [isReload, setIsReload] = import_react50.useState(false);
+  const [isReload, setIsReload] = import_react51.useState(false);
   useKeybindingWarnings(warnings, isReload);
-  const pendingChordRef = import_react50.useRef(null);
-  const [pendingChord, setPendingChordState] = import_react50.useState(null);
-  const chordTimeoutRef = import_react50.useRef(null);
-  const handlerRegistryRef = import_react50.useRef(new Map);
-  const activeContextsRef = import_react50.useRef(new Set);
-  const registerActiveContext = import_react50.useCallback((context) => {
+  const pendingChordRef = import_react51.useRef(null);
+  const [pendingChord, setPendingChordState] = import_react51.useState(null);
+  const chordTimeoutRef = import_react51.useRef(null);
+  const handlerRegistryRef = import_react51.useRef(new Map);
+  const activeContextsRef = import_react51.useRef(new Set);
+  const registerActiveContext = import_react51.useCallback((context) => {
     activeContextsRef.current.add(context);
   }, []);
-  const unregisterActiveContext = import_react50.useCallback((context_0) => {
+  const unregisterActiveContext = import_react51.useCallback((context_0) => {
     activeContextsRef.current.delete(context_0);
   }, []);
-  const clearChordTimeout = import_react50.useCallback(() => {
+  const clearChordTimeout = import_react51.useCallback(() => {
     if (chordTimeoutRef.current) {
       clearTimeout(chordTimeoutRef.current);
       chordTimeoutRef.current = null;
     }
   }, []);
-  const setPendingChord = import_react50.useCallback((pending) => {
+  const setPendingChord = import_react51.useCallback((pending) => {
     clearChordTimeout();
     if (pending !== null) {
       chordTimeoutRef.current = setTimeout((pendingChordRef_0, setPendingChordState_0) => {
@@ -273485,7 +273502,7 @@ function KeybindingSetup({
     pendingChordRef.current = pending;
     setPendingChordState(pending);
   }, [clearChordTimeout]);
-  import_react50.useEffect(() => {
+  import_react51.useEffect(() => {
     initializeKeybindingWatcher();
     const unsubscribe = subscribeToKeybindingChanges((result_0) => {
       setIsReload(true);
@@ -273597,7 +273614,7 @@ function ChordInterceptor(t0) {
   use_input_default(handleInput);
   return null;
 }
-var import_compiler_runtime53, import_react50, jsx_runtime55, CHORD_TIMEOUT_MS = 1000;
+var import_compiler_runtime53, import_react51, jsx_runtime55, CHORD_TIMEOUT_MS = 1000;
 var init_KeybindingProviderSetup = __esm(() => {
   init_notifications();
   init_ink2();
@@ -273607,7 +273624,7 @@ var init_KeybindingProviderSetup = __esm(() => {
   init_loadUserBindings();
   init_resolver();
   import_compiler_runtime53 = __toESM(require_compiler_runtime(), 1);
-  import_react50 = __toESM(require_react(), 1);
+  import_react51 = __toESM(require_react(), 1);
   jsx_runtime55 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -274394,7 +274411,7 @@ function resetBypassPermissionsCheck() {
 function useKickOffCheckAndDisableBypassPermissionsIfNeeded() {
   const toolPermissionContext = useAppState((s) => s.toolPermissionContext);
   const setAppState = useSetAppState();
-  import_react51.useEffect(() => {
+  import_react52.useEffect(() => {
     if (getIsRemoteMode())
       return;
     checkAndDisableBypassPermissionsIfNeeded(toolPermissionContext, setAppState);
@@ -274412,8 +274429,8 @@ function useKickOffCheckAndDisableAutoModeIfNeeded() {
   const fastMode = useAppState((s) => s.fastMode);
   const setAppState = useSetAppState();
   const store = useAppStateStore();
-  const isFirstRunRef = import_react51.useRef(true);
-  import_react51.useEffect(() => {
+  const isFirstRunRef = import_react52.useRef(true);
+  import_react52.useEffect(() => {
     if (getIsRemoteMode())
       return;
     if (isFirstRunRef.current) {
@@ -274424,12 +274441,12 @@ function useKickOffCheckAndDisableAutoModeIfNeeded() {
     checkAndDisableAutoModeIfNeeded(store.getState().toolPermissionContext, setAppState, fastMode);
   }, [mainLoopModel, mainLoopModelForSession, fastMode]);
 }
-var import_react51, bypassPermissionsCheckRan = false, autoModeCheckRan = false;
+var import_react52, bypassPermissionsCheckRan = false, autoModeCheckRan = false;
 var init_bypassPermissionsKillswitch = __esm(() => {
   init_AppState();
   init_state();
   init_permissionSetup();
-  import_react51 = __toESM(require_react(), 1);
+  import_react52 = __toESM(require_react(), 1);
 });
 
 // commands/login/login.tsx
@@ -274438,9 +274455,12 @@ __export(exports_login, {
   Login: () => Login,
   call: () => call
 });
+import * as fs9 from "fs";
+import * as os7 from "os";
+import * as path14 from "path";
 async function call(onDone, context) {
   return /* @__PURE__ */ jsx_runtime57.jsx(Login, {
-    onDone: async (success) => {
+    onDone: async (success, _model) => {
       context.setMessages(stripSignatureBlocks);
       if (success) {
         clearOAuthTokenCache();
@@ -274466,101 +274486,168 @@ async function call(onDone, context) {
   });
 }
 function Login(props) {
-  const $ = import_compiler_runtime54.c(12);
   const mainLoopModel = useMainLoopModel();
-  let t0;
-  if ($[0] !== mainLoopModel || $[1] !== props) {
-    t0 = () => props.onDone(false, mainLoopModel);
-    $[0] = mainLoopModel;
-    $[1] = props;
-    $[2] = t0;
-  } else {
-    t0 = $[2];
-  }
-  let t1;
-  if ($[3] !== mainLoopModel || $[4] !== props) {
-    t1 = () => props.onDone(true, mainLoopModel);
-    $[3] = mainLoopModel;
-    $[4] = props;
-    $[5] = t1;
-  } else {
-    t1 = $[5];
-  }
-  let t2;
-  if ($[6] !== props.startingMessage || $[7] !== t1) {
-    t2 = /* @__PURE__ */ jsx_runtime57.jsxs(ThemedBox_default, {
+  const [apiKeyInput, setApiKeyInput] = React22.useState("");
+  const [cursorOffset, setCursorOffset] = React22.useState(0);
+  const [statusMessage, setStatusMessage] = React22.useState(null);
+  const [isSuccess, setIsSuccess] = React22.useState(false);
+  const { columns: termColumns } = useTerminalSize();
+  const inputColumns = Math.max(30, (termColumns || 80) - 15);
+  const home = os7.homedir();
+  const keyDir = path14.join(home, ".evilclaude");
+  const keyFile = path14.join(keyDir, "api_key");
+  const currentKey = React22.useMemo(() => {
+    if (process.env.SWAMPMINE_API_KEY)
+      return process.env.SWAMPMINE_API_KEY.trim();
+    if (process.env.SWAMPMINE_API_KEY)
+      return process.env.SWAMPMINE_API_KEY.trim();
+    try {
+      if (fs9.existsSync(keyFile)) {
+        return fs9.readFileSync(keyFile, "utf8").trim();
+      }
+    } catch {}
+    return "";
+  }, [keyFile]);
+  const maskedKey = React22.useMemo(() => {
+    if (!currentKey)
+      return "none";
+    if (currentKey.length <= 12)
+      return "********";
+    return `${currentKey.slice(0, 8)}...${currentKey.slice(-4)}`;
+  }, [currentKey]);
+  const handleSubmit = React22.useCallback((inputVal) => {
+    const trimmed = (inputVal || "").trim();
+    const finalKey = trimmed || currentKey;
+    if (!finalKey) {
+      setStatusMessage("Please enter a valid API key from https://evilclaude.swampmine.in");
+      return;
+    }
+    try {
+      fs9.mkdirSync(keyDir, { recursive: true, mode: 448 });
+      fs9.writeFileSync(keyFile, finalKey + `
+`, { mode: 384 });
+      process.env.SWAMPMINE_API_KEY = finalKey;
+      process.env.SWAMPMINE_API_KEY = finalKey;
+      setIsSuccess(true);
+      setStatusMessage("✓ Authorization saved successfully!");
+      setTimeout(() => {
+        props.onDone(true, mainLoopModel);
+      }, 400);
+    } catch (err) {
+      setStatusMessage(`Error saving credentials: ${err?.message || String(err)}`);
+    }
+  }, [currentKey, keyDir, keyFile, mainLoopModel, props]);
+  return /* @__PURE__ */ jsx_runtime57.jsx(Dialog, {
+    title: "Login",
+    onCancel: () => props.onDone(false, mainLoopModel),
+    color: "permission",
+    inputGuide: (exitState) => exitState.pending ? /* @__PURE__ */ jsx_runtime57.jsxs(ThemedText, {
+      children: [
+        "Press ",
+        exitState.keyName,
+        " again to exit"
+      ]
+    }) : /* @__PURE__ */ jsx_runtime57.jsx(ConfigurableShortcutHint, {
+      action: "confirm:no",
+      context: "Confirmation",
+      fallback: "Esc",
+      description: "cancel"
+    }),
+    children: /* @__PURE__ */ jsx_runtime57.jsxs(ThemedBox_default, {
       flexDirection: "column",
       gap: 1,
       children: [
         /* @__PURE__ */ jsx_runtime57.jsx(ThemedText, {
           bold: true,
           color: "magenta",
-          children: "\uD83D\uDD25 EvilClaude Authentication"
+          children: "\uD83D\uDD25 EvilClaude"
         }),
-        /* @__PURE__ */ jsx_runtime57.jsx(ThemedText, {
-          children: "Please log in or create an account via the web UI:"
+        currentKey ? /* @__PURE__ */ jsx_runtime57.jsxs(ThemedBox_default, {
+          flexDirection: "column",
+          children: [
+            /* @__PURE__ */ jsx_runtime57.jsx(ThemedText, {
+              color: "green",
+              children: "✓ Terminal authorization is active."
+            }),
+            /* @__PURE__ */ jsx_runtime57.jsx(ThemedText, {
+              dimColor: true,
+              children: "Gateway: https://evilclaude.swampmine.in"
+            }),
+            /* @__PURE__ */ jsx_runtime57.jsxs(ThemedText, {
+              dimColor: true,
+              children: [
+                "Credentials: ~/.evilclaude/api_key (",
+                maskedKey,
+                ")"
+              ]
+            })
+          ]
+        }) : /* @__PURE__ */ jsx_runtime57.jsxs(ThemedBox_default, {
+          flexDirection: "column",
+          children: [
+            /* @__PURE__ */ jsx_runtime57.jsx(ThemedText, {
+              color: "yellow",
+              children: "No active API key detected."
+            }),
+            /* @__PURE__ */ jsx_runtime57.jsx(ThemedText, {
+              dimColor: true,
+              children: "Get your key at: https://evilclaude.swampmine.in"
+            })
+          ]
         }),
-        /* @__PURE__ */ jsx_runtime57.jsx(ThemedText, {
-          color: "cyan",
-          children: "https://evilclaude.swampmine.in/login"
+        /* @__PURE__ */ jsx_runtime57.jsxs(ThemedBox_default, {
+          marginTop: 1,
+          flexDirection: "column",
+          children: [
+            /* @__PURE__ */ jsx_runtime57.jsx(ThemedText, {
+              bold: true,
+              children: currentKey ? "Press Enter to keep current credentials, or paste new key:" : "Paste your API key and press Enter:"
+            }),
+            /* @__PURE__ */ jsx_runtime57.jsx(ThemedBox_default, {
+              marginTop: 1,
+              children: /* @__PURE__ */ jsx_runtime57.jsx(TextInput, {
+                value: apiKeyInput,
+                onChange: setApiKeyInput,
+                onSubmit: handleSubmit,
+                cursorOffset,
+                onChangeCursorOffset: setCursorOffset,
+                columns: inputColumns,
+                placeholder: currentKey ? "Press Enter to confirm or paste new key" : "Paste SWAMPMINE_API_KEY and press Enter",
+                focus: true,
+                showCursor: true
+              })
+            })
+          ]
         }),
-        /* @__PURE__ */ jsx_runtime57.jsx(ThemedText, {
-          dimColor: true,
-          children: "After obtaining your SWAMPMINE_API_KEY, export it or save to ~/.evilclaude/api_key"
+        statusMessage && /* @__PURE__ */ jsx_runtime57.jsx(ThemedBox_default, {
+          marginTop: 1,
+          children: /* @__PURE__ */ jsx_runtime57.jsx(ThemedText, {
+            color: isSuccess ? "green" : "error",
+            children: statusMessage
+          })
         })
       ]
-    });
-    $[6] = props.startingMessage;
-    $[7] = t1;
-    $[8] = t2;
-  } else {
-    t2 = $[8];
-  }
-  let t3;
-  if ($[9] !== t0 || $[10] !== t2) {
-    t3 = /* @__PURE__ */ jsx_runtime57.jsx(Dialog, {
-      title: "Login",
-      onCancel: t0,
-      color: "permission",
-      inputGuide: _temp13,
-      children: t2
-    });
-    $[9] = t0;
-    $[10] = t2;
-    $[11] = t3;
-  } else {
-    t3 = $[11];
-  }
-  return t3;
-}
-function _temp13(exitState) {
-  return exitState.pending ? /* @__PURE__ */ jsx_runtime57.jsxs(ThemedText, {
-    children: [
-      "Press ",
-      exitState.keyName,
-      " again to exit"
-    ]
-  }) : /* @__PURE__ */ jsx_runtime57.jsx(ConfigurableShortcutHint, {
-    action: "confirm:no",
-    context: "Confirmation",
-    fallback: "Esc",
-    description: "cancel"
+    })
   });
 }
-var import_compiler_runtime54, jsx_runtime57;
+var React22, jsx_runtime57;
 var init_login = __esm(() => {
   init_state();
   init_trustedDevice();
   init_ConfigurableShortcutHint();
   init_Dialog();
   init_ink2();
+  init_TextInput();
+  init_useMainLoopModel();
+  init_useTerminalSize();
+  init_growthbook();
   init_policyLimits();
   init_remoteManagedSettings();
   init_messages3();
   init_bypassPermissionsKillswitch();
   init_auth2();
   init_user();
-  import_compiler_runtime54 = __toESM(require_compiler_runtime(), 1);
+  React22 = __toESM(require_react(), 1);
   jsx_runtime57 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -275130,8 +275217,8 @@ var init_extra_usage2 = __esm(() => {
 
 // services/claudeAiLimitsHook.ts
 function useClaudeAiLimits() {
-  const [limits, setLimits] = import_react52.useState({ ...currentLimits });
-  import_react52.useEffect(() => {
+  const [limits, setLimits] = import_react53.useState({ ...currentLimits });
+  import_react53.useEffect(() => {
     const listener = (newLimits) => {
       setLimits({ ...newLimits });
     };
@@ -275142,10 +275229,10 @@ function useClaudeAiLimits() {
   }, []);
   return limits;
 }
-var import_react52;
+var import_react53;
 var init_claudeAiLimitsHook = __esm(() => {
   init_claudeAiLimits();
-  import_react52 = __toESM(require_react(), 1);
+  import_react53 = __toESM(require_react(), 1);
 });
 
 // components/messages/RateLimitMessage.tsx
@@ -275182,7 +275269,7 @@ function getUpsellMessage({
   return "/upgrade or /extra-usage to finish what you’re working on.";
 }
 function RateLimitMessage(t0) {
-  const $ = import_compiler_runtime55.c(16);
+  const $ = import_compiler_runtime54.c(16);
   const {
     text,
     onOpenRateLimitOptions
@@ -275214,7 +275301,7 @@ function RateLimitMessage(t0) {
   }
   const shouldShowUpsell = t3;
   const canSeeRateLimitOptionsUpsell = shouldShowUpsell && !isMax20x;
-  const [hasOpenedInteractiveMenu, setHasOpenedInteractiveMenu] = import_react53.useState(false);
+  const [hasOpenedInteractiveMenu, setHasOpenedInteractiveMenu] = import_react54.useState(false);
   const claudeAiLimits = useClaudeAiLimits();
   const isCurrentlyRateLimited = claudeAiLimits.status === "rejected" && claudeAiLimits.resetsAt !== undefined && !claudeAiLimits.isUsingOverage;
   const shouldAutoOpenRateLimitOptionsMenu = canSeeRateLimitOptionsUpsell && !hasOpenedInteractiveMenu && isCurrentlyRateLimited && onOpenRateLimitOptions;
@@ -275236,7 +275323,7 @@ function RateLimitMessage(t0) {
     t4 = $[5];
     t5 = $[6];
   }
-  import_react53.useEffect(t4, t5);
+  import_react54.useEffect(t4, t5);
   let t6;
   bb0: {
     let t7;
@@ -275304,7 +275391,7 @@ function RateLimitMessage(t0) {
   }
   return t9;
 }
-var import_compiler_runtime55, import_react53, jsx_runtime59;
+var import_compiler_runtime54, import_react54, jsx_runtime59;
 var init_RateLimitMessage = __esm(() => {
   init_extra_usage2();
   init_ink2();
@@ -275313,14 +275400,14 @@ var init_RateLimitMessage = __esm(() => {
   init_auth2();
   init_billing();
   init_MessageResponse();
-  import_compiler_runtime55 = __toESM(require_compiler_runtime(), 1);
-  import_react53 = __toESM(require_react(), 1);
+  import_compiler_runtime54 = __toESM(require_compiler_runtime(), 1);
+  import_react54 = __toESM(require_react(), 1);
   jsx_runtime59 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/AssistantTextMessage.tsx
 function InvalidApiKeyMessage() {
-  const $ = import_compiler_runtime56.c(2);
+  const $ = import_compiler_runtime55.c(2);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = isMacOsKeychainLocked();
@@ -275353,7 +275440,7 @@ function InvalidApiKeyMessage() {
   return t1;
 }
 function AssistantTextMessage(t0) {
-  const $ = import_compiler_runtime56.c(34);
+  const $ = import_compiler_runtime55.c(34);
   const {
     param: t1,
     addMargin,
@@ -275364,7 +275451,7 @@ function AssistantTextMessage(t0) {
   const {
     text
   } = t1;
-  const isSelected = import_react54.useContext(MessageActionsSelectedContext);
+  const isSelected = import_react55.useContext(MessageActionsSelectedContext);
   if (isEmptyMessageText(text)) {
     return null;
   }
@@ -275674,7 +275761,7 @@ function AssistantTextMessage(t0) {
     }
   }
 }
-var import_compiler_runtime56, import_react54, jsx_runtime60, MAX_API_ERROR_CHARS = 1000;
+var import_compiler_runtime55, import_react55, jsx_runtime60, MAX_API_ERROR_CHARS = 1000;
 var init_AssistantTextMessage = __esm(() => {
   init_compact();
   init_rateLimitMessages();
@@ -275691,14 +275778,14 @@ var init_AssistantTextMessage = __esm(() => {
   init_MessageResponse();
   init_messageActions();
   init_RateLimitMessage();
-  import_compiler_runtime56 = __toESM(require_compiler_runtime(), 1);
-  import_react54 = __toESM(require_react(), 1);
+  import_compiler_runtime55 = __toESM(require_compiler_runtime(), 1);
+  import_react55 = __toESM(require_react(), 1);
   jsx_runtime60 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/AssistantThinkingMessage.tsx
 function AssistantThinkingMessage(t0) {
-  const $ = import_compiler_runtime57.c(9);
+  const $ = import_compiler_runtime56.c(9);
   const {
     param: t1,
     addMargin: t2,
@@ -275797,12 +275884,12 @@ function AssistantThinkingMessage(t0) {
   }
   return t7;
 }
-var import_compiler_runtime57, jsx_runtime61;
+var import_compiler_runtime56, jsx_runtime61;
 var init_AssistantThinkingMessage = __esm(() => {
   init_ink2();
   init_CtrlOToExpand();
   init_Markdown();
-  import_compiler_runtime57 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime56 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime61 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -275852,19 +275939,19 @@ var init_classifierApprovals = __esm(() => {
 
 // utils/classifierApprovalsHook.ts
 function useIsClassifierChecking(toolUseID) {
-  return import_react55.useSyncExternalStore(subscribeClassifierChecking, () => isClassifierChecking(toolUseID));
+  return import_react56.useSyncExternalStore(subscribeClassifierChecking, () => isClassifierChecking(toolUseID));
 }
-var import_react55;
+var import_react56;
 var init_classifierApprovalsHook = __esm(() => {
   init_classifierApprovals();
-  import_react55 = __toESM(require_react(), 1);
+  import_react56 = __toESM(require_react(), 1);
 });
 
 // components/SentryErrorBoundary.ts
-var React24, SentryErrorBoundary;
+var React25, SentryErrorBoundary;
 var init_SentryErrorBoundary = __esm(() => {
-  React24 = __toESM(require_react(), 1);
-  SentryErrorBoundary = class SentryErrorBoundary extends React24.Component {
+  React25 = __toESM(require_react(), 1);
+  SentryErrorBoundary = class SentryErrorBoundary extends React25.Component {
     constructor(props) {
       super(props);
       this.state = { hasError: false };
@@ -275883,7 +275970,7 @@ var init_SentryErrorBoundary = __esm(() => {
 
 // components/messages/HookProgressMessage.tsx
 function HookProgressMessage(t0) {
-  const $ = import_compiler_runtime58.c(22);
+  const $ = import_compiler_runtime57.c(22);
   const {
     hookEvent,
     lookups,
@@ -276028,17 +276115,17 @@ function HookProgressMessage(t0) {
   }
   return t6;
 }
-var import_compiler_runtime58, jsx_runtime62;
+var import_compiler_runtime57, jsx_runtime62;
 var init_HookProgressMessage = __esm(() => {
   init_ink2();
   init_MessageResponse();
-  import_compiler_runtime58 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime57 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime62 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/AssistantToolUseMessage.tsx
 function AssistantToolUseMessage(t0) {
-  const $ = import_compiler_runtime59.c(81);
+  const $ = import_compiler_runtime58.c(81);
   const {
     param,
     addMargin,
@@ -276056,7 +276143,7 @@ function AssistantToolUseMessage(t0) {
   const terminalSize = useTerminalSize();
   const [theme] = useTheme();
   const bg = useSelectedMessageBg();
-  const pendingWorkerRequest = useAppStateMaybeOutsideOfProvider(_temp14);
+  const pendingWorkerRequest = useAppStateMaybeOutsideOfProvider(_temp13);
   const isClassifierCheckingRaw = useIsClassifierChecking(param.id);
   const permissionMode = useAppStateMaybeOutsideOfProvider(_temp25);
   const hasStrippedRules = useAppStateMaybeOutsideOfProvider(_temp34);
@@ -276372,7 +276459,7 @@ function _temp34(state_1) {
 function _temp25(state_0) {
   return state_0.toolPermissionContext.mode;
 }
-function _temp14(state) {
+function _temp13(state) {
   return state.pendingWorkerRequest;
 }
 function renderToolUseMessage4(tool, input, {
@@ -276436,7 +276523,7 @@ function renderToolUseQueuedMessage(tool) {
     return null;
   }
 }
-var import_compiler_runtime59, jsx_runtime63;
+var import_compiler_runtime58, jsx_runtime63;
 var init_AssistantToolUseMessage = __esm(() => {
   init_useTerminalSize();
   init_figures2();
@@ -276451,7 +276538,7 @@ var init_AssistantToolUseMessage = __esm(() => {
   init_SentryErrorBoundary();
   init_ToolUseLoader();
   init_HookProgressMessage();
-  import_compiler_runtime59 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime58 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime63 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -276469,7 +276556,7 @@ function getStatusColor(status) {
   }
 }
 function UserAgentNotificationMessage(t0) {
-  const $ = import_compiler_runtime60.c(12);
+  const $ = import_compiler_runtime59.c(12);
   const {
     addMargin,
     param: t1
@@ -276540,18 +276627,18 @@ function UserAgentNotificationMessage(t0) {
   }
   return t7;
 }
-var import_compiler_runtime60, jsx_runtime64;
+var import_compiler_runtime59, jsx_runtime64;
 var init_UserAgentNotificationMessage = __esm(() => {
   init_figures2();
   init_ink2();
   init_messages3();
-  import_compiler_runtime60 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime59 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime64 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/UserBashInputMessage.tsx
 function UserBashInputMessage(t0) {
-  const $ = import_compiler_runtime61.c(8);
+  const $ = import_compiler_runtime60.c(8);
   const {
     param: t1,
     addMargin
@@ -276613,17 +276700,17 @@ function UserBashInputMessage(t0) {
   }
   return t6;
 }
-var import_compiler_runtime61, jsx_runtime65;
+var import_compiler_runtime60, jsx_runtime65;
 var init_UserBashInputMessage = __esm(() => {
   init_ink2();
   init_messages3();
-  import_compiler_runtime61 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime60 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime65 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/shell/ShellTimeDisplay.tsx
 function ShellTimeDisplay(t0) {
-  const $ = import_compiler_runtime62.c(10);
+  const $ = import_compiler_runtime61.c(10);
   const {
     elapsedTimeSeconds,
     timeoutMs
@@ -276696,11 +276783,11 @@ function ShellTimeDisplay(t0) {
   }
   return t5;
 }
-var import_compiler_runtime62, jsx_runtime66;
+var import_compiler_runtime61, jsx_runtime66;
 var init_ShellTimeDisplay = __esm(() => {
   init_ink2();
   init_format();
-  import_compiler_runtime62 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime61 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime66 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -276733,7 +276820,7 @@ function extractCwdResetWarning(stderr) {
   };
 }
 function BashToolResultMessage(t0) {
-  const $ = import_compiler_runtime63.c(34);
+  const $ = import_compiler_runtime62.c(34);
   const {
     content: t1,
     verbose,
@@ -276904,21 +276991,21 @@ function BashToolResultMessage(t0) {
   }
   return t11;
 }
-var import_compiler_runtime63, jsx_runtime67, SHELL_CWD_RESET_PATTERN;
+var import_compiler_runtime62, jsx_runtime67, SHELL_CWD_RESET_PATTERN;
 var init_BashToolResultMessage = __esm(() => {
   init_KeyboardShortcutHint();
   init_MessageResponse();
   init_OutputLine();
   init_ShellTimeDisplay();
   init_ink2();
-  import_compiler_runtime63 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime62 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime67 = __toESM(require_jsx_runtime(), 1);
   SHELL_CWD_RESET_PATTERN = /(?:^|\n)(Shell cwd was reset to .+)$/;
 });
 
 // components/messages/UserBashOutputMessage.tsx
 function UserBashOutputMessage(t0) {
-  const $ = import_compiler_runtime64.c(10);
+  const $ = import_compiler_runtime63.c(10);
   const {
     content,
     verbose
@@ -276969,17 +277056,17 @@ function UserBashOutputMessage(t0) {
   }
   return t5;
 }
-var import_compiler_runtime64, jsx_runtime68;
+var import_compiler_runtime63, jsx_runtime68;
 var init_UserBashOutputMessage = __esm(() => {
   init_BashToolResultMessage();
   init_messages3();
-  import_compiler_runtime64 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime63 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime68 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/UserCommandMessage.tsx
 function UserCommandMessage(t0) {
-  const $ = import_compiler_runtime65.c(19);
+  const $ = import_compiler_runtime64.c(19);
   const {
     addMargin,
     param: t1
@@ -277118,19 +277205,19 @@ function UserCommandMessage(t0) {
   }
   return t8;
 }
-var import_compiler_runtime65, jsx_runtime69;
+var import_compiler_runtime64, jsx_runtime69;
 var init_UserCommandMessage = __esm(() => {
   init_figures();
   init_xml();
   init_ink2();
   init_messages3();
-  import_compiler_runtime65 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime64 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime69 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/UserLocalCommandOutputMessage.tsx
 function UserLocalCommandOutputMessage(t0) {
-  const $ = import_compiler_runtime66.c(4);
+  const $ = import_compiler_runtime65.c(4);
   const {
     content
   } = t0;
@@ -277182,7 +277269,7 @@ function UserLocalCommandOutputMessage(t0) {
   return lines;
 }
 function IndentedContent(t0) {
-  const $ = import_compiler_runtime66.c(5);
+  const $ = import_compiler_runtime65.c(5);
   const {
     children
   } = t0;
@@ -277232,7 +277319,7 @@ function IndentedContent(t0) {
   return t2;
 }
 function CloudLaunchContent(t0) {
-  const $ = import_compiler_runtime66.c(19);
+  const $ = import_compiler_runtime65.c(19);
   const {
     children
   } = t0;
@@ -277347,14 +277434,14 @@ function CloudLaunchContent(t0) {
   }
   return t7;
 }
-var import_compiler_runtime66, jsx_runtime70;
+var import_compiler_runtime65, jsx_runtime70;
 var init_UserLocalCommandOutputMessage = __esm(() => {
   init_figures2();
   init_ink2();
   init_messages3();
   init_Markdown();
   init_MessageResponse();
-  import_compiler_runtime66 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime65 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime70 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -277432,7 +277519,7 @@ function getSavingMessage() {
   return sample_default(["Got it.", "Good to know.", "Noted."]);
 }
 function UserMemoryInputMessage(t0) {
-  const $ = import_compiler_runtime67.c(10);
+  const $ = import_compiler_runtime66.c(10);
   const {
     text,
     addMargin
@@ -277522,19 +277609,19 @@ function UserMemoryInputMessage(t0) {
   }
   return t7;
 }
-var import_compiler_runtime67, jsx_runtime71;
+var import_compiler_runtime66, jsx_runtime71;
 var init_UserMemoryInputMessage = __esm(() => {
   init_sample();
   init_ink2();
   init_messages3();
   init_MessageResponse();
-  import_compiler_runtime67 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime66 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime71 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/UserPlanMessage.tsx
 function UserPlanMessage(t0) {
-  const $ = import_compiler_runtime68.c(6);
+  const $ = import_compiler_runtime67.c(6);
   const {
     addMargin,
     planContent
@@ -277585,20 +277672,20 @@ function UserPlanMessage(t0) {
   }
   return t4;
 }
-var import_compiler_runtime68, jsx_runtime72;
+var import_compiler_runtime67, jsx_runtime72;
 var init_UserPlanMessage = __esm(() => {
   init_ink2();
   init_Markdown();
-  import_compiler_runtime68 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime67 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime72 = __toESM(require_jsx_runtime(), 1);
 });
 
 // context/QueuedMessageContext.tsx
 function useQueuedMessage() {
-  return React25.useContext(QueuedMessageContext);
+  return React26.useContext(QueuedMessageContext);
 }
 function QueuedMessageProvider(t0) {
-  const $ = import_compiler_runtime69.c(9);
+  const $ = import_compiler_runtime68.c(9);
   const {
     isFirst,
     useBriefLayout,
@@ -277646,13 +277733,13 @@ function QueuedMessageProvider(t0) {
   }
   return t4;
 }
-var import_compiler_runtime69, React25, jsx_runtime73, QueuedMessageContext, PADDING_X = 2;
+var import_compiler_runtime68, React26, jsx_runtime73, QueuedMessageContext, PADDING_X = 2;
 var init_QueuedMessageContext = __esm(() => {
   init_ink2();
-  import_compiler_runtime69 = __toESM(require_compiler_runtime(), 1);
-  React25 = __toESM(require_react(), 1);
+  import_compiler_runtime68 = __toESM(require_compiler_runtime(), 1);
+  React26 = __toESM(require_react(), 1);
   jsx_runtime73 = __toESM(require_jsx_runtime(), 1);
-  QueuedMessageContext = React25.createContext(undefined);
+  QueuedMessageContext = React26.createContext(undefined);
 });
 
 // utils/formatBriefTimestamp.ts
@@ -277708,14 +277795,14 @@ function startOfDay(d) {
 
 // components/messages/HighlightedThinkingText.tsx
 function HighlightedThinkingText(t0) {
-  const $ = import_compiler_runtime70.c(31);
+  const $ = import_compiler_runtime69.c(31);
   const {
     text,
     useBriefLayout,
     timestamp
   } = t0;
   const isQueued = useQueuedMessage()?.isQueued ?? false;
-  const isSelected = import_react56.useContext(MessageActionsSelectedContext);
+  const isSelected = import_react57.useContext(MessageActionsSelectedContext);
   const pointerColor = isSelected ? "suggestion" : "subtle";
   if (useBriefLayout) {
     let t1;
@@ -277913,15 +278000,15 @@ function HighlightedThinkingText(t0) {
   }
   return t3;
 }
-var import_compiler_runtime70, import_react56, jsx_runtime74;
+var import_compiler_runtime69, import_react57, jsx_runtime74;
 var init_HighlightedThinkingText = __esm(() => {
   init_figures();
   init_QueuedMessageContext();
   init_ink2();
   init_thinking();
   init_messageActions();
-  import_compiler_runtime70 = __toESM(require_compiler_runtime(), 1);
-  import_react56 = __toESM(require_react(), 1);
+  import_compiler_runtime69 = __toESM(require_compiler_runtime(), 1);
+  import_react57 = __toESM(require_react(), 1);
   jsx_runtime74 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -277938,7 +278025,7 @@ function UserPromptMessage({
   const viewingAgentTaskId = null;
   const briefEnvEnabled = false;
   const useBriefLayout = false;
-  const displayText = import_react57.useMemo(() => {
+  const displayText = import_react58.useMemo(() => {
     if (text.length <= MAX_DISPLAY_CHARS)
       return text;
     const head = text.slice(0, TRUNCATE_HEAD_CHARS);
@@ -277950,7 +278037,7 @@ function UserPromptMessage({
 … +${hiddenLines} lines …
 ${tail}`;
   }, [text]);
-  const isSelected = import_react57.useContext(MessageActionsSelectedContext);
+  const isSelected = import_react58.useContext(MessageActionsSelectedContext);
   if (!text) {
     logError2(new Error("No content found in user prompt message"));
     return null;
@@ -277967,7 +278054,7 @@ ${tail}`;
     })
   });
 }
-var import_react57, jsx_runtime75, MAX_DISPLAY_CHARS = 1e4, TRUNCATE_HEAD_CHARS = 2500, TRUNCATE_TAIL_CHARS = 2500;
+var import_react58, jsx_runtime75, MAX_DISPLAY_CHARS = 1e4, TRUNCATE_HEAD_CHARS = 2500, TRUNCATE_TAIL_CHARS = 2500;
 var init_UserPromptMessage = __esm(() => {
   init_state();
   init_ink2();
@@ -277978,7 +278065,7 @@ var init_UserPromptMessage = __esm(() => {
   init_stringUtils();
   init_messageActions();
   init_HighlightedThinkingText();
-  import_react57 = __toESM(require_react(), 1);
+  import_react58 = __toESM(require_react(), 1);
   jsx_runtime75 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -278018,7 +278105,7 @@ function formatUri(uri) {
   return uri;
 }
 function UserResourceUpdateMessage(t0) {
-  const $ = import_compiler_runtime71.c(12);
+  const $ = import_compiler_runtime70.c(12);
   const {
     addMargin,
     param: t1
@@ -278042,7 +278129,7 @@ function UserResourceUpdateMessage(t0) {
       T0 = ThemedBox_default;
       t2 = "column";
       t3 = addMargin ? 1 : 0;
-      t4 = updates.map(_temp15);
+      t4 = updates.map(_temp14);
     }
     $[0] = addMargin;
     $[1] = text;
@@ -278078,7 +278165,7 @@ function UserResourceUpdateMessage(t0) {
   }
   return t6;
 }
-function _temp15(update, i) {
+function _temp14(update, i) {
   return /* @__PURE__ */ jsx_runtime76.jsx(ThemedBox_default, {
     children: /* @__PURE__ */ jsx_runtime76.jsxs(ThemedText, {
       children: [
@@ -278110,11 +278197,11 @@ function _temp15(update, i) {
     })
   }, i);
 }
-var import_compiler_runtime71, jsx_runtime76;
+var import_compiler_runtime70, jsx_runtime76;
 var init_UserResourceUpdateMessage = __esm(() => {
   init_figures2();
   init_ink2();
-  import_compiler_runtime71 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime70 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime76 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -279174,7 +279261,7 @@ var TEAM_LEAD_NAME = "team-lead", SWARM_SESSION_NAME = "claude-swarm", SWARM_VIE
 
 // utils/tasks.ts
 import { mkdir as mkdir11, readdir as readdir9, readFile as readFile13, unlink as unlink7, writeFile as writeFile9 } from "fs/promises";
-import { join as join55 } from "path";
+import { join as join56 } from "path";
 function setLeaderTeamName(teamName) {
   if (leaderTeamName === teamName)
     return;
@@ -279193,7 +279280,7 @@ function notifyTasksUpdated() {
   } catch {}
 }
 function getHighWaterMarkPath(taskListId) {
-  return join55(getTasksDir(taskListId), HIGH_WATER_MARK_FILE);
+  return join56(getTasksDir(taskListId), HIGH_WATER_MARK_FILE);
 }
 async function readHighWaterMark(taskListId) {
   const path = getHighWaterMarkPath(taskListId);
@@ -279236,7 +279323,7 @@ async function resetTaskList(taskListId) {
     }
     for (const file of files) {
       if (file.endsWith(".json") && !file.startsWith(".")) {
-        const filePath = join55(dir, file);
+        const filePath = join56(dir, file);
         try {
           await unlink7(filePath);
         } catch {}
@@ -279263,10 +279350,10 @@ function sanitizePathComponent(input) {
   return input.replace(/[^a-zA-Z0-9_-]/g, "-");
 }
 function getTasksDir(taskListId) {
-  return join55(getClaudeConfigHomeDir(), "tasks", sanitizePathComponent(taskListId));
+  return join56(getClaudeConfigHomeDir(), "tasks", sanitizePathComponent(taskListId));
 }
 function getTaskPath(taskListId, taskId) {
-  return join55(getTasksDir(taskListId), `${sanitizePathComponent(taskId)}.json`);
+  return join56(getTasksDir(taskListId), `${sanitizePathComponent(taskId)}.json`);
 }
 async function ensureTasksDir(taskListId) {
   const dir = getTasksDir(taskListId);
@@ -279443,7 +279530,7 @@ async function blockTask(taskListId, fromTaskId, toTaskId) {
   return true;
 }
 function getTaskListLockPath(taskListId) {
-  return join55(getTasksDir(taskListId), ".lock");
+  return join56(getTasksDir(taskListId), ".lock");
 }
 async function ensureTaskListLockFile(taskListId) {
   await ensureTasksDir(taskListId);
@@ -279641,20 +279728,20 @@ __export(exports_teammateMailbox, {
   writeToMailbox: () => writeToMailbox
 });
 import { mkdir as mkdir12, readFile as readFile14, writeFile as writeFile10 } from "fs/promises";
-import { join as join56 } from "path";
+import { join as join57 } from "path";
 function getInboxPath(agentName, teamName) {
   const team = teamName || getTeamName() || "default";
   const safeTeam = sanitizePathComponent(team);
   const safeAgentName = sanitizePathComponent(agentName);
-  const inboxDir = join56(getTeamsDir(), safeTeam, "inboxes");
-  const fullPath = join56(inboxDir, `${safeAgentName}.json`);
+  const inboxDir = join57(getTeamsDir(), safeTeam, "inboxes");
+  const fullPath = join57(inboxDir, `${safeAgentName}.json`);
   logForDebugging(`[TeammateMailbox] getInboxPath: agent=${agentName}, team=${team}, fullPath=${fullPath}`);
   return fullPath;
 }
 async function ensureInboxDir(teamName) {
   const team = teamName || getTeamName() || "default";
   const safeTeam = sanitizePathComponent(team);
-  const inboxDir = join56(getTeamsDir(), safeTeam, "inboxes");
+  const inboxDir = join57(getTeamsDir(), safeTeam, "inboxes");
   await mkdir12(inboxDir, { recursive: true });
   logForDebugging(`[TeammateMailbox] Ensured inbox directory: ${inboxDir}`);
 }
@@ -280181,7 +280268,7 @@ var init_teammateMailbox = __esm(() => {
 
 // components/messages/ShutdownMessage.tsx
 function ShutdownRequestDisplay(t0) {
-  const $ = import_compiler_runtime72.c(7);
+  const $ = import_compiler_runtime71.c(7);
   const {
     request
   } = t0;
@@ -280244,7 +280331,7 @@ function ShutdownRequestDisplay(t0) {
   return t3;
 }
 function ShutdownRejectedDisplay(t0) {
-  const $ = import_compiler_runtime72.c(8);
+  const $ = import_compiler_runtime71.c(8);
   const {
     response
   } = t0;
@@ -280356,17 +280443,17 @@ function getShutdownMessageSummary(content) {
   }
   return null;
 }
-var import_compiler_runtime72, jsx_runtime77;
+var import_compiler_runtime71, jsx_runtime77;
 var init_ShutdownMessage = __esm(() => {
   init_ink2();
   init_teammateMailbox();
-  import_compiler_runtime72 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime71 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime77 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/TaskAssignmentMessage.tsx
 function TaskAssignmentDisplay(t0) {
-  const $ = import_compiler_runtime73.c(11);
+  const $ = import_compiler_runtime72.c(11);
   const {
     assignment
   } = t0;
@@ -280461,17 +280548,17 @@ function getTaskAssignmentSummary(content) {
   }
   return null;
 }
-var import_compiler_runtime73, jsx_runtime78;
+var import_compiler_runtime72, jsx_runtime78;
 var init_TaskAssignmentMessage = __esm(() => {
   init_ink2();
   init_teammateMailbox();
-  import_compiler_runtime73 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime72 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime78 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/PlanApprovalMessage.tsx
 function PlanApprovalRequestDisplay(t0) {
-  const $ = import_compiler_runtime74.c(10);
+  const $ = import_compiler_runtime73.c(10);
   const {
     request
   } = t0;
@@ -280553,7 +280640,7 @@ function PlanApprovalRequestDisplay(t0) {
   return t4;
 }
 function PlanApprovalResponseDisplay(t0) {
-  const $ = import_compiler_runtime74.c(13);
+  const $ = import_compiler_runtime73.c(13);
   const {
     response,
     senderName
@@ -280756,7 +280843,7 @@ function formatTeammateMessageContent(content) {
   } catch {}
   return content;
 }
-var import_compiler_runtime74, jsx_runtime79;
+var import_compiler_runtime73, jsx_runtime79;
 var init_PlanApprovalMessage = __esm(() => {
   init_Markdown();
   init_ink2();
@@ -280764,7 +280851,7 @@ var init_PlanApprovalMessage = __esm(() => {
   init_teammateMailbox();
   init_ShutdownMessage();
   init_TaskAssignmentMessage();
-  import_compiler_runtime74 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime73 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime79 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -280819,19 +280906,19 @@ function UserTeammateMessage({
       const displayName = getDisplayName(msg_0.teammateId);
       const planApprovalElement = tryRenderPlanApprovalMessage(msg_0.content, displayName);
       if (planApprovalElement) {
-        return /* @__PURE__ */ jsx_runtime80.jsx(React27.Fragment, {
+        return /* @__PURE__ */ jsx_runtime80.jsx(React28.Fragment, {
           children: planApprovalElement
         }, index);
       }
       const shutdownElement = tryRenderShutdownMessage(msg_0.content);
       if (shutdownElement) {
-        return /* @__PURE__ */ jsx_runtime80.jsx(React27.Fragment, {
+        return /* @__PURE__ */ jsx_runtime80.jsx(React28.Fragment, {
           children: shutdownElement
         }, index);
       }
       const taskAssignmentElement = tryRenderTaskAssignmentMessage(msg_0.content);
       if (taskAssignmentElement) {
-        return /* @__PURE__ */ jsx_runtime80.jsx(React27.Fragment, {
+        return /* @__PURE__ */ jsx_runtime80.jsx(React28.Fragment, {
           children: taskAssignmentElement
         }, index);
       }
@@ -280889,7 +280976,7 @@ function UserTeammateMessage({
   });
 }
 function TeammateMessageContent(t0) {
-  const $ = import_compiler_runtime75.c(14);
+  const $ = import_compiler_runtime74.c(14);
   const {
     displayName,
     inkColor,
@@ -280971,7 +281058,7 @@ function TeammateMessageContent(t0) {
   }
   return t6;
 }
-var import_compiler_runtime75, React27, jsx_runtime80, TEAMMATE_MSG_REGEX;
+var import_compiler_runtime74, React28, jsx_runtime80, TEAMMATE_MSG_REGEX;
 var init_UserTeammateMessage = __esm(() => {
   init_figures();
   init_xml();
@@ -280983,15 +281070,15 @@ var init_UserTeammateMessage = __esm(() => {
   init_PlanApprovalMessage();
   init_ShutdownMessage();
   init_TaskAssignmentMessage();
-  import_compiler_runtime75 = __toESM(require_compiler_runtime(), 1);
-  React27 = __toESM(require_react(), 1);
+  import_compiler_runtime74 = __toESM(require_compiler_runtime(), 1);
+  React28 = __toESM(require_react(), 1);
   jsx_runtime80 = __toESM(require_jsx_runtime(), 1);
   TEAMMATE_MSG_REGEX = new RegExp(`<${TEAMMATE_MESSAGE_TAG}\\s+teammate_id="([^"]+)"(?:\\s+color="([^"]+)")?(?:\\s+summary="([^"]+)")?>\\n?([\\s\\S]*?)\\n?<\\/${TEAMMATE_MESSAGE_TAG}>`, "g");
 });
 
 // components/messages/UserTextMessage.tsx
 function UserTextMessage(t0) {
-  const $ = import_compiler_runtime76.c(49);
+  const $ = import_compiler_runtime75.c(49);
   const {
     addMargin,
     param,
@@ -281179,7 +281266,7 @@ function UserTextMessage(t0) {
   }
   return t1;
 }
-var import_compiler_runtime76, jsx_runtime81;
+var import_compiler_runtime75, jsx_runtime81;
 var init_UserTextMessage = __esm(() => {
   init_xml();
   init_agentSwarmsEnabled();
@@ -281196,7 +281283,7 @@ var init_UserTextMessage = __esm(() => {
   init_UserPromptMessage();
   init_UserResourceUpdateMessage();
   init_UserTeammateMessage();
-  import_compiler_runtime76 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime75 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime81 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -281400,7 +281487,7 @@ var init_diagnosticTracking = __esm(() => {
 // components/DiagnosticsDisplay.tsx
 import { relative as relative8 } from "path";
 function DiagnosticsDisplay(t0) {
-  const $ = import_compiler_runtime77.c(14);
+  const $ = import_compiler_runtime76.c(14);
   const {
     attachment,
     verbose
@@ -281410,7 +281497,7 @@ function DiagnosticsDisplay(t0) {
   }
   let t1;
   if ($[0] !== attachment.files) {
-    t1 = attachment.files.reduce(_temp16, 0);
+    t1 = attachment.files.reduce(_temp15, 0);
     $[0] = attachment.files;
     $[1] = t1;
   } else {
@@ -281493,7 +281580,7 @@ function DiagnosticsDisplay(t0) {
   }
 }
 function _temp35(file_0, fileIndex) {
-  return /* @__PURE__ */ jsx_runtime82.jsxs(import_react58.default.Fragment, {
+  return /* @__PURE__ */ jsx_runtime82.jsxs(import_react59.default.Fragment, {
     children: [
       /* @__PURE__ */ jsx_runtime82.jsx(MessageResponse, {
         children: /* @__PURE__ */ jsx_runtime82.jsxs(ThemedText, {
@@ -281537,25 +281624,25 @@ function _temp26(diagnostic, diagIndex) {
     })
   }, diagIndex);
 }
-function _temp16(sum, file) {
+function _temp15(sum, file) {
   return sum + file.diagnostics.length;
 }
-var import_compiler_runtime77, import_react58, jsx_runtime82;
+var import_compiler_runtime76, import_react59, jsx_runtime82;
 var init_DiagnosticsDisplay = __esm(() => {
   init_ink2();
   init_diagnosticTracking();
   init_cwd2();
   init_CtrlOToExpand();
   init_MessageResponse();
-  import_compiler_runtime77 = __toESM(require_compiler_runtime(), 1);
-  import_react58 = __toESM(require_react(), 1);
+  import_compiler_runtime76 = __toESM(require_compiler_runtime(), 1);
+  import_react59 = __toESM(require_react(), 1);
   jsx_runtime82 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/UserImageMessage.tsx
 import { pathToFileURL as pathToFileURL2 } from "url";
 function UserImageMessage(t0) {
-  const $ = import_compiler_runtime78.c(7);
+  const $ = import_compiler_runtime77.c(7);
   const {
     imageId,
     addMargin
@@ -281605,21 +281692,21 @@ function UserImageMessage(t0) {
   }
   return t2;
 }
-var import_compiler_runtime78, jsx_runtime83;
+var import_compiler_runtime77, jsx_runtime83;
 var init_UserImageMessage = __esm(() => {
   init_Link();
   init_supports_hyperlinks2();
   init_ink2();
   init_imageStore();
   init_MessageResponse();
-  import_compiler_runtime78 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime77 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime83 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/FilePathLink.tsx
 import { pathToFileURL as pathToFileURL3 } from "url";
 function FilePathLink(t0) {
-  const $ = import_compiler_runtime79.c(5);
+  const $ = import_compiler_runtime78.c(5);
   const {
     filePath,
     children
@@ -281647,10 +281734,10 @@ function FilePathLink(t0) {
   }
   return t3;
 }
-var import_compiler_runtime79, jsx_runtime84;
+var import_compiler_runtime78, jsx_runtime84;
 var init_FilePathLink = __esm(() => {
   init_Link();
-  import_compiler_runtime79 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime78 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime84 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -281725,7 +281812,7 @@ function AttachmentMessage({
         }
         const planApprovalElement = tryRenderPlanApprovalMessage(msg_0.text, msg_0.from);
         if (planApprovalElement) {
-          return /* @__PURE__ */ jsx_runtime85.jsx(import_react59.default.Fragment, {
+          return /* @__PURE__ */ jsx_runtime85.jsx(import_react60.default.Fragment, {
             children: planApprovalElement
           }, idx);
         }
@@ -282152,7 +282239,7 @@ function AttachmentMessage({
   }
 }
 function TaskStatusMessage(t0) {
-  const $ = import_compiler_runtime80.c(4);
+  const $ = import_compiler_runtime79.c(4);
   const {
     attachment
   } = t0;
@@ -282183,7 +282270,7 @@ function TaskStatusMessage(t0) {
   return t1;
 }
 function GenericTaskStatus(t0) {
-  const $ = import_compiler_runtime80.c(9);
+  const $ = import_compiler_runtime79.c(9);
   const {
     attachment
   } = t0;
@@ -282251,7 +282338,7 @@ function GenericTaskStatus(t0) {
   return t4;
 }
 function TeammateTaskStatus(t0) {
-  const $ = import_compiler_runtime80.c(16);
+  const $ = import_compiler_runtime79.c(16);
   const {
     attachment
   } = t0;
@@ -282357,7 +282444,7 @@ function TeammateTaskStatus(t0) {
   return t6;
 }
 function Line(t0) {
-  const $ = import_compiler_runtime80.c(7);
+  const $ = import_compiler_runtime79.c(7);
   const {
     dimColor: t1,
     children,
@@ -282396,7 +282483,7 @@ function Line(t0) {
   }
   return t3;
 }
-var import_compiler_runtime80, import_react59, jsx_runtime85;
+var import_compiler_runtime79, import_react60, jsx_runtime85;
 var init_AttachmentMessage = __esm(() => {
   init_ink2();
   init_AppState();
@@ -282419,16 +282506,16 @@ var init_AttachmentMessage = __esm(() => {
   init_CtrlOToExpand();
   init_FilePathLink();
   init_messageActions();
-  import_compiler_runtime80 = __toESM(require_compiler_runtime(), 1);
-  import_react59 = __toESM(require_react(), 1);
+  import_compiler_runtime79 = __toESM(require_compiler_runtime(), 1);
+  import_react60 = __toESM(require_react(), 1);
   jsx_runtime85 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/useMinDisplayTime.ts
 function useMinDisplayTime(value, minMs) {
-  const [displayed, setDisplayed] = import_react60.useState(value);
-  const lastShownAtRef = import_react60.useRef(0);
-  import_react60.useEffect(() => {
+  const [displayed, setDisplayed] = import_react61.useState(value);
+  const lastShownAtRef = import_react61.useRef(0);
+  import_react61.useEffect(() => {
     const elapsed = Date.now() - lastShownAtRef.current;
     if (elapsed >= minMs) {
       lastShownAtRef.current = Date.now();
@@ -282443,14 +282530,14 @@ function useMinDisplayTime(value, minMs) {
   }, [value, minMs]);
   return displayed;
 }
-var import_react60;
+var import_react61;
 var init_useMinDisplayTime = __esm(() => {
-  import_react60 = __toESM(require_react(), 1);
+  import_react61 = __toESM(require_react(), 1);
 });
 
 // components/PrBadge.tsx
 function PrBadge(t0) {
-  const $ = import_compiler_runtime81.c(21);
+  const $ = import_compiler_runtime80.c(21);
   const {
     number,
     url,
@@ -282565,17 +282652,17 @@ function getPrStatusColor(state) {
       return;
   }
 }
-var import_compiler_runtime81, jsx_runtime86;
+var import_compiler_runtime80, jsx_runtime86;
 var init_PrBadge = __esm(() => {
   init_ink2();
-  import_compiler_runtime81 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime80 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime86 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/CollapsedReadSearchContent.tsx
 import { basename as basename14 } from "path";
 function VerboseToolUse(t0) {
-  const $ = import_compiler_runtime82.c(24);
+  const $ = import_compiler_runtime81.c(24);
   const {
     content,
     tools,
@@ -282734,11 +282821,11 @@ function CollapsedReadSearchContent({
   const anyError = toolUseIds.some((id) => lookups.erroredToolUseIDs.has(id));
   const hasMemoryOps = memorySearchCount > 0 || memoryReadCount > 0 || memoryWriteCount > 0;
   const hasTeamMemoryOps = false;
-  const maxReadCountRef = import_react61.useRef(0);
-  const maxSearchCountRef = import_react61.useRef(0);
-  const maxListCountRef = import_react61.useRef(0);
-  const maxMcpCountRef = import_react61.useRef(0);
-  const maxBashCountRef = import_react61.useRef(0);
+  const maxReadCountRef = import_react62.useRef(0);
+  const maxSearchCountRef = import_react62.useRef(0);
+  const maxListCountRef = import_react62.useRef(0);
+  const maxMcpCountRef = import_react62.useRef(0);
+  const maxBashCountRef = import_react62.useRef(0);
   maxReadCountRef.current = Math.max(maxReadCountRef.current, rawReadCount);
   maxSearchCountRef.current = Math.max(maxSearchCountRef.current, rawSearchCount);
   maxListCountRef.current = Math.max(maxListCountRef.current, rawListCount);
@@ -283207,7 +283294,7 @@ function CollapsedReadSearchContent({
     ]
   });
 }
-var import_compiler_runtime82, import_react61, jsx_runtime87, MIN_HINT_DISPLAY_MS = 700;
+var import_compiler_runtime81, import_react62, jsx_runtime87, MIN_HINT_DISPLAY_MS = 700;
 var init_CollapsedReadSearchContent = __esm(() => {
   init_useMinDisplayTime();
   init_ink2();
@@ -283221,14 +283308,14 @@ var init_CollapsedReadSearchContent = __esm(() => {
   init_messageActions();
   init_PrBadge();
   init_ToolUseLoader();
-  import_compiler_runtime82 = __toESM(require_compiler_runtime(), 1);
-  import_react61 = __toESM(require_react(), 1);
+  import_compiler_runtime81 = __toESM(require_compiler_runtime(), 1);
+  import_react62 = __toESM(require_react(), 1);
   jsx_runtime87 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/CompactBoundaryMessage.tsx
 function CompactBoundaryMessage() {
-  const $ = import_compiler_runtime83.c(2);
+  const $ = import_compiler_runtime82.c(2);
   const historyShortcut = useShortcutDisplay("app:toggleTranscript", "Global", "ctrl+o");
   let t0;
   if ($[0] !== historyShortcut) {
@@ -283250,11 +283337,11 @@ function CompactBoundaryMessage() {
   }
   return t0;
 }
-var import_compiler_runtime83, jsx_runtime88;
+var import_compiler_runtime82, jsx_runtime88;
 var init_CompactBoundaryMessage = __esm(() => {
   init_ink2();
   init_useShortcutDisplay();
-  import_compiler_runtime83 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime82 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime88 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -283320,7 +283407,7 @@ var init_turnCompletionVerbs = __esm(() => {
 
 // components/messages/SystemAPIErrorMessage.tsx
 function SystemAPIErrorMessage(t0) {
-  const $ = import_compiler_runtime84.c(33);
+  const $ = import_compiler_runtime83.c(33);
   const {
     message: t1,
     verbose
@@ -283332,11 +283419,11 @@ function SystemAPIErrorMessage(t0) {
     maxRetries
   } = t1;
   const hidden = retryAttempt < 4;
-  const [countdownMs, setCountdownMs] = import_react62.useState(0);
+  const [countdownMs, setCountdownMs] = import_react63.useState(0);
   const done = countdownMs >= retryInMs;
   let t2;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = () => setCountdownMs(_temp17);
+    t2 = () => setCountdownMs(_temp16);
     $[0] = t2;
   } else {
     t2 = $[0];
@@ -283469,18 +283556,18 @@ function SystemAPIErrorMessage(t0) {
   }
   return t12;
 }
-function _temp17(ms) {
+function _temp16(ms) {
   return ms + 1000;
 }
-var import_compiler_runtime84, import_react62, jsx_runtime89, MAX_API_ERROR_CHARS2 = 1000;
+var import_compiler_runtime83, import_react63, jsx_runtime89, MAX_API_ERROR_CHARS2 = 1000;
 var init_SystemAPIErrorMessage = __esm(() => {
   init_ink2();
   init_errorUtils();
   init_dist7();
   init_CtrlOToExpand();
   init_MessageResponse();
-  import_compiler_runtime84 = __toESM(require_compiler_runtime(), 1);
-  import_react62 = __toESM(require_react(), 1);
+  import_compiler_runtime83 = __toESM(require_compiler_runtime(), 1);
+  import_react63 = __toESM(require_react(), 1);
   jsx_runtime89 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -283554,7 +283641,7 @@ var init_pillLabel = __esm(() => {
 // components/messages/SystemTextMessage.tsx
 import { basename as basename15 } from "path";
 function SystemTextMessage(t0) {
-  const $ = import_compiler_runtime85.c(51);
+  const $ = import_compiler_runtime84.c(51);
   const {
     message,
     addMargin,
@@ -283864,7 +283951,7 @@ function SystemTextMessage(t0) {
   return t4;
 }
 function StopHookSummaryMessage(t0) {
-  const $ = import_compiler_runtime85.c(47);
+  const $ = import_compiler_runtime84.c(47);
   const {
     message,
     addMargin,
@@ -283884,7 +283971,7 @@ function StopHookSummaryMessage(t0) {
   } = useTerminalSize();
   let t1;
   if ($[0] !== hookInfos || $[1] !== message.totalDurationMs) {
-    t1 = message.totalDurationMs ?? hookInfos.reduce(_temp18, 0);
+    t1 = message.totalDurationMs ?? hookInfos.reduce(_temp17, 0);
     $[0] = hookInfos;
     $[1] = message.totalDurationMs;
     $[2] = t1;
@@ -284131,11 +284218,11 @@ function _temp27(info, idx) {
     ]
   }, `cmd-${idx}`);
 }
-function _temp18(sum, h) {
+function _temp17(sum, h) {
   return sum + (h.durationMs ?? 0);
 }
 function SystemTextMessageInner(t0) {
-  const $ = import_compiler_runtime85.c(18);
+  const $ = import_compiler_runtime84.c(18);
   const {
     content,
     addMargin,
@@ -284225,13 +284312,13 @@ function SystemTextMessageInner(t0) {
   return t7;
 }
 function TurnDurationMessage(t0) {
-  const $ = import_compiler_runtime85.c(17);
+  const $ = import_compiler_runtime84.c(17);
   const {
     message,
     addMargin
   } = t0;
   const bg = useSelectedMessageBg();
-  const [verb] = import_react63.useState(_temp43);
+  const [verb] = import_react64.useState(_temp43);
   const store = useAppStateStore();
   let t1;
   if ($[0] !== store) {
@@ -284245,7 +284332,7 @@ function TurnDurationMessage(t0) {
   } else {
     t1 = $[1];
   }
-  const [backgroundTaskSummary] = import_react63.useState(t1);
+  const [backgroundTaskSummary] = import_react64.useState(t1);
   let t2;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = getGlobalConfig().showTurnDuration ?? true;
@@ -284347,7 +284434,7 @@ function _temp43() {
   return sample_default(TURN_COMPLETION_VERBS) ?? "Worked";
 }
 function MemorySavedMessage(t0) {
-  const $ = import_compiler_runtime85.c(16);
+  const $ = import_compiler_runtime84.c(16);
   const {
     message,
     addMargin
@@ -284450,11 +284537,11 @@ function _temp53(p) {
   }, p);
 }
 function MemoryFileRow(t0) {
-  const $ = import_compiler_runtime85.c(16);
+  const $ = import_compiler_runtime84.c(16);
   const {
     path
   } = t0;
-  const [hover, setHover] = import_react63.useState(false);
+  const [hover, setHover] = import_react64.useState(false);
   let t1;
   if ($[0] !== path) {
     t1 = () => void openPath(path);
@@ -284528,7 +284615,7 @@ function MemoryFileRow(t0) {
   return t8;
 }
 function BridgeStatusMessage(t0) {
-  const $ = import_compiler_runtime85.c(13);
+  const $ = import_compiler_runtime84.c(13);
   const {
     message,
     addMargin
@@ -284621,7 +284708,7 @@ function BridgeStatusMessage(t0) {
   }
   return t7;
 }
-var import_compiler_runtime85, import_react63, jsx_runtime90;
+var import_compiler_runtime84, import_react64, jsx_runtime90;
 var init_SystemTextMessage = __esm(() => {
   init_ink2();
   init_sample();
@@ -284641,14 +284728,14 @@ var init_SystemTextMessage = __esm(() => {
   init_AppState();
   init_pillLabel();
   init_messageActions();
-  import_compiler_runtime85 = __toESM(require_compiler_runtime(), 1);
-  import_react63 = __toESM(require_react(), 1);
+  import_compiler_runtime84 = __toESM(require_compiler_runtime(), 1);
+  import_react64 = __toESM(require_react(), 1);
   jsx_runtime90 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/UserToolResultMessage/UserToolCanceledMessage.tsx
 function UserToolCanceledMessage() {
-  const $ = import_compiler_runtime86.c(1);
+  const $ = import_compiler_runtime85.c(1);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = /* @__PURE__ */ jsx_runtime91.jsx(MessageResponse, {
@@ -284661,17 +284748,17 @@ function UserToolCanceledMessage() {
   }
   return t0;
 }
-var import_compiler_runtime86, jsx_runtime91;
+var import_compiler_runtime85, jsx_runtime91;
 var init_UserToolCanceledMessage = __esm(() => {
   init_InterruptedByUser();
   init_MessageResponse();
-  import_compiler_runtime86 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime85 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime91 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/UserToolResultMessage/RejectedPlanMessage.tsx
 function RejectedPlanMessage(t0) {
-  const $ = import_compiler_runtime87.c(3);
+  const $ = import_compiler_runtime86.c(3);
   const {
     plan
   } = t0;
@@ -284711,18 +284798,18 @@ function RejectedPlanMessage(t0) {
   }
   return t2;
 }
-var import_compiler_runtime87, jsx_runtime92;
+var import_compiler_runtime86, jsx_runtime92;
 var init_RejectedPlanMessage = __esm(() => {
   init_Markdown();
   init_MessageResponse();
   init_ink2();
-  import_compiler_runtime87 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime86 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime92 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/UserToolResultMessage/RejectedToolUseMessage.tsx
 function RejectedToolUseMessage() {
-  const $ = import_compiler_runtime88.c(1);
+  const $ = import_compiler_runtime87.c(1);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = /* @__PURE__ */ jsx_runtime93.jsx(MessageResponse, {
@@ -284738,17 +284825,17 @@ function RejectedToolUseMessage() {
   }
   return t0;
 }
-var import_compiler_runtime88, jsx_runtime93;
+var import_compiler_runtime87, jsx_runtime93;
 var init_RejectedToolUseMessage = __esm(() => {
   init_ink2();
   init_MessageResponse();
-  import_compiler_runtime88 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime87 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime93 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/UserToolResultMessage/UserToolErrorMessage.tsx
 function UserToolErrorMessage(t0) {
-  const $ = import_compiler_runtime89.c(14);
+  const $ = import_compiler_runtime88.c(14);
   const {
     progressMessagesForMessage,
     tool,
@@ -284826,7 +284913,7 @@ function UserToolErrorMessage(t0) {
   }
   return t1;
 }
-var import_compiler_runtime89, jsx_runtime94;
+var import_compiler_runtime88, jsx_runtime94;
 var init_UserToolErrorMessage = __esm(() => {
   init_figures2();
   init_ink2();
@@ -284837,13 +284924,13 @@ var init_UserToolErrorMessage = __esm(() => {
   init_MessageResponse();
   init_RejectedPlanMessage();
   init_RejectedToolUseMessage();
-  import_compiler_runtime89 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime88 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime94 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/UserToolResultMessage/UserToolRejectMessage.tsx
 function UserToolRejectMessage(t0) {
-  const $ = import_compiler_runtime90.c(13);
+  const $ = import_compiler_runtime89.c(13);
   const {
     input,
     progressMessagesForMessage,
@@ -284916,13 +285003,13 @@ function UserToolRejectMessage(t0) {
   }
   return t2;
 }
-var import_compiler_runtime90, jsx_runtime95;
+var import_compiler_runtime89, jsx_runtime95;
 var init_UserToolRejectMessage = __esm(() => {
   init_useTerminalSize();
   init_ink2();
   init_Tool();
   init_FallbackToolUseRejectedMessage();
-  import_compiler_runtime90 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime89 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime95 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -284941,9 +285028,9 @@ function UserToolSuccessMessage({
 }) {
   const [theme] = useTheme();
   const isBriefOnly = false;
-  const [classifierRule] = React31.useState(() => getClassifierApproval(toolUseID));
-  const [yoloReason] = React31.useState(() => getYoloClassifierApproval(toolUseID));
-  React31.useEffect(() => {
+  const [classifierRule] = React32.useState(() => getClassifierApproval(toolUseID));
+  const [yoloReason] = React32.useState(() => getYoloClassifierApproval(toolUseID));
+  React32.useEffect(() => {
     deleteClassifierApproval(toolUseID);
   }, [toolUseID]);
   if (!message.toolUseResult || !tool) {
@@ -284991,7 +285078,7 @@ function UserToolSuccessMessage({
     ]
   });
 }
-var React31, jsx_runtime96;
+var React32, jsx_runtime96;
 var init_UserToolSuccessMessage = __esm(() => {
   init_SentryErrorBoundary();
   init_ink2();
@@ -285000,13 +285087,13 @@ var init_UserToolSuccessMessage = __esm(() => {
   init_classifierApprovals();
   init_MessageResponse();
   init_HookProgressMessage();
-  React31 = __toESM(require_react(), 1);
+  React32 = __toESM(require_react(), 1);
   jsx_runtime96 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/messages/UserToolResultMessage/utils.tsx
 function useGetToolFromMessages(toolUseID, tools, lookups) {
-  const $ = import_compiler_runtime91.c(7);
+  const $ = import_compiler_runtime90.c(7);
   let t0;
   if ($[0] !== lookups.toolUseByToolUseID || $[1] !== toolUseID || $[2] !== tools) {
     bb0: {
@@ -285043,15 +285130,15 @@ function useGetToolFromMessages(toolUseID, tools, lookups) {
   }
   return t0;
 }
-var import_compiler_runtime91;
+var import_compiler_runtime90;
 var init_utils8 = __esm(() => {
   init_Tool();
-  import_compiler_runtime91 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime90 = __toESM(require_compiler_runtime(), 1);
 });
 
 // components/messages/UserToolResultMessage/UserToolResultMessage.tsx
 function UserToolResultMessage(t0) {
-  const $ = import_compiler_runtime92.c(28);
+  const $ = import_compiler_runtime91.c(28);
   const {
     param,
     message,
@@ -285158,7 +285245,7 @@ function UserToolResultMessage(t0) {
   }
   return t1;
 }
-var import_compiler_runtime92, jsx_runtime97;
+var import_compiler_runtime91, jsx_runtime97;
 var init_UserToolResultMessage = __esm(() => {
   init_messages3();
   init_UserToolCanceledMessage();
@@ -285166,7 +285253,7 @@ var init_UserToolResultMessage = __esm(() => {
   init_UserToolRejectMessage();
   init_UserToolSuccessMessage();
   init_utils8();
-  import_compiler_runtime92 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime91 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime97 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -285175,11 +285262,11 @@ function OffscreenFreeze({
   children
 }) {
   "use no memo";
-  const inVirtualList = import_react64.useContext(InVirtualListContext);
+  const inVirtualList = import_react65.useContext(InVirtualListContext);
   const [ref, {
     isVisible
   }] = useTerminalViewport();
-  const cached = import_react64.useRef(children);
+  const cached = import_react65.useRef(children);
   if (isVisible || inVirtualList) {
     cached.current = children;
   }
@@ -285188,18 +285275,18 @@ function OffscreenFreeze({
     children: cached.current
   });
 }
-var import_react64, jsx_runtime98;
+var import_react65, jsx_runtime98;
 var init_OffscreenFreeze = __esm(() => {
   init_use_terminal_viewport();
   init_ink2();
   init_messageActions();
-  import_react64 = __toESM(require_react(), 1);
+  import_react65 = __toESM(require_react(), 1);
   jsx_runtime98 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/Message.tsx
 function MessageImpl(t0) {
-  const $ = import_compiler_runtime93.c(94);
+  const $ = import_compiler_runtime92.c(94);
   const {
     message,
     lookups,
@@ -285534,7 +285621,7 @@ function MessageImpl(t0) {
   }
 }
 function UserMessage(t0) {
-  const $ = import_compiler_runtime93.c(20);
+  const $ = import_compiler_runtime92.c(20);
   const {
     message,
     addMargin,
@@ -285627,7 +285714,7 @@ function UserMessage(t0) {
   }
 }
 function AssistantMessageBlock(t0) {
-  const $ = import_compiler_runtime93.c(45);
+  const $ = import_compiler_runtime92.c(45);
   const {
     param,
     addMargin,
@@ -285811,7 +285898,7 @@ function areMessagePropsEqual(prev, next) {
     return true;
   return false;
 }
-var import_compiler_runtime93, React33, jsx_runtime99, Message;
+var import_compiler_runtime92, React34, jsx_runtime99, Message;
 var init_Message = __esm(() => {
   init_useTerminalSize();
   init_ink2();
@@ -285834,10 +285921,10 @@ var init_Message = __esm(() => {
   init_UserToolResultMessage();
   init_OffscreenFreeze();
   init_ExpandShellOutputContext();
-  import_compiler_runtime93 = __toESM(require_compiler_runtime(), 1);
-  React33 = __toESM(require_react(), 1);
+  import_compiler_runtime92 = __toESM(require_compiler_runtime(), 1);
+  React34 = __toESM(require_react(), 1);
   jsx_runtime99 = __toESM(require_jsx_runtime(), 1);
-  Message = React33.memo(MessageImpl, areMessagePropsEqual);
+  Message = React34.memo(MessageImpl, areMessagePropsEqual);
 });
 
 // tools/AgentTool/UI.tsx
@@ -285932,7 +286019,7 @@ function processProgressMessages(messages, tools, isAgentRunning) {
   return result;
 }
 function AgentPromptDisplay(t0) {
-  const $ = import_compiler_runtime94.c(3);
+  const $ = import_compiler_runtime93.c(3);
   const {
     prompt,
     dim: t1
@@ -285970,7 +286057,7 @@ function AgentPromptDisplay(t0) {
   return t3;
 }
 function AgentResponseDisplay(t0) {
-  const $ = import_compiler_runtime94.c(5);
+  const $ = import_compiler_runtime93.c(5);
   const {
     content
   } = t0;
@@ -285987,7 +286074,7 @@ function AgentResponseDisplay(t0) {
   }
   let t2;
   if ($[1] !== content) {
-    t2 = content.map(_temp19);
+    t2 = content.map(_temp18);
     $[1] = content;
     $[2] = t2;
   } else {
@@ -286009,7 +286096,7 @@ function AgentResponseDisplay(t0) {
   }
   return t3;
 }
-function _temp19(block, index) {
+function _temp18(block, index) {
   return /* @__PURE__ */ jsx_runtime100.jsx(ThemedBox_default, {
     paddingLeft: 2,
     marginTop: index === 0 ? 0 : 1,
@@ -286019,7 +286106,7 @@ function _temp19(block, index) {
   }, index);
 }
 function VerboseAgentTranscript(t0) {
-  const $ = import_compiler_runtime94.c(15);
+  const $ = import_compiler_runtime93.c(15);
   const {
     progressMessages,
     tools,
@@ -286724,7 +286811,7 @@ function extractLastToolInfo(progressMessages, tools) {
 function isCustomSubagentType(subagentType) {
   return !!subagentType && subagentType !== GENERAL_PURPOSE_AGENT.agentType && subagentType !== "worker";
 }
-var import_compiler_runtime94, jsx_runtime100, MAX_PROGRESS_MESSAGES_TO_SHOW = 3, ESTIMATED_LINES_PER_TOOL = 9, TERMINAL_BUFFER_LINES = 7, INITIALIZING_TEXT = "Initializing…";
+var import_compiler_runtime93, jsx_runtime100, MAX_PROGRESS_MESSAGES_TO_SHOW = 3, ESTIMATED_LINES_PER_TOOL = 9, TERMINAL_BUFFER_LINES = 7, INITIALIZING_TEXT = "Initializing…";
 var init_UI4 = __esm(() => {
   init_ConfigurableShortcutHint();
   init_CtrlOToExpand();
@@ -286748,7 +286835,7 @@ var init_UI4 = __esm(() => {
   init_AgentTool();
   init_agentColorManager();
   init_generalPurposeAgent();
-  import_compiler_runtime94 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime93 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime100 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -330826,7 +330913,7 @@ async function initializeBetaTracing(resource) {
   });
   import_api_logs.logs.setGlobalLoggerProvider(loggerProvider);
   setLoggerProvider(loggerProvider);
-  const eventLogger = import_api_logs.logs.getLogger("com.anthropic.claude_code.events", "1.0.26");
+  const eventLogger = import_api_logs.logs.getLogger("com.anthropic.claude_code.events", "1.0.27");
   setEventLogger(eventLogger);
   process.on("beforeExit", async () => {
     await loggerProvider?.forceFlush();
@@ -330866,7 +330953,7 @@ async function initializeTelemetry() {
   const platform = getPlatform();
   const baseAttributes = {
     [import_semantic_conventions2.ATTR_SERVICE_NAME]: "claude-code",
-    [import_semantic_conventions2.ATTR_SERVICE_VERSION]: "1.0.26"
+    [import_semantic_conventions2.ATTR_SERVICE_VERSION]: "1.0.27"
   };
   if (platform === "wsl") {
     const wslVersion = getWslVersion();
@@ -330911,7 +330998,7 @@ async function initializeTelemetry() {
       } catch {}
     };
     registerCleanup(shutdownTelemetry);
-    return meterProvider.getMeter("com.anthropic.claude_code", "1.0.26");
+    return meterProvider.getMeter("com.anthropic.claude_code", "1.0.27");
   }
   const meterProvider = new import_sdk_metrics2.MeterProvider({
     resource,
@@ -330931,7 +331018,7 @@ async function initializeTelemetry() {
       });
       import_api_logs.logs.setGlobalLoggerProvider(loggerProvider);
       setLoggerProvider(loggerProvider);
-      const eventLogger = import_api_logs.logs.getLogger("com.anthropic.claude_code.events", "1.0.26");
+      const eventLogger = import_api_logs.logs.getLogger("com.anthropic.claude_code.events", "1.0.27");
       setEventLogger(eventLogger);
       logForDebugging("[3P telemetry] Event logger set successfully");
       process.on("beforeExit", async () => {
@@ -330993,7 +331080,7 @@ Current timeout: ${timeoutMs}ms
     }
   };
   registerCleanup(shutdownTelemetry);
-  return meterProvider.getMeter("com.anthropic.claude_code", "1.0.26");
+  return meterProvider.getMeter("com.anthropic.claude_code", "1.0.27");
 }
 async function flushTelemetry() {
   const meterProvider = getMeterProvider();
@@ -331152,7 +331239,7 @@ async function clearAuthRelatedCaches() {
   clearBetasCaches();
   clearToolSchemaCache();
   resetUserCache();
-  refreshGrowthBookAfterAuthChange2();
+  refreshGrowthBookAfterAuthChange();
   getGroveNoticeConfig.cache?.clear?.();
   getGroveSettings.cache?.clear?.();
   await clearRemoteManagedSettingsCache();
@@ -331235,12 +331322,12 @@ var init_firstTokenDate = __esm(() => {
 
 // utils/localInstaller.ts
 import { access, chmod as chmod3, writeFile as writeFile11 } from "fs/promises";
-import { join as join57 } from "path";
+import { join as join58 } from "path";
 function getLocalInstallDir() {
-  return join57(getClaudeConfigHomeDir(), "local");
+  return join58(getClaudeConfigHomeDir(), "local");
 }
 function getLocalClaudePath() {
-  return join57(getLocalInstallDir(), "claude");
+  return join58(getLocalInstallDir(), "claude");
 }
 function isRunningFromLocalInstallation() {
   const execPath = process.argv[1] || "";
@@ -331260,8 +331347,8 @@ async function ensureLocalPackageEnvironment() {
   try {
     const localInstallDir = getLocalInstallDir();
     await getFsImplementation().mkdir(localInstallDir);
-    await writeIfMissing(join57(localInstallDir, "package.json"), jsonStringify({ name: "claude-local", version: "0.0.1", private: true }, null, 2));
-    const wrapperPath = join57(localInstallDir, "claude");
+    await writeIfMissing(join58(localInstallDir, "package.json"), jsonStringify({ name: "claude-local", version: "0.0.1", private: true }, null, 2));
+    const wrapperPath = join58(localInstallDir, "claude");
     const created = await writeIfMissing(wrapperPath, `#!/bin/sh
 exec "${localInstallDir}/node_modules/.bin/claude" "$@"`, 493);
     if (created) {
@@ -331297,7 +331384,7 @@ async function installOrUpdateClaudePackage(channel, specificVersion) {
 }
 async function localInstallationExists() {
   try {
-    await access(join57(getLocalInstallDir(), "node_modules", ".bin", "claude"));
+    await access(join58(getLocalInstallDir(), "node_modules", ".bin", "claude"));
     return true;
   } catch {
     return false;
@@ -331326,15 +331413,15 @@ var init_localInstaller = __esm(() => {
 // utils/shellConfig.ts
 import { open as open8, readFile as readFile15, stat as stat19 } from "fs/promises";
 import { homedir as osHomedir } from "os";
-import { join as join58 } from "path";
+import { join as join59 } from "path";
 function getShellConfigPaths(options) {
   const home = options?.homedir ?? osHomedir();
   const env = options?.env ?? process.env;
   const zshConfigDir = env.ZDOTDIR || home;
   return {
-    zsh: join58(zshConfigDir, ".zshrc"),
-    bash: join58(home, ".bashrc"),
-    fish: join58(home, ".config/fish/config.fish")
+    zsh: join59(zshConfigDir, ".zshrc"),
+    bash: join59(home, ".bashrc"),
+    fish: join59(home, ".config/fish/config.fish")
   };
 }
 function filterClaudeAliases(lines) {
@@ -331419,8 +331506,8 @@ var init_shellConfig = __esm(() => {
 // utils/autoUpdater.ts
 import { constants as fsConstants4 } from "fs";
 import { access as access2, writeFile as writeFile12 } from "fs/promises";
-import { homedir as homedir19 } from "os";
-import { join as join59 } from "path";
+import { homedir as homedir20 } from "os";
+import { join as join60 } from "path";
 async function assertMinVersion() {
   return;
 }
@@ -331459,7 +331546,7 @@ function shouldSkipVersion(targetVersion) {
   return shouldSkip;
 }
 function getLockFilePath() {
-  return join59(getClaudeConfigHomeDir(), ".update.lock");
+  return join60(getClaudeConfigHomeDir(), ".update.lock");
 }
 async function acquireLock() {
   const fs = getFsImplementation();
@@ -331539,10 +331626,10 @@ async function getInstallationPrefix() {
   let prefixResult = null;
   if (isBun) {
     prefixResult = await execFileNoThrowWithCwd("bun", ["pm", "bin", "-g"], {
-      cwd: homedir19()
+      cwd: homedir20()
     });
   } else {
-    prefixResult = await execFileNoThrowWithCwd("npm", ["-g", "config", "get", "prefix"], { cwd: homedir19() });
+    prefixResult = await execFileNoThrowWithCwd("npm", ["-g", "config", "get", "prefix"], { cwd: homedir20() });
   }
   if (prefixResult.code !== 0) {
     logError2(new Error(`Failed to check ${isBun ? "bun" : "npm"} permissions`));
@@ -331570,7 +331657,7 @@ async function checkGlobalInstallPermissions() {
 }
 async function getLatestVersion(channel) {
   const npmTag = channel === "stable" ? "stable" : "latest";
-  const result = await execFileNoThrowWithCwd("npm", ["view", `${"@anthropic-ai/claude-code"}@${npmTag}`, "version", "--prefer-online"], { abortSignal: AbortSignal.timeout(5000), cwd: homedir19() });
+  const result = await execFileNoThrowWithCwd("npm", ["view", `${"@anthropic-ai/claude-code"}@${npmTag}`, "version", "--prefer-online"], { abortSignal: AbortSignal.timeout(5000), cwd: homedir20() });
   if (result.code !== 0) {
     logForDebugging(`npm view failed with code ${result.code}`);
     if (result.stderr) {
@@ -331586,7 +331673,7 @@ async function getLatestVersion(channel) {
   return result.stdout.trim();
 }
 async function getNpmDistTags() {
-  const result = await execFileNoThrowWithCwd("npm", ["view", "@anthropic-ai/claude-code", "dist-tags", "--json", "--prefer-online"], { abortSignal: AbortSignal.timeout(5000), cwd: homedir19() });
+  const result = await execFileNoThrowWithCwd("npm", ["view", "@anthropic-ai/claude-code", "dist-tags", "--json", "--prefer-online"], { abortSignal: AbortSignal.timeout(5000), cwd: homedir20() });
   if (result.code !== 0) {
     logForDebugging(`npm view dist-tags failed with code ${result.code}`);
     return { latest: null, stable: null };
@@ -331626,7 +331713,7 @@ async function installGlobalPackage(specificVersion) {
     logError2(new AutoUpdaterError("Another process is currently installing an update"));
     logEvent("tengu_auto_updater_lock_contention", {
       pid: process.pid,
-      currentVersion: "1.0.26"
+      currentVersion: "1.0.27"
     });
     return "in_progress";
   }
@@ -331635,7 +331722,7 @@ async function installGlobalPackage(specificVersion) {
     if (!env4.isRunningWithBun() && env4.isNpmFromWindowsPath()) {
       logError2(new Error("Windows NPM detected in WSL environment"));
       logEvent("tengu_auto_updater_windows_npm_in_wsl", {
-        currentVersion: "1.0.26"
+        currentVersion: "1.0.27"
       });
       console.error(`
 Error: Windows NPM detected in WSL
@@ -331656,7 +331743,7 @@ To fix this issue:
     }
     const packageSpec = specificVersion ? `${"@anthropic-ai/claude-code"}@${specificVersion}` : "@anthropic-ai/claude-code";
     const packageManager = env4.isRunningWithBun() ? "bun" : "npm";
-    const installResult = await execFileNoThrowWithCwd(packageManager, ["install", "-g", packageSpec], { cwd: homedir19() });
+    const installResult = await execFileNoThrowWithCwd(packageManager, ["install", "-g", packageSpec], { cwd: homedir20() });
     if (installResult.code !== 0) {
       const error = new AutoUpdaterError(`Failed to install new version of claude: ${installResult.stdout} ${installResult.stderr}`);
       logError2(error);
@@ -331892,8 +331979,8 @@ var init_packageManagers = __esm(() => {
 
 // utils/doctorDiagnostic.ts
 import { readFile as readFile17, realpath as realpath5 } from "fs/promises";
-import { homedir as homedir20 } from "os";
-import { delimiter as delimiter2, join as join60, posix as posix3, win32 } from "path";
+import { homedir as homedir21 } from "os";
+import { delimiter as delimiter2, join as join61, posix as posix3, win32 } from "path";
 function getNormalizedPaths() {
   let invokedPath = process.argv[1] || "";
   let execPath = process.execPath || process.argv[0] || "";
@@ -331955,8 +332042,8 @@ async function getInstallationPath() {
       }
     } catch {}
     try {
-      await getFsImplementation().stat(join60(homedir20(), ".local/bin/claude"));
-      return join60(homedir20(), ".local/bin/claude");
+      await getFsImplementation().stat(join61(homedir21(), ".local/bin/claude"));
+      return join61(homedir21(), ".local/bin/claude");
     } catch {}
     return "native";
   }
@@ -331979,7 +332066,7 @@ function getInvokedBinary() {
 async function detectMultipleInstallations() {
   const fs = getFsImplementation();
   const installations = [];
-  const localPath = join60(homedir20(), ".evilclaude", "local");
+  const localPath = join61(homedir21(), ".evilclaude", "local");
   if (await localInstallationExists()) {
     installations.push({ type: "npm-local", path: localPath });
   }
@@ -331996,7 +332083,7 @@ async function detectMultipleInstallations() {
   if (npmResult.code === 0 && npmResult.stdout) {
     const npmPrefix = npmResult.stdout.trim();
     const isWindows = getPlatform() === "windows";
-    const globalBinPath = isWindows ? join60(npmPrefix, "claude") : join60(npmPrefix, "bin", "claude");
+    const globalBinPath = isWindows ? join61(npmPrefix, "claude") : join61(npmPrefix, "bin", "claude");
     let globalBinExists = false;
     try {
       await fs.stat(globalBinPath);
@@ -332015,7 +332102,7 @@ async function detectMultipleInstallations() {
       }
     } else {
       for (const packageName of packagesToCheck) {
-        const globalPackagePath = isWindows ? join60(npmPrefix, "node_modules", packageName) : join60(npmPrefix, "lib", "node_modules", packageName);
+        const globalPackagePath = isWindows ? join61(npmPrefix, "node_modules", packageName) : join61(npmPrefix, "lib", "node_modules", packageName);
         try {
           await fs.stat(globalPackagePath);
           installations.push({
@@ -332026,14 +332113,14 @@ async function detectMultipleInstallations() {
       }
     }
   }
-  const nativeBinPath = join60(homedir20(), ".local", "bin", "claude");
+  const nativeBinPath = join61(homedir21(), ".local", "bin", "claude");
   try {
     await fs.stat(nativeBinPath);
     installations.push({ type: "native", path: nativeBinPath });
   } catch {}
   const config = getGlobalConfig();
   if (config.installMethod === "native") {
-    const nativeDataPath = join60(homedir20(), ".local", "share", "claude");
+    const nativeDataPath = join61(homedir21(), ".local", "share", "claude");
     try {
       await fs.stat(nativeDataPath);
       if (!installations.some((i) => i.type === "native")) {
@@ -332046,7 +332133,7 @@ async function detectMultipleInstallations() {
 async function detectConfigurationIssues(type) {
   const warnings = [];
   try {
-    const raw = await readFile17(join60(getManagedFilePath(), "managed-settings.json"), "utf-8");
+    const raw = await readFile17(join61(getManagedFilePath(), "managed-settings.json"), "utf-8");
     const parsed = jsonParse(raw);
     const field = parsed && typeof parsed === "object" ? parsed.strictPluginOnlyCustomization : undefined;
     if (field !== undefined && typeof field !== "boolean") {
@@ -332073,8 +332160,8 @@ async function detectConfigurationIssues(type) {
   if (type === "native") {
     const path = process.env.PATH || "";
     const pathDirectories = path.split(delimiter2);
-    const homeDir = homedir20();
-    const localBinPath = join60(homeDir, ".local", "bin");
+    const homeDir = homedir21();
+    const localBinPath = join61(homeDir, ".local", "bin");
     let normalizedLocalBinPath = localBinPath;
     if (getPlatform() === "windows") {
       normalizedLocalBinPath = localBinPath.split(win32.sep).join(posix3.sep);
@@ -332100,7 +332187,7 @@ async function detectConfigurationIssues(type) {
         const shellType = getShellType();
         const configPaths = getShellConfigPaths();
         const configFile = configPaths[shellType];
-        const displayPath = configFile ? configFile.replace(homedir20(), "~") : "your shell config file";
+        const displayPath = configFile ? configFile.replace(homedir21(), "~") : "your shell config file";
         warnings.push({
           issue: "Native installation exists but ~/.local/bin is not in your PATH",
           fix: `Run: echo 'export PATH="$HOME/.local/bin:$PATH"' >> ${displayPath} then open a new terminal or run: source ${displayPath}`
@@ -332168,7 +332255,7 @@ function detectLinuxGlobPatternWarnings() {
 }
 async function getDoctorDiagnostic() {
   const installationType = await getCurrentInstallationType();
-  const version = typeof MACRO !== "undefined" && "1.0.26" ? "1.0.26" : "unknown";
+  const version = typeof MACRO !== "undefined" && "1.0.27" ? "1.0.27" : "unknown";
   const installationPath = await getInstallationPath();
   const invokedBinary = getInvokedBinary();
   const multipleInstallations = await detectMultipleInstallations();
@@ -332260,7 +332347,7 @@ var init_doctorDiagnostic = __esm(() => {
 
 // utils/xdg.ts
 import { homedir as osHomedir2 } from "os";
-import { join as join61 } from "path";
+import { join as join62 } from "path";
 function resolveOptions(options) {
   return {
     env: options?.env ?? process.env,
@@ -332269,26 +332356,26 @@ function resolveOptions(options) {
 }
 function getXDGStateHome(options) {
   const { env, home } = resolveOptions(options);
-  return env.XDG_STATE_HOME ?? join61(home, ".local", "state");
+  return env.XDG_STATE_HOME ?? join62(home, ".local", "state");
 }
 function getXDGCacheHome(options) {
   const { env, home } = resolveOptions(options);
-  return env.XDG_CACHE_HOME ?? join61(home, ".cache");
+  return env.XDG_CACHE_HOME ?? join62(home, ".cache");
 }
 function getXDGDataHome(options) {
   const { env, home } = resolveOptions(options);
-  return env.XDG_DATA_HOME ?? join61(home, ".local", "share");
+  return env.XDG_DATA_HOME ?? join62(home, ".local", "share");
 }
 function getUserBinDir(options) {
   const { home } = resolveOptions(options);
-  return join61(home, ".local", "bin");
+  return join62(home, ".local", "bin");
 }
 var init_xdg = () => {};
 
 // utils/nativeInstaller/download.ts
 import { createHash as createHash13 } from "crypto";
 import { chmod as chmod4, writeFile as writeFile13 } from "fs/promises";
-import { join as join62 } from "path";
+import { join as join63 } from "path";
 async function getLatestVersionFromArtifactory(tag = "latest") {
   const startTime = Date.now();
   const { stdout, code, stderr } = await execFileNoThrowWithCwd("npm", [
@@ -332430,8 +332517,8 @@ async function downloadVersionFromArtifactory(version, stagingPath) {
       }
     }
   };
-  writeFileSync_DEPRECATED(join62(stagingPath, "package.json"), jsonStringify(packageJson, null, 2), { encoding: "utf8", flush: true });
-  writeFileSync_DEPRECATED(join62(stagingPath, "package-lock.json"), jsonStringify(packageLock, null, 2), { encoding: "utf8", flush: true });
+  writeFileSync_DEPRECATED(join63(stagingPath, "package.json"), jsonStringify(packageJson, null, 2), { encoding: "utf8", flush: true });
+  writeFileSync_DEPRECATED(join63(stagingPath, "package-lock.json"), jsonStringify(packageLock, null, 2), { encoding: "utf8", flush: true });
   const result = await execFileNoThrowWithCwd("npm", ["ci", "--prefer-online", "--registry", ARTIFACTORY_REGISTRY_URL], {
     timeout: 60000,
     preserveOutputOnError: true,
@@ -332537,7 +332624,7 @@ async function downloadVersionFromBinaryRepo(version, stagingPath, baseUrl, auth
   const binaryName = getBinaryName(platform);
   const binaryUrl = `${baseUrl}/${version}/${platform}/${binaryName}`;
   await fs.mkdir(stagingPath);
-  const binaryPath = join62(stagingPath, binaryName);
+  const binaryPath = join63(stagingPath, binaryName);
   try {
     await downloadAndVerifyBinary(binaryUrl, expectedChecksum, binaryPath, authConfig || {});
     const latencyMs = Date.now() - startTime;
@@ -332590,7 +332677,7 @@ var init_download = __esm(() => {
 });
 
 // utils/nativeInstaller/pidLock.ts
-import { basename as basename16, join as join63 } from "path";
+import { basename as basename16, join as join64 } from "path";
 function isPidBasedLockingEnabled() {
   const envVar = process.env.ENABLE_PID_BASED_VERSION_LOCKING;
   if (isEnvTruthy(envVar)) {
@@ -332758,7 +332845,7 @@ function getAllLockInfo(locksDir) {
   try {
     const lockFiles = fs.readdirStringSync(locksDir).filter((f) => f.endsWith(".lock"));
     for (const lockFile of lockFiles) {
-      const lockFilePath = join63(locksDir, lockFile);
+      const lockFilePath = join64(locksDir, lockFile);
       const content = readLockContent(lockFilePath);
       if (content) {
         lockInfos.push({
@@ -332785,7 +332872,7 @@ function cleanupStaleLocks(locksDir) {
   try {
     const lockEntries = fs.readdirStringSync(locksDir).filter((f) => f.endsWith(".lock"));
     for (const lockEntry of lockEntries) {
-      const lockFilePath = join63(locksDir, lockEntry);
+      const lockFilePath = join64(locksDir, lockEntry);
       try {
         const stats = fs.lstatSync(lockFilePath);
         if (stats.isDirectory()) {
@@ -332839,8 +332926,8 @@ import {
   unlink as unlink8,
   writeFile as writeFile14
 } from "fs/promises";
-import { homedir as homedir21 } from "os";
-import { basename as basename17, delimiter as delimiter3, dirname as dirname25, join as join64, resolve as resolve19 } from "path";
+import { homedir as homedir22 } from "os";
+import { basename as basename17, delimiter as delimiter3, dirname as dirname25, join as join65, resolve as resolve19 } from "path";
 function getPlatform2() {
   const os = env4.platform;
   const arch = process.arch === "x64" ? "x64" : process.arch === "arm64" ? "arm64" : null;
@@ -332861,10 +332948,10 @@ function getBaseDirectories() {
   const platform = getPlatform2();
   const executableName = getBinaryName(platform);
   return {
-    versions: join64(getXDGDataHome(), "claude", "versions"),
-    staging: join64(getXDGCacheHome(), "claude", "staging"),
-    locks: join64(getXDGStateHome(), "claude", "locks"),
-    executable: join64(getUserBinDir(), executableName)
+    versions: join65(getXDGDataHome(), "claude", "versions"),
+    staging: join65(getXDGCacheHome(), "claude", "staging"),
+    locks: join65(getXDGStateHome(), "claude", "locks"),
+    executable: join65(getUserBinDir(), executableName)
   };
 }
 async function isPossibleClaudeBinary(filePath) {
@@ -332885,14 +332972,14 @@ async function getVersionPaths(version) {
   await Promise.all(dirsToCreate.map((dir) => mkdir13(dir, { recursive: true })));
   const executableParentDir = dirname25(dirs.executable);
   await mkdir13(executableParentDir, { recursive: true });
-  const installPath = join64(dirs.versions, version);
+  const installPath = join65(dirs.versions, version);
   try {
     await stat20(installPath);
   } catch {
     await writeFile14(installPath, "", { encoding: "utf8" });
   }
   return {
-    stagingPath: join64(dirs.staging, version),
+    stagingPath: join65(dirs.staging, version),
     installPath
   };
 }
@@ -332993,7 +333080,7 @@ async function atomicMoveToInstallPath(stagedBinaryPath, installPath) {
 }
 async function installVersionFromPackage(stagingPath, installPath) {
   try {
-    const nodeModulesDir = join64(stagingPath, "node_modules", "@anthropic-ai");
+    const nodeModulesDir = join65(stagingPath, "node_modules", "@anthropic-ai");
     const entries = await readdir10(nodeModulesDir);
     const nativePackage = entries.find((entry) => entry.startsWith("claude-cli-native-"));
     if (!nativePackage) {
@@ -333004,7 +333091,7 @@ async function installVersionFromPackage(stagingPath, installPath) {
       const error = new Error("Could not find platform-specific native package");
       throw error;
     }
-    const stagedBinaryPath = join64(nodeModulesDir, nativePackage, "cli");
+    const stagedBinaryPath = join65(nodeModulesDir, nativePackage, "cli");
     try {
       await stat20(stagedBinaryPath);
     } catch {
@@ -333034,7 +333121,7 @@ async function installVersionFromBinary(stagingPath, installPath) {
   try {
     const platform = getPlatform2();
     const binaryName = getBinaryName(platform);
-    const stagedBinaryPath = join64(stagingPath, binaryName);
+    const stagedBinaryPath = join65(stagingPath, binaryName);
     try {
       await stat20(stagedBinaryPath);
     } catch {
@@ -333103,8 +333190,8 @@ async function updateLatest(channelOrVersion, forceReinstall = false) {
     const maxVersion = await getMaxVersion();
     if (maxVersion && gt(version, maxVersion)) {
       logForDebugging(`Native installer: maxVersion ${maxVersion} is set, capping update from ${version} to ${maxVersion}`);
-      if (gte("1.0.26", maxVersion)) {
-        logForDebugging(`Native installer: current version ${"1.0.26"} is already at or above maxVersion ${maxVersion}, skipping update`);
+      if (gte("1.0.27", maxVersion)) {
+        logForDebugging(`Native installer: current version ${"1.0.27"} is already at or above maxVersion ${maxVersion}, skipping update`);
         logEvent("tengu_native_update_skipped_max_version", {
           latency_ms: Date.now() - startTime,
           max_version: maxVersion,
@@ -333115,7 +333202,7 @@ async function updateLatest(channelOrVersion, forceReinstall = false) {
       version = maxVersion;
     }
   }
-  if (!forceReinstall && version === "1.0.26" && await versionIsAvailable(version) && await isPossibleClaudeBinary(executablePath)) {
+  if (!forceReinstall && version === "1.0.27" && await versionIsAvailable(version) && await isPossibleClaudeBinary(executablePath)) {
     logForDebugging(`Found ${version} at ${executablePath}, skipping install`);
     logEvent("tengu_native_update_complete", {
       latency_ms: Date.now() - startTime,
@@ -333367,7 +333454,7 @@ async function checkInstall(force = false) {
       const shellType = getShellType();
       const configPaths = getShellConfigPaths();
       const configFile = configPaths[shellType];
-      const displayPath = configFile ? configFile.replace(homedir21(), "~") : "your shell config file";
+      const displayPath = configFile ? configFile.replace(homedir22(), "~") : "your shell config file";
       messages.push({
         message: `Native installation exists but ~/.local/bin is not in your PATH. Run:
 
@@ -333434,7 +333521,7 @@ async function getVersionFromSymlink(symlinkPath) {
 }
 function getLockFilePathFromVersionPath(dirs, versionPath) {
   const versionName = basename17(versionPath);
-  return join64(dirs.locks, `${versionName}.lock`);
+  return join65(dirs.locks, `${versionName}.lock`);
 }
 async function lockCurrentVersion() {
   const dirs = getBaseDirectories();
@@ -333528,7 +333615,7 @@ async function cleanupOldVersions() {
         if (!/^claude\.exe\.old\.\d+$/.test(file))
           continue;
         try {
-          await unlink8(join64(executableDir, file));
+          await unlink8(join65(executableDir, file));
           cleanedCount++;
         } catch {}
       }
@@ -333545,7 +333632,7 @@ async function cleanupOldVersions() {
     const stagingEntries = await readdir10(dirs.staging);
     let stagingCleanedCount = 0;
     for (const entry of stagingEntries) {
-      const stagingPath = join64(dirs.staging, entry);
+      const stagingPath = join65(dirs.staging, entry);
       try {
         const stats = await stat20(stagingPath);
         if (stats.mtime.getTime() < oneHourAgo) {
@@ -333587,7 +333674,7 @@ async function cleanupOldVersions() {
   const versionFiles = [];
   let tempFilesCleanedCount = 0;
   for (const entry of versionEntries) {
-    const entryPath = join64(dirs.versions, entry);
+    const entryPath = join65(dirs.versions, entry);
     if (/\.tmp\.\d+\.\d+$/.test(entry)) {
       try {
         const stats = await stat20(entryPath);
@@ -333779,9 +333866,9 @@ async function manualRemoveNpmPackage(packageName) {
       }
     }
     if (getPlatform2().startsWith("win32")) {
-      const binCmd = join64(globalPrefix, "claude.cmd");
-      const binPs1 = join64(globalPrefix, "claude.ps1");
-      const binExe = join64(globalPrefix, "claude");
+      const binCmd = join65(globalPrefix, "claude.cmd");
+      const binPs1 = join65(globalPrefix, "claude.ps1");
+      const binExe = join65(globalPrefix, "claude");
       if (await tryRemove(binCmd, "bin script")) {
         manuallyRemoved = true;
       }
@@ -333792,14 +333879,14 @@ async function manualRemoveNpmPackage(packageName) {
         manuallyRemoved = true;
       }
     } else {
-      const binSymlink = join64(globalPrefix, "bin", "claude");
+      const binSymlink = join65(globalPrefix, "bin", "claude");
       if (await tryRemove(binSymlink, "bin symlink")) {
         manuallyRemoved = true;
       }
     }
     if (manuallyRemoved) {
       logForDebugging(`Successfully removed ${packageName} manually`);
-      const nodeModulesPath = getPlatform2().startsWith("win32") ? join64(globalPrefix, "node_modules", packageName) : join64(globalPrefix, "lib", "node_modules", packageName);
+      const nodeModulesPath = getPlatform2().startsWith("win32") ? join65(globalPrefix, "node_modules", packageName) : join65(globalPrefix, "lib", "node_modules", packageName);
       return {
         success: true,
         warning: `${packageName} executables removed, but node_modules directory was left intact for safety. You may manually delete it later at: ${nodeModulesPath}`
@@ -333868,7 +333955,7 @@ async function cleanupNpmInstallations() {
       errors.push(macroPackageResult.error);
     }
   }
-  const localInstallDir = join64(homedir21(), ".evilclaude", "local");
+  const localInstallDir = join65(homedir22(), ".evilclaude", "local");
   try {
     await rm3(localInstallDir, { recursive: true });
     removed++;
@@ -334292,9 +334379,9 @@ var init_status = __esm(() => {
 });
 
 // cli/handlers/auth.ts
-import fs9 from "fs";
-import path14 from "path";
-import os7 from "os";
+import fs10 from "fs";
+import path15 from "path";
+import os8 from "os";
 async function installOAuthTokens(tokens) {
   await performLogout({ clearOnboarding: false });
   const profile = tokens.profile ?? await getOauthProfileFromOauthToken(tokens.accessToken);
@@ -334341,11 +334428,11 @@ async function authLogin({
   claudeai
 } = {}) {
   const baseUrl = (process.env.EVILCLAUDE_BASE_URL || process.env.SWAMPMINE_BASE_URL || process.env.ANTHROPIC_BASE_URL || "https://evilclaude.swampmine.in").replace(/\/$/, "");
-  const homeDir = os7.homedir();
-  const evilDir = path14.join(homeDir, ".evilclaude");
-  const evilKeyPath = path14.join(evilDir, "api_key");
-  if (fs9.existsSync(evilKeyPath)) {
-    const existingKey = fs9.readFileSync(evilKeyPath, "utf8").trim();
+  const homeDir = os8.homedir();
+  const evilDir = path15.join(homeDir, ".evilclaude");
+  const evilKeyPath = path15.join(evilDir, "api_key");
+  if (fs10.existsSync(evilKeyPath)) {
+    const existingKey = fs10.readFileSync(evilKeyPath, "utf8").trim();
     if (existingKey) {
       process.stdout.write(`
 \x1B[1m\x1B[32m✓\x1B[0m \x1B[1mEvilClaude is ready.\x1B[0m
@@ -334361,9 +334448,9 @@ async function authLogin({
       process.exit(0);
     }
   }
-  const hostname = os7.hostname();
-  const platform = os7.platform();
-  const arch = os7.arch();
+  const hostname = os8.hostname();
+  const platform = os8.platform();
+  const arch = os8.arch();
   const label = `${hostname} (${platform} ${arch})`;
   try {
     const resp = await fetch(`${baseUrl}/api/v1/terminal/provision`, {
@@ -334377,9 +334464,9 @@ async function authLogin({
     if (resp.ok) {
       const data = await resp.json();
       if (data.api_key) {
-        if (!fs9.existsSync(evilDir))
-          fs9.mkdirSync(evilDir, { recursive: true, mode: 448 });
-        fs9.writeFileSync(evilKeyPath, data.api_key.trim() + `
+        if (!fs10.existsSync(evilDir))
+          fs10.mkdirSync(evilDir, { recursive: true, mode: 448 });
+        fs10.writeFileSync(evilKeyPath, data.api_key.trim() + `
 `, { mode: 384 });
         process.env.SWAMPMINE_API_KEY = data.api_key;
         process.env.SWAMPMINE_API_KEY = data.api_key;
@@ -334398,10 +334485,10 @@ async function authLogin({
       }
     }
   } catch {}
-  if (!fs9.existsSync(evilDir))
-    fs9.mkdirSync(evilDir, { recursive: true, mode: 448 });
+  if (!fs10.existsSync(evilDir))
+    fs10.mkdirSync(evilDir, { recursive: true, mode: 448 });
   const fallbackKey = "ec_offline_" + Buffer.from(hostname).toString("hex").slice(0, 16);
-  fs9.writeFileSync(evilKeyPath, fallbackKey + `
+  fs10.writeFileSync(evilKeyPath, fallbackKey + `
 `, { mode: 384 });
   process.stdout.write(`
 \x1B[1m\x1B[32m✓\x1B[0m \x1B[1mEvilClaude is ready.\x1B[0m
@@ -334485,12 +334572,12 @@ async function authStatus(opts) {
 }
 async function authLogout() {
   try {
-    const keyFile = path14.join(os7.homedir(), ".evilclaude", "api_key");
-    if (fs9.existsSync(keyFile))
-      fs9.unlinkSync(keyFile);
-    const legacyKeyFile = path14.join(os7.homedir(), ".swampmine", "api_key");
-    if (fs9.existsSync(legacyKeyFile))
-      fs9.unlinkSync(legacyKeyFile);
+    const keyFile = path15.join(os8.homedir(), ".evilclaude", "api_key");
+    if (fs10.existsSync(keyFile))
+      fs10.unlinkSync(keyFile);
+    const legacyKeyFile = path15.join(os8.homedir(), ".swampmine", "api_key");
+    if (fs10.existsSync(legacyKeyFile))
+      fs10.unlinkSync(legacyKeyFile);
     delete process.env.SWAMPMINE_API_KEY;
     delete process.env.SWAMPMINE_API_KEY;
     await performLogout({ clearOnboarding: false }).catch(() => {});
@@ -335250,13 +335337,13 @@ function TaskListV2({
 }) {
   const teamContext = useAppState((s) => s.teamContext);
   const appStateTasks = useAppState((s_0) => s_0.tasks);
-  const [, forceUpdate] = React34.useState(0);
+  const [, forceUpdate] = React35.useState(0);
   const {
     rows,
     columns
   } = useTerminalSize();
-  const completionTimestampsRef = React34.useRef(new Map);
-  const previousCompletedIdsRef = React34.useRef(null);
+  const completionTimestampsRef = React35.useRef(new Map);
+  const previousCompletedIdsRef = React35.useRef(null);
   if (previousCompletedIdsRef.current === null) {
     previousCompletedIdsRef.current = new Set(tasks.filter((t) => t.status === "completed").map((t_0) => t_0.id));
   }
@@ -335274,7 +335361,7 @@ function TaskListV2({
     }
   }
   previousCompletedIdsRef.current = currentCompletedIds;
-  React34.useEffect(() => {
+  React35.useEffect(() => {
     if (completionTimestampsRef.current.size === 0) {
       return;
     }
@@ -335460,7 +335547,7 @@ function getTaskIcon(status) {
   }
 }
 function TaskItem(t0) {
-  const $ = import_compiler_runtime95.c(37);
+  const $ = import_compiler_runtime94.c(37);
   const {
     task,
     ownerColor,
@@ -335582,7 +335669,7 @@ function TaskItem(t0) {
         figures_default.pointerSmall,
         " blocked by",
         " ",
-        [...openBlockers].sort(_temp20).map(_temp29).join(", ")
+        [...openBlockers].sort(_temp19).map(_temp29).join(", ")
       ]
     });
     $[23] = isBlocked;
@@ -335647,10 +335734,10 @@ function TaskItem(t0) {
 function _temp29(id) {
   return `#${id}`;
 }
-function _temp20(a, b) {
+function _temp19(a, b) {
   return parseInt(a, 10) - parseInt(b, 10);
 }
-var import_compiler_runtime95, React34, jsx_runtime103, RECENT_COMPLETED_TTL_MS = 30000;
+var import_compiler_runtime94, React35, jsx_runtime103, RECENT_COMPLETED_TTL_MS = 30000;
 var init_TaskListV2 = __esm(() => {
   init_figures();
   init_useTerminalSize();
@@ -335663,8 +335750,8 @@ var init_TaskListV2 = __esm(() => {
   init_format();
   init_tasks();
   init_ThemedText();
-  import_compiler_runtime95 = __toESM(require_compiler_runtime(), 1);
-  React34 = __toESM(require_react(), 1);
+  import_compiler_runtime94 = __toESM(require_compiler_runtime(), 1);
+  React35 = __toESM(require_react(), 1);
   jsx_runtime103 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -335792,13 +335879,13 @@ function useTasksV2() {
   const teamContext = useAppState((s) => s.teamContext);
   const enabled = isTodoV2Enabled() && (!teamContext || isTeamLead(teamContext));
   const store = enabled ? getStore() : null;
-  return import_react65.useSyncExternalStore(store ? store.subscribe : NOOP_SUBSCRIBE, store ? store.getSnapshot : NOOP_SNAPSHOT);
+  return import_react66.useSyncExternalStore(store ? store.subscribe : NOOP_SUBSCRIBE, store ? store.getSnapshot : NOOP_SNAPSHOT);
 }
 function useTasksV2WithCollapseEffect() {
   const tasks = useTasksV2();
   const setAppState = useSetAppState();
   const hidden = tasks === undefined;
-  import_react65.useEffect(() => {
+  import_react66.useEffect(() => {
     if (!hidden)
       return;
     setAppState((prev) => {
@@ -335809,14 +335896,14 @@ function useTasksV2WithCollapseEffect() {
   }, [hidden, setAppState]);
   return tasks;
 }
-var import_react65, HIDE_DELAY_MS = 5000, DEBOUNCE_MS = 50, FALLBACK_POLL_MS = 5000, _store = null, NOOP = () => {}, NOOP_SUBSCRIBE = () => NOOP, NOOP_SNAPSHOT = () => {
+var import_react66, HIDE_DELAY_MS = 5000, DEBOUNCE_MS = 50, FALLBACK_POLL_MS = 5000, _store = null, NOOP = () => {}, NOOP_SUBSCRIBE = () => NOOP, NOOP_SNAPSHOT = () => {
   return;
 };
 var init_useTasksV2 = __esm(() => {
   init_AppState();
   init_tasks();
   init_teammate();
-  import_react65 = __toESM(require_react(), 1);
+  import_react66 = __toESM(require_react(), 1);
 });
 
 // components/Spinner/utils.ts
@@ -335890,17 +335977,17 @@ var init_utils9 = __esm(() => {
 });
 
 // components/Spinner/FlashingChar.tsx
-var import_compiler_runtime96;
+var import_compiler_runtime95;
 var init_FlashingChar = __esm(() => {
   init_ink2();
   init_theme();
   init_utils9();
-  import_compiler_runtime96 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime95 = __toESM(require_compiler_runtime(), 1);
 });
 
 // components/Spinner/GlimmerMessage.tsx
 function GlimmerMessage(t0) {
-  const $ = import_compiler_runtime97.c(75);
+  const $ = import_compiler_runtime96.c(75);
   const {
     message,
     mode,
@@ -336278,14 +336365,14 @@ function GlimmerMessage(t0) {
   }
   return t7;
 }
-var import_compiler_runtime97, jsx_runtime104, ERROR_RED;
+var import_compiler_runtime96, jsx_runtime104, ERROR_RED;
 var init_GlimmerMessage = __esm(() => {
   init_stringWidth();
   init_ink2();
   init_intl();
   init_theme();
   init_utils9();
-  import_compiler_runtime97 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime96 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime104 = __toESM(require_jsx_runtime(), 1);
   ERROR_RED = {
     r: 171,
@@ -336296,7 +336383,7 @@ var init_GlimmerMessage = __esm(() => {
 
 // components/Spinner/ShimmerChar.tsx
 function ShimmerChar(t0) {
-  const $ = import_compiler_runtime98.c(3);
+  const $ = import_compiler_runtime97.c(3);
   const {
     char,
     index,
@@ -336322,16 +336409,16 @@ function ShimmerChar(t0) {
   }
   return t2;
 }
-var import_compiler_runtime98, jsx_runtime105;
+var import_compiler_runtime97, jsx_runtime105;
 var init_ShimmerChar = __esm(() => {
   init_ink2();
-  import_compiler_runtime98 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime97 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime105 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/Spinner/SpinnerGlyph.tsx
 function SpinnerGlyph(t0) {
-  const $ = import_compiler_runtime99.c(9);
+  const $ = import_compiler_runtime98.c(9);
   const {
     frame,
     messageColor,
@@ -336421,12 +336508,12 @@ function SpinnerGlyph(t0) {
   }
   return t4;
 }
-var import_compiler_runtime99, jsx_runtime106, DEFAULT_CHARACTERS, SPINNER_FRAMES, REDUCED_MOTION_DOT = "●", REDUCED_MOTION_CYCLE_MS = 2000, ERROR_RED2;
+var import_compiler_runtime98, jsx_runtime106, DEFAULT_CHARACTERS, SPINNER_FRAMES, REDUCED_MOTION_DOT = "●", REDUCED_MOTION_CYCLE_MS = 2000, ERROR_RED2;
 var init_SpinnerGlyph = __esm(() => {
   init_ink2();
   init_theme();
   init_utils9();
-  import_compiler_runtime99 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime98 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime106 = __toESM(require_jsx_runtime(), 1);
   DEFAULT_CHARACTERS = getDefaultCharacters();
   SPINNER_FRAMES = [...DEFAULT_CHARACTERS, ...[...DEFAULT_CHARACTERS].reverse()];
@@ -336441,7 +336528,7 @@ var init_SpinnerGlyph = __esm(() => {
 function useShimmerAnimation(mode, message, isStalled) {
   const glimmerSpeed = mode === "requesting" ? 50 : 200;
   const [ref, time] = useAnimationFrame(isStalled ? null : glimmerSpeed);
-  const messageWidth = import_react66.useMemo(() => stringWidth(message), [message]);
+  const messageWidth = import_react67.useMemo(() => stringWidth(message), [message]);
   if (isStalled) {
     return [ref, -100];
   }
@@ -336452,20 +336539,20 @@ function useShimmerAnimation(mode, message, isStalled) {
   }
   return [ref, messageWidth + 10 - cyclePosition % cycleLength];
 }
-var import_react66;
+var import_react67;
 var init_useShimmerAnimation = __esm(() => {
   init_stringWidth();
   init_ink2();
-  import_react66 = __toESM(require_react(), 1);
+  import_react67 = __toESM(require_react(), 1);
 });
 
 // components/Spinner/useStalledAnimation.ts
 function useStalledAnimation(time, currentResponseLength, hasActiveTools = false, reducedMotion = false) {
-  const lastTokenTime = import_react67.useRef(time);
-  const lastResponseLength = import_react67.useRef(currentResponseLength);
-  const mountTime = import_react67.useRef(time);
-  const stalledIntensityRef = import_react67.useRef(0);
-  const lastSmoothTime = import_react67.useRef(time);
+  const lastTokenTime = import_react68.useRef(time);
+  const lastResponseLength = import_react68.useRef(currentResponseLength);
+  const mountTime = import_react68.useRef(time);
+  const stalledIntensityRef = import_react68.useRef(0);
+  const lastSmoothTime = import_react68.useRef(time);
   if (currentResponseLength > lastResponseLength.current) {
     lastTokenTime.current = time;
     lastResponseLength.current = currentResponseLength;
@@ -336506,9 +336593,9 @@ function useStalledAnimation(time, currentResponseLength, hasActiveTools = false
   const effectiveIntensity = reducedMotion ? intensity : stalledIntensityRef.current;
   return { isStalled, stalledIntensity: effectiveIntensity };
 }
-var import_react67;
+var import_react68;
 var init_useStalledAnimation = __esm(() => {
-  import_react67 = __toESM(require_react(), 1);
+  import_react68 = __toESM(require_react(), 1);
 });
 
 // components/Spinner/index.ts
@@ -336549,7 +336636,7 @@ function SpinnerAnimationRow({
   const now = Date.now();
   const elapsedTimeMs = pauseStartTimeRef.current !== null ? pauseStartTimeRef.current - loadingStartTimeRef.current - totalPausedMsRef.current : now - loadingStartTimeRef.current - totalPausedMsRef.current;
   const derivedStart = now - elapsedTimeMs;
-  const turnStartRef = import_react68.useRef(derivedStart);
+  const turnStartRef = import_react69.useRef(derivedStart);
   if (!hasRunningTeammates || derivedStart < turnStartRef.current) {
     turnStartRef.current = derivedStart;
   }
@@ -336560,12 +336647,12 @@ function SpinnerAnimationRow({
   } = useStalledAnimation(time, currentResponseLength, hasActiveTools || leaderIsIdle, reducedMotion);
   const frame = reducedMotion ? 0 : Math.floor(time / 120);
   const glimmerSpeed = mode === "requesting" ? 50 : 200;
-  const glimmerMessageWidth = import_react68.useMemo(() => stringWidth(message), [message]);
+  const glimmerMessageWidth = import_react69.useMemo(() => stringWidth(message), [message]);
   const cycleLength = glimmerMessageWidth + 20;
   const cyclePosition = Math.floor(time / glimmerSpeed);
   const glimmerIndex = reducedMotion ? -100 : isStalled ? -100 : mode === "requesting" ? cyclePosition % cycleLength - 10 : glimmerMessageWidth + 10 - cyclePosition % cycleLength;
   const flashOpacity = reducedMotion ? 0 : mode === "tool-use" ? (Math.sin(time / 1000 * Math.PI) + 1) / 2 : 0;
-  const tokenCounterRef = import_react68.useRef(currentResponseLength);
+  const tokenCounterRef = import_react69.useRef(currentResponseLength);
   if (reducedMotion) {
     tokenCounterRef.current = currentResponseLength;
   } else {
@@ -336701,7 +336788,7 @@ function SpinnerAnimationRow({
   });
 }
 function SpinnerModeGlyph(t0) {
-  const $ = import_compiler_runtime100.c(2);
+  const $ = import_compiler_runtime99.c(2);
   const {
     mode
   } = t0;
@@ -336743,7 +336830,7 @@ function SpinnerModeGlyph(t0) {
     }
   }
 }
-var import_compiler_runtime100, import_react68, jsx_runtime107, SEP_WIDTH, THINKING_BARE_WIDTH, SHOW_TOKENS_AFTER_MS = 30000, THINKING_INACTIVE, THINKING_INACTIVE_SHIMMER, THINKING_DELAY_MS = 3000, THINKING_GLOW_PERIOD_S = 2;
+var import_compiler_runtime99, import_react69, jsx_runtime107, SEP_WIDTH, THINKING_BARE_WIDTH, SHOW_TOKENS_AFTER_MS = 30000, THINKING_INACTIVE, THINKING_INACTIVE_SHIMMER, THINKING_DELAY_MS = 3000, THINKING_GLOW_PERIOD_S = 2;
 var init_SpinnerAnimationRow = __esm(() => {
   init_figures();
   init_stringWidth();
@@ -336755,8 +336842,8 @@ var init_SpinnerAnimationRow = __esm(() => {
   init_SpinnerGlyph();
   init_useStalledAnimation();
   init_utils9();
-  import_compiler_runtime100 = __toESM(require_compiler_runtime(), 1);
-  import_react68 = __toESM(require_react(), 1);
+  import_compiler_runtime99 = __toESM(require_compiler_runtime(), 1);
+  import_react69 = __toESM(require_react(), 1);
   jsx_runtime107 = __toESM(require_jsx_runtime(), 1);
   SEP_WIDTH = stringWidth(" · ");
   THINKING_BARE_WIDTH = stringWidth("thinking");
@@ -337172,14 +337259,14 @@ function processSandboxPermissionResponse(params) {
   callback.resolve(params.allow);
   return true;
 }
-var import_react69, pendingCallbacks, pendingSandboxCallbacks;
+var import_react70, pendingCallbacks, pendingSandboxCallbacks;
 var init_useSwarmPermissionPoller = __esm(() => {
   init_debug();
   init_errors();
   init_PermissionUpdateSchema();
   init_permissionSync();
   init_teammate();
-  import_react69 = __toESM(require_react(), 1);
+  import_react70 = __toESM(require_react(), 1);
   pendingCallbacks = new Map;
   pendingSandboxCallbacks = new Map;
 });
@@ -338002,7 +338089,7 @@ var init_InProcessBackend = __esm(() => {
 });
 
 // utils/swarm/backends/it2Setup.ts
-import { homedir as homedir22 } from "os";
+import { homedir as homedir23 } from "os";
 async function detectPythonPackageManager() {
   const uvResult = await execFileNoThrow("which", ["uv"]);
   if (uvResult.code === 0) {
@@ -338037,18 +338124,18 @@ async function installIt2(packageManager) {
   switch (packageManager) {
     case "uvx":
       result = await execFileNoThrowWithCwd("uv", ["tool", "install", "it2"], {
-        cwd: homedir22()
+        cwd: homedir23()
       });
       break;
     case "pipx":
       result = await execFileNoThrowWithCwd("pipx", ["install", "it2"], {
-        cwd: homedir22()
+        cwd: homedir23()
       });
       break;
     case "pip":
-      result = await execFileNoThrowWithCwd("pip", ["install", "--user", "it2"], { cwd: homedir22() });
+      result = await execFileNoThrowWithCwd("pip", ["install", "--user", "it2"], { cwd: homedir23() });
       if (result.code !== 0) {
-        result = await execFileNoThrowWithCwd("pip3", ["install", "--user", "it2"], { cwd: homedir22() });
+        result = await execFileNoThrowWithCwd("pip3", ["install", "--user", "it2"], { cwd: homedir23() });
       }
       break;
   }
@@ -339079,9 +339166,9 @@ var init_registry = __esm(() => {
 });
 
 // utils/swarm/teamHelpers.ts
-import { mkdirSync as mkdirSync4, readFileSync as readFileSync11, writeFileSync as writeFileSync3 } from "fs";
+import { mkdirSync as mkdirSync5, readFileSync as readFileSync12, writeFileSync as writeFileSync4 } from "fs";
 import { mkdir as mkdir14, readFile as readFile18, rm as rm4, writeFile as writeFile15 } from "fs/promises";
-import { join as join65 } from "path";
+import { join as join66 } from "path";
 function sanitizeName(name) {
   return name.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase();
 }
@@ -339089,14 +339176,14 @@ function sanitizeAgentName(name) {
   return name.replace(/@/g, "-");
 }
 function getTeamDir(teamName) {
-  return join65(getTeamsDir(), sanitizeName(teamName));
+  return join66(getTeamsDir(), sanitizeName(teamName));
 }
 function getTeamFilePath(teamName) {
-  return join65(getTeamDir(teamName), "config.json");
+  return join66(getTeamDir(teamName), "config.json");
 }
 function readTeamFile(teamName) {
   try {
-    const content = readFileSync11(getTeamFilePath(teamName), "utf-8");
+    const content = readFileSync12(getTeamFilePath(teamName), "utf-8");
     return jsonParse(content);
   } catch (e) {
     if (getErrnoCode(e) === "ENOENT")
@@ -339118,8 +339205,8 @@ async function readTeamFileAsync(teamName) {
 }
 function writeTeamFile(teamName, teamFile) {
   const teamDir = getTeamDir(teamName);
-  mkdirSync4(teamDir, { recursive: true });
-  writeFileSync3(getTeamFilePath(teamName), jsonStringify(teamFile, null, 2));
+  mkdirSync5(teamDir, { recursive: true });
+  writeFileSync4(getTeamFilePath(teamName), jsonStringify(teamFile, null, 2));
 }
 async function writeTeamFileAsync(teamName, teamFile) {
   const teamDir = getTeamDir(teamName);
@@ -339254,15 +339341,15 @@ async function setMemberActive(teamName, memberName, isActive) {
   logForDebugging(`[TeammateTool] Set member ${memberName} in team ${teamName} to ${isActive ? "active" : "idle"}`);
 }
 async function destroyWorktree(worktreePath) {
-  const gitFilePath = join65(worktreePath, ".git");
+  const gitFilePath = join66(worktreePath, ".git");
   let mainRepoPath = null;
   try {
     const gitFileContent = (await readFile18(gitFilePath, "utf-8")).trim();
     const match = gitFileContent.match(/^gitdir:\s*(.+)$/);
     if (match && match[1]) {
       const worktreeGitDir = match[1];
-      const mainGitDir = join65(worktreeGitDir, "..", "..");
-      mainRepoPath = join65(mainGitDir, "..");
+      const mainGitDir = join66(worktreeGitDir, "..", "..");
+      mainRepoPath = join66(mainGitDir, "..");
     }
   } catch {}
   if (mainRepoPath) {
@@ -339627,18 +339714,18 @@ var init_selectors = () => {};
 // hooks/useElapsedTime.ts
 function useElapsedTime(startTime, isRunning, ms = 1000, pausedMs = 0, endTime) {
   const get = () => formatDuration(Math.max(0, (endTime ?? Date.now()) - startTime - pausedMs));
-  const subscribe = import_react70.useCallback((notify) => {
+  const subscribe = import_react71.useCallback((notify) => {
     if (!isRunning)
       return () => {};
     const interval = setInterval(notify, ms);
     return () => clearInterval(interval);
   }, [isRunning, ms]);
-  return import_react70.useSyncExternalStore(subscribe, get, get);
+  return import_react71.useSyncExternalStore(subscribe, get, get);
 }
-var import_react70;
+var import_react71;
 var init_useElapsedTime = __esm(() => {
   init_format();
-  import_react70 = __toESM(require_react(), 1);
+  import_react71 = __toESM(require_react(), 1);
 });
 
 // components/Spinner/teammateSelectHint.ts
@@ -339694,16 +339781,16 @@ function TeammateSpinnerLine({
   allIdle,
   showPreview
 }) {
-  const [randomVerb] = import_react71.useState(() => teammate.spinnerVerb ?? sample_default(getSpinnerVerbs()));
-  const [pastTenseVerb] = import_react71.useState(() => teammate.pastTenseVerb ?? sample_default(TURN_COMPLETION_VERBS));
+  const [randomVerb] = import_react72.useState(() => teammate.spinnerVerb ?? sample_default(getSpinnerVerbs()));
+  const [pastTenseVerb] = import_react72.useState(() => teammate.pastTenseVerb ?? sample_default(TURN_COMPLETION_VERBS));
   const isHighlighted = isSelected || isForegrounded;
   const treeChar = isHighlighted ? isLast ? "╘═" : "╞═" : isLast ? "└─" : "├─";
   const nameColor = toInkColor(teammate.identity.color);
   const {
     columns
   } = useTerminalSize();
-  const idleStartRef = import_react71.useRef(null);
-  const frozenDurationRef = import_react71.useRef(null);
+  const idleStartRef = import_react72.useRef(null);
+  const frozenDurationRef = import_react72.useRef(null);
   if (teammate.isIdle && idleStartRef.current === null) {
     idleStartRef.current = Date.now();
   } else if (!teammate.isIdle) {
@@ -339874,7 +339961,7 @@ function TeammateSpinnerLine({
     ]
   });
 }
-var import_react71, jsx_runtime108;
+var import_react72, jsx_runtime108;
 var init_TeammateSpinnerLine = __esm(() => {
   init_figures();
   init_sample();
@@ -339887,13 +339974,13 @@ var init_TeammateSpinnerLine = __esm(() => {
   init_collapseReadSearch();
   init_format();
   init_ink3();
-  import_react71 = __toESM(require_react(), 1);
+  import_react72 = __toESM(require_react(), 1);
   jsx_runtime108 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/Spinner/TeammateSpinnerTree.tsx
 function TeammateSpinnerTree(t0) {
-  const $ = import_compiler_runtime101.c(61);
+  const $ = import_compiler_runtime100.c(61);
   const {
     selectedIndex,
     isInSelectionMode,
@@ -339902,7 +339989,7 @@ function TeammateSpinnerTree(t0) {
     leaderTokenCount,
     leaderIdleText
   } = t0;
-  const tasks = useAppState(_temp21);
+  const tasks = useAppState(_temp20);
   const viewingAgentTaskId = useAppState(_temp210);
   const showTeammateMessagePreview = useAppState(_temp38);
   let T0;
@@ -340154,11 +340241,11 @@ function _temp38(s_1) {
 function _temp210(s_0) {
   return s_0.viewingAgentTaskId;
 }
-function _temp21(s) {
+function _temp20(s) {
   return s.tasks;
 }
 function HideRow(t0) {
-  const $ = import_compiler_runtime101.c(18);
+  const $ = import_compiler_runtime100.c(18);
   const {
     isSelected
   } = t0;
@@ -340243,7 +340330,7 @@ function HideRow(t0) {
   }
   return t10;
 }
-var import_compiler_runtime101, jsx_runtime109;
+var import_compiler_runtime100, jsx_runtime109;
 var init_TeammateSpinnerTree = __esm(() => {
   init_figures();
   init_ink2();
@@ -340251,7 +340338,7 @@ var init_TeammateSpinnerTree = __esm(() => {
   init_InProcessTeammateTask();
   init_format();
   init_TeammateSpinnerLine();
-  import_compiler_runtime101 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime100 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime109 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -340297,9 +340384,9 @@ function SpinnerWithVerbInner({
     columns
   } = useTerminalSize();
   const tasksV2 = useTasksV2();
-  const [thinkingStatus, setThinkingStatus] = import_react72.useState(null);
-  const thinkingStartRef = import_react72.useRef(null);
-  import_react72.useEffect(() => {
+  const [thinkingStatus, setThinkingStatus] = import_react73.useState(null);
+  const thinkingStartRef = import_react73.useRef(null);
+  import_react73.useEffect(() => {
     let showDurationTimer = null;
     let clearStatusTimer = null;
     if (mode === "thinking") {
@@ -340331,11 +340418,11 @@ function SpinnerWithVerbInner({
   }, [mode]);
   const currentTodo = tasksV2?.find((task) => task.status !== "pending" && task.status !== "completed");
   const nextTask = findNextPendingTask(tasksV2);
-  const [randomVerb] = import_react72.useState(() => sample_default(getSpinnerVerbs()));
+  const [randomVerb] = import_react73.useState(() => sample_default(getSpinnerVerbs()));
   const leaderVerb = overrideMessage ?? currentTodo?.activeForm ?? currentTodo?.subject ?? randomVerb;
   const effectiveVerb = foregroundedTeammate && !foregroundedTeammate.isIdle ? foregroundedTeammate.spinnerVerb ?? randomVerb : leaderVerb;
   const message = effectiveVerb + "…";
-  import_react72.useEffect(() => {
+  import_react73.useEffect(() => {
     const operationId = "spinner-" + mode;
     activityManager.startCLIActivity(operationId);
     return () => {
@@ -340494,7 +340581,7 @@ function SpinnerWithVerbInner({
   });
 }
 function BriefIdleStatus() {
-  const $ = import_compiler_runtime102.c(9);
+  const $ = import_compiler_runtime101.c(9);
   const connStatus = useAppState(_temp72);
   const runningCount = useAppState(_temp82);
   const {
@@ -340574,7 +340661,7 @@ function _temp72(s) {
   return s.remoteConnectionStatus;
 }
 function Spinner() {
-  const $ = import_compiler_runtime102.c(8);
+  const $ = import_compiler_runtime101.c(8);
   const settings = useSettings();
   const reducedMotion = settings.prefersReducedMotion ?? false;
   const [ref, time] = useAnimationFrame(reducedMotion ? null : 120);
@@ -340646,7 +340733,7 @@ function findNextPendingTask(tasks) {
   const unresolvedIds = new Set(tasks.filter((t) => t.status !== "completed").map((t) => t.id));
   return pendingTasks.find((t) => !t.blockedBy.some((id) => unresolvedIds.has(id))) ?? pendingTasks[0];
 }
-var import_compiler_runtime102, import_react72, jsx_runtime110, DEFAULT_CHARACTERS2, SPINNER_FRAMES2;
+var import_compiler_runtime101, import_react73, jsx_runtime110, DEFAULT_CHARACTERS2, SPINNER_FRAMES2;
 var init_Spinner2 = __esm(() => {
   init_ink2();
   init_bridgeStatusUtil();
@@ -340675,8 +340762,8 @@ var init_Spinner2 = __esm(() => {
   init_TeammateSpinnerTree();
   init_ink2();
   init_config2();
-  import_compiler_runtime102 = __toESM(require_compiler_runtime(), 1);
-  import_react72 = __toESM(require_react(), 1);
+  import_compiler_runtime101 = __toESM(require_compiler_runtime(), 1);
+  import_react73 = __toESM(require_react(), 1);
   jsx_runtime110 = __toESM(require_jsx_runtime(), 1);
   DEFAULT_CHARACTERS2 = getDefaultCharacters();
   SPINNER_FRAMES2 = [...DEFAULT_CHARACTERS2, ...[...DEFAULT_CHARACTERS2].reverse()];
@@ -340694,7 +340781,7 @@ function ConsoleOAuthFlow({
   const orgUUID = settings.forceLoginOrgUUID;
   const forcedMethodMessage = forceLoginMethod === "claudeai" ? "Login method pre-selected: Subscription Plan (EvilClaude Pro/Max)" : forceLoginMethod === "console" ? "Login method pre-selected: API Usage Billing (Anthropic Console)" : null;
   const terminal = useTerminalNotification();
-  const [oauthStatus, setOAuthStatus] = import_react73.useState(() => {
+  const [oauthStatus, setOAuthStatus] = import_react74.useState(() => {
     if (mode === "setup-token") {
       return {
         state: "ready_to_start"
@@ -340709,23 +340796,23 @@ function ConsoleOAuthFlow({
       state: "idle"
     };
   });
-  const [pastedCode, setPastedCode] = import_react73.useState("");
-  const [cursorOffset, setCursorOffset] = import_react73.useState(0);
-  const [oauthService] = import_react73.useState(() => new OAuthService);
-  const [loginWithClaudeAi, setLoginWithClaudeAi] = import_react73.useState(() => {
+  const [pastedCode, setPastedCode] = import_react74.useState("");
+  const [cursorOffset, setCursorOffset] = import_react74.useState(0);
+  const [oauthService] = import_react74.useState(() => new OAuthService);
+  const [loginWithClaudeAi, setLoginWithClaudeAi] = import_react74.useState(() => {
     return mode === "setup-token" || forceLoginMethod === "claudeai";
   });
-  const [showPastePrompt, setShowPastePrompt] = import_react73.useState(false);
-  const [urlCopied, setUrlCopied] = import_react73.useState(false);
+  const [showPastePrompt, setShowPastePrompt] = import_react74.useState(false);
+  const [urlCopied, setUrlCopied] = import_react74.useState(false);
   const textInputColumns = useTerminalSize().columns - PASTE_HERE_MSG.length - 1;
-  import_react73.useEffect(() => {
+  import_react74.useEffect(() => {
     if (forceLoginMethod === "claudeai") {
       logEvent("tengu_oauth_claudeai_forced", {});
     } else if (forceLoginMethod === "console") {
       logEvent("tengu_oauth_console_forced", {});
     }
   }, [forceLoginMethod]);
-  import_react73.useEffect(() => {
+  import_react74.useEffect(() => {
     if (oauthStatus.state === "about_to_retry") {
       const timer = setTimeout(setOAuthStatus, 1000, oauthStatus.nextState);
       return () => clearTimeout(timer);
@@ -340760,7 +340847,7 @@ function ConsoleOAuthFlow({
     context: "Confirmation",
     isActive: oauthStatus.state === "error" && !!oauthStatus.toRetry
   });
-  import_react73.useEffect(() => {
+  import_react74.useEffect(() => {
     if (pastedCode === "c" && oauthStatus.state === "waiting_for_login" && showPastePrompt && !urlCopied) {
       setClipboard(oauthStatus.url).then((raw) => {
         if (raw)
@@ -340802,7 +340889,7 @@ function ConsoleOAuthFlow({
       });
     }
   }
-  const startOAuth = import_react73.useCallback(async () => {
+  const startOAuth = import_react74.useCallback(async () => {
     try {
       logEvent("tengu_oauth_flow_start", {
         loginWithClaudeAi
@@ -340871,8 +340958,8 @@ function ConsoleOAuthFlow({
       });
     }
   }, [oauthService, setShowPastePrompt, loginWithClaudeAi, mode, orgUUID]);
-  const pendingOAuthStartRef = import_react73.useRef(false);
-  import_react73.useEffect(() => {
+  const pendingOAuthStartRef = import_react74.useRef(false);
+  import_react74.useEffect(() => {
     if (oauthStatus.state === "ready_to_start" && !pendingOAuthStartRef.current) {
       pendingOAuthStartRef.current = true;
       process.nextTick((startOAuth_0, pendingOAuthStartRef_0) => {
@@ -340881,7 +340968,7 @@ function ConsoleOAuthFlow({
       }, startOAuth, pendingOAuthStartRef);
     }
   }, [oauthStatus.state, startOAuth]);
-  import_react73.useEffect(() => {
+  import_react74.useEffect(() => {
     if (mode === "setup-token" && oauthStatus.state === "success") {
       const timer_0 = setTimeout((loginWithClaudeAi_0, onDone_0) => {
         logEvent("tengu_oauth_success", {
@@ -340892,7 +340979,7 @@ function ConsoleOAuthFlow({
       return () => clearTimeout(timer_0);
     }
   }, [mode, oauthStatus, loginWithClaudeAi, onDone]);
-  import_react73.useEffect(() => {
+  import_react74.useEffect(() => {
     return () => {
       oauthService.cleanup();
     };
@@ -340994,7 +341081,7 @@ function ConsoleOAuthFlow({
   });
 }
 function OAuthStatusMessage(t0) {
-  const $ = import_compiler_runtime103.c(51);
+  const $ = import_compiler_runtime102.c(51);
   const {
     oauthStatus,
     mode,
@@ -341509,10 +341596,10 @@ function OAuthStatusMessage(t0) {
   }
 }
 function SwampMineApiKeyInput({ setOAuthStatus }) {
-  const [value, setValue] = import_react73.useState("");
-  const [offset, setOffset] = import_react73.useState(0);
-  const [error, setError] = import_react73.useState(null);
-  const handleSubmit = import_react73.useCallback((submitted) => {
+  const [value, setValue] = import_react74.useState("");
+  const [offset, setOffset] = import_react74.useState(0);
+  const [error, setError] = import_react74.useState(null);
+  const handleSubmit = import_react74.useCallback((submitted) => {
     const key = (submitted || "").trim();
     if (!key) {
       setError("API key cannot be empty.");
@@ -341610,7 +341697,7 @@ function SwampMineApiKeyInput({ setOAuthStatus }) {
     ]
   });
 }
-var import_compiler_runtime103, import_react73, jsx_runtime111, PASTE_HERE_MSG = "Paste code here if prompted > ";
+var import_compiler_runtime102, import_react74, jsx_runtime111, PASTE_HERE_MSG = "Paste code here if prompted > ";
 var init_ConsoleOAuthFlow = __esm(() => {
   init_analytics();
   init_auth7();
@@ -341629,8 +341716,8 @@ var init_ConsoleOAuthFlow = __esm(() => {
   init_KeyboardShortcutHint();
   init_Spinner2();
   init_TextInput();
-  import_compiler_runtime103 = __toESM(require_compiler_runtime(), 1);
-  import_react73 = __toESM(require_react(), 1);
+  import_compiler_runtime102 = __toESM(require_compiler_runtime(), 1);
+  import_react74 = __toESM(require_react(), 1);
   jsx_runtime111 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -341639,12 +341726,12 @@ function TeleportStash({
   onStashAndContinue,
   onCancel
 }) {
-  const [gitFileStatus, setGitFileStatus] = import_react74.useState(null);
+  const [gitFileStatus, setGitFileStatus] = import_react75.useState(null);
   const changedFiles = gitFileStatus !== null ? [...gitFileStatus.tracked, ...gitFileStatus.untracked] : [];
-  const [loading, setLoading] = import_react74.useState(true);
-  const [stashing, setStashing] = import_react74.useState(false);
-  const [error, setError] = import_react74.useState(null);
-  import_react74.useEffect(() => {
+  const [loading, setLoading] = import_react75.useState(true);
+  const [stashing, setStashing] = import_react75.useState(false);
+  const [error, setError] = import_react75.useState(null);
+  import_react75.useEffect(() => {
     const loadChangedFiles = async () => {
       try {
         const fileStatus = await getFileStatus();
@@ -341786,7 +341873,7 @@ function TeleportStash({
     ]
   });
 }
-var import_react74, jsx_runtime112;
+var import_react75, jsx_runtime112;
 var init_TeleportStash = __esm(() => {
   init_figures();
   init_ink2();
@@ -341795,20 +341882,20 @@ var init_TeleportStash = __esm(() => {
   init_CustomSelect();
   init_Dialog();
   init_Spinner2();
-  import_react74 = __toESM(require_react(), 1);
+  import_react75 = __toESM(require_react(), 1);
   jsx_runtime112 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/TeleportError.tsx
 function TeleportError(t0) {
-  const $ = import_compiler_runtime104.c(18);
+  const $ = import_compiler_runtime103.c(18);
   const {
     onComplete,
     errorsToIgnore: t1
   } = t0;
   const errorsToIgnore = t1 === undefined ? EMPTY_ERRORS_TO_IGNORE : t1;
-  const [currentError, setCurrentError] = import_react75.useState(null);
-  const [isLoggingIn, setIsLoggingIn] = import_react75.useState(false);
+  const [currentError, setCurrentError] = import_react76.useState(null);
+  const [isLoggingIn, setIsLoggingIn] = import_react76.useState(false);
   let t2;
   if ($[0] !== errorsToIgnore || $[1] !== onComplete) {
     t2 = async () => {
@@ -341847,8 +341934,8 @@ function TeleportError(t0) {
     t3 = $[4];
     t4 = $[5];
   }
-  import_react75.useEffect(t3, t4);
-  const onCancel = _temp30;
+  import_react76.useEffect(t3, t4);
+  const onCancel = _temp21;
   let t5;
   if ($[6] !== checkErrors) {
     t5 = () => {
@@ -341976,7 +342063,7 @@ function TeleportError(t0) {
     }
   }
 }
-function _temp30() {
+function _temp21() {
   gracefulShutdownSync(0);
 }
 async function getTeleportErrors() {
@@ -341990,7 +342077,7 @@ async function getTeleportErrors() {
   }
   return errors;
 }
-var import_compiler_runtime104, import_react75, jsx_runtime113, EMPTY_ERRORS_TO_IGNORE;
+var import_compiler_runtime103, import_react76, jsx_runtime113, EMPTY_ERRORS_TO_IGNORE;
 var init_TeleportError = __esm(() => {
   init_preconditions();
   init_gracefulShutdown();
@@ -341999,8 +342086,8 @@ var init_TeleportError = __esm(() => {
   init_CustomSelect();
   init_Dialog();
   init_TeleportStash();
-  import_compiler_runtime104 = __toESM(require_compiler_runtime(), 1);
-  import_react75 = __toESM(require_react(), 1);
+  import_compiler_runtime103 = __toESM(require_compiler_runtime(), 1);
+  import_react76 = __toESM(require_react(), 1);
   jsx_runtime113 = __toESM(require_jsx_runtime(), 1);
   EMPTY_ERRORS_TO_IGNORE = new Set;
 });
@@ -342277,7 +342364,7 @@ import {
   stat as stat21,
   unlink as unlink9
 } from "fs/promises";
-import { dirname as dirname26, isAbsolute as isAbsolute13, join as join66, relative as relative9 } from "path";
+import { dirname as dirname26, isAbsolute as isAbsolute13, join as join67, relative as relative9 } from "path";
 import { inspect as inspect4 } from "util";
 function fileHistoryEnabled() {
   if (getIsNonInteractiveSession()) {
@@ -342696,7 +342783,7 @@ function getBackupFileName(filePath, version) {
 }
 function resolveBackupPath(backupFileName, sessionId) {
   const configDir = getClaudeConfigHomeDir();
-  return join66(configDir, "file-history", sessionId || getSessionId(), backupFileName);
+  return join67(configDir, "file-history", sessionId || getSessionId(), backupFileName);
 }
 async function createBackup(filePath, version) {
   if (filePath === null) {
@@ -342778,7 +342865,7 @@ function maybeExpandFilePath(filePath) {
   if (isAbsolute13(filePath)) {
     return filePath;
   }
-  return join66(getOriginalCwd(), filePath);
+  return join67(getOriginalCwd(), filePath);
 }
 function fileHistoryRestoreStateFromLog(fileHistorySnapshots, onUpdateState) {
   if (!fileHistoryEnabled()) {
@@ -342824,14 +342911,14 @@ async function copyFileHistoryForResume(log) {
     return;
   }
   try {
-    const newBackupDir = join66(getClaudeConfigHomeDir(), "file-history", sessionId);
+    const newBackupDir = join67(getClaudeConfigHomeDir(), "file-history", sessionId);
     await mkdir15(newBackupDir, { recursive: true });
     let failedSnapshots = 0;
     await Promise.allSettled(fileHistorySnapshots.map(async (snapshot) => {
       const backupEntries = Object.values(snapshot.trackedFileBackups).filter((backup) => backup.backupFileName !== null);
       const results = await Promise.allSettled(backupEntries.map(async ({ backupFileName }) => {
         const oldBackupPath = resolveBackupPath(backupFileName, previousSessionId);
-        const newBackupPath = join66(newBackupDir, backupFileName);
+        const newBackupPath = join67(newBackupDir, backupFileName);
         try {
           await link2(oldBackupPath, newBackupPath);
         } catch (e) {
@@ -343710,7 +343797,7 @@ var init_words = __esm(() => {
 // utils/plans.ts
 import { randomUUID as randomUUID13 } from "crypto";
 import { copyFile as copyFile4, writeFile as writeFile16 } from "fs/promises";
-import { join as join67, resolve as resolve20, sep as sep13 } from "path";
+import { join as join68, resolve as resolve20, sep as sep13 } from "path";
 function getPlanSlug(sessionId) {
   const id = sessionId ?? getSessionId();
   const cache = getPlanSlugCache();
@@ -343719,7 +343806,7 @@ function getPlanSlug(sessionId) {
     const plansDir = getPlansDirectory();
     for (let i = 0;i < MAX_SLUG_RETRIES; i++) {
       slug = generateWordSlug();
-      const filePath = join67(plansDir, `${slug}.md`);
+      const filePath = join68(plansDir, `${slug}.md`);
       if (!getFsImplementation().existsSync(filePath)) {
         break;
       }
@@ -343737,9 +343824,9 @@ function clearAllPlanSlugs() {
 function getPlanFilePath(agentId) {
   const planSlug = getPlanSlug(getSessionId());
   if (!agentId) {
-    return join67(getPlansDirectory(), `${planSlug}.md`);
+    return join68(getPlansDirectory(), `${planSlug}.md`);
   }
-  return join67(getPlansDirectory(), `${planSlug}-agent-${agentId}.md`);
+  return join68(getPlansDirectory(), `${planSlug}-agent-${agentId}.md`);
 }
 function getPlan(agentId) {
   const filePath = getPlanFilePath(agentId);
@@ -343762,7 +343849,7 @@ async function copyPlanForResume(log, targetSessionId) {
   }
   const sessionId = targetSessionId ?? getSessionId();
   setPlanSlug(sessionId, slug);
-  const planPath = join67(getPlansDirectory(), `${slug}.md`);
+  const planPath = join68(getPlansDirectory(), `${slug}.md`);
   try {
     await getFsImplementation().readFile(planPath, { encoding: "utf-8" });
     return true;
@@ -343805,9 +343892,9 @@ async function copyPlanForFork(log, targetSessionId) {
     return false;
   }
   const plansDir = getPlansDirectory();
-  const originalPlanPath = join67(plansDir, `${originalSlug}.md`);
+  const originalPlanPath = join68(plansDir, `${originalSlug}.md`);
   const newSlug = getPlanSlug(targetSessionId);
-  const newPlanPath = join67(plansDir, `${newSlug}.md`);
+  const newPlanPath = join68(plansDir, `${newSlug}.md`);
   try {
     await copyFile4(originalPlanPath, newPlanPath);
     return true;
@@ -343922,12 +344009,12 @@ var init_plans = __esm(() => {
       const resolved = resolve20(cwd, settingsDir);
       if (!resolved.startsWith(cwd + sep13) && resolved !== cwd) {
         logError2(new Error(`plansDirectory must be within project root: ${settingsDir}`));
-        plansPath = join67(getClaudeConfigHomeDir(), "plans");
+        plansPath = join68(getClaudeConfigHomeDir(), "plans");
       } else {
         plansPath = resolved;
       }
     } else {
-      plansPath = join67(getClaudeConfigHomeDir(), "plans");
+      plansPath = join68(getClaudeConfigHomeDir(), "plans");
     }
     try {
       getFsImplementation().mkdirSync(plansPath);
@@ -343940,21 +344027,21 @@ var init_plans = __esm(() => {
 
 // utils/sessionEnvironment.ts
 import { mkdir as mkdir16, readdir as readdir11, readFile as readFile20, writeFile as writeFile17 } from "fs/promises";
-import { join as join68 } from "path";
+import { join as join69 } from "path";
 async function getSessionEnvDirPath() {
-  const sessionEnvDir = join68(getClaudeConfigHomeDir(), "session-env", getSessionId());
+  const sessionEnvDir = join69(getClaudeConfigHomeDir(), "session-env", getSessionId());
   await mkdir16(sessionEnvDir, { recursive: true });
   return sessionEnvDir;
 }
 async function getHookEnvFilePath(hookEvent, hookIndex) {
   const prefix = hookEvent.toLowerCase();
-  return join68(await getSessionEnvDirPath(), `${prefix}-hook-${hookIndex}.sh`);
+  return join69(await getSessionEnvDirPath(), `${prefix}-hook-${hookIndex}.sh`);
 }
 async function clearCwdEnvFiles() {
   try {
     const dir = await getSessionEnvDirPath();
     const files = await readdir11(dir);
-    await Promise.all(files.filter((f) => (f.startsWith("filechanged-hook-") || f.startsWith("cwdchanged-hook-")) && HOOK_ENV_REGEX.test(f)).map((f) => writeFile17(join68(dir, f), "")));
+    await Promise.all(files.filter((f) => (f.startsWith("filechanged-hook-") || f.startsWith("cwdchanged-hook-")) && HOOK_ENV_REGEX.test(f)).map((f) => writeFile17(join69(dir, f), "")));
   } catch (e) {
     const code = getErrnoCode(e);
     if (code !== "ENOENT") {
@@ -343995,7 +344082,7 @@ async function getSessionEnvironmentScript() {
     const files = await readdir11(sessionEnvDir);
     const hookFiles = files.filter((f) => HOOK_ENV_REGEX.test(f)).sort(sortHookEnvFiles);
     for (const file of hookFiles) {
-      const filePath = join68(sessionEnvDir, file);
+      const filePath = join69(sessionEnvDir, file);
       try {
         const content = (await readFile20(filePath, "utf8")).trim();
         if (content) {
@@ -344108,7 +344195,7 @@ var init_hooksConfigSnapshot = __esm(() => {
 });
 
 // utils/hooks/fileChangedWatcher.ts
-import { isAbsolute as isAbsolute14, join as join69 } from "path";
+import { isAbsolute as isAbsolute14, join as join70 } from "path";
 function setEnvHookNotifier(cb) {
   notifyCallback = cb;
 }
@@ -344136,7 +344223,7 @@ function resolveWatchPaths(config) {
     for (const name of m.matcher.split("|").map((s) => s.trim())) {
       if (!name)
         continue;
-      staticPaths.push(isAbsolute14(name) ? name : join69(currentCwd, name));
+      staticPaths.push(isAbsolute14(name) ? name : join70(currentCwd, name));
     }
   }
   return [...new Set([...staticPaths, ...dynamicWatchPaths])];
@@ -344801,8 +344888,8 @@ var init_conversationRecovery = __esm(() => {
 
 // services/api/filesApi.ts
 import { randomUUID as randomUUID14 } from "crypto";
-import * as fs10 from "fs/promises";
-import * as path15 from "path";
+import * as fs11 from "fs/promises";
+import * as path16 from "path";
 function getDefaultApiBaseUrl() {
   return "https://evilclaude.swampmine.in";
 }
@@ -344869,19 +344956,19 @@ async function downloadFile(fileId, config) {
   });
 }
 function buildDownloadPath(basePath, sessionId, relativePath) {
-  const normalized = path15.normalize(relativePath);
+  const normalized = path16.normalize(relativePath);
   if (normalized.startsWith("..")) {
     logDebugError(`Invalid file path: ${relativePath}. Path must not traverse above workspace`);
     return null;
   }
-  const uploadsBase = path15.join(basePath, sessionId, "uploads");
+  const uploadsBase = path16.join(basePath, sessionId, "uploads");
   const redundantPrefixes = [
-    path15.join(basePath, sessionId, "uploads") + path15.sep,
-    path15.sep + "uploads" + path15.sep
+    path16.join(basePath, sessionId, "uploads") + path16.sep,
+    path16.sep + "uploads" + path16.sep
   ];
   const matchedPrefix = redundantPrefixes.find((p) => normalized.startsWith(p));
   const cleanPath = matchedPrefix ? normalized.slice(matchedPrefix.length) : normalized;
-  return path15.join(uploadsBase, cleanPath);
+  return path16.join(uploadsBase, cleanPath);
 }
 async function downloadAndSaveFile(attachment, config) {
   const { fileId, relativePath } = attachment;
@@ -344896,9 +344983,9 @@ async function downloadAndSaveFile(attachment, config) {
   }
   try {
     const content = await downloadFile(fileId, config);
-    const parentDir = path15.dirname(fullPath);
-    await fs10.mkdir(parentDir, { recursive: true });
-    await fs10.writeFile(fullPath, content);
+    const parentDir = path16.dirname(fullPath);
+    await fs11.mkdir(parentDir, { recursive: true });
+    await fs11.writeFile(fullPath, content);
     logDebug(`Saved file ${fileId} to ${fullPath} (${content.length} bytes)`);
     return {
       fileId,
@@ -344962,7 +345049,7 @@ async function uploadFile(filePath, relativePath, config, opts) {
   logDebug(`Uploading file ${filePath} as ${relativePath}`);
   let content;
   try {
-    content = await fs10.readFile(filePath);
+    content = await fs11.readFile(filePath);
   } catch (error) {
     logEvent("tengu_file_upload_failed", {
       error_type: "file_read"
@@ -344985,7 +345072,7 @@ async function uploadFile(filePath, relativePath, config, opts) {
     };
   }
   const boundary = `----FormBoundary${randomUUID14()}`;
-  const filename = path15.basename(relativePath);
+  const filename = path16.basename(relativePath);
   const bodyParts = [];
   bodyParts.push(Buffer.from(`--${boundary}\r
 ` + `Content-Disposition: form-data; name="file"; filename="${filename}"\r
@@ -345123,10 +345210,10 @@ var init_filesApi = __esm(() => {
 // utils/tempfile.ts
 import { createHash as createHash16, randomUUID as randomUUID15 } from "crypto";
 import { tmpdir as tmpdir4 } from "os";
-import { join as join71 } from "path";
+import { join as join72 } from "path";
 function generateTempFilePath(prefix = "claude-prompt", extension = ".md", options) {
   const id = options?.contentHash ? createHash16("sha256").update(options.contentHash).digest("hex").slice(0, 16) : randomUUID15();
-  return join71(tmpdir4(), `${prefix}-${id}${extension}`);
+  return join72(tmpdir4(), `${prefix}-${id}${extension}`);
 }
 var init_tempfile = () => {};
 
@@ -347510,7 +347597,7 @@ var init_LSPDiagnosticRegistry = __esm(() => {
 
 // utils/plugins/lspPluginIntegration.ts
 import { readFile as readFile22 } from "fs/promises";
-import { join as join72, relative as relative11, resolve as resolve21 } from "path";
+import { join as join73, relative as relative11, resolve as resolve21 } from "path";
 function validatePathWithinPlugin(pluginPath, relativePath) {
   const resolvedPluginPath = resolve21(pluginPath);
   const resolvedFilePath = resolve21(pluginPath, relativePath);
@@ -347522,7 +347609,7 @@ function validatePathWithinPlugin(pluginPath, relativePath) {
 }
 async function loadPluginLspServers(plugin, errors = []) {
   const servers = {};
-  const lspJsonPath = join72(plugin.path, ".lsp.json");
+  const lspJsonPath = join73(plugin.path, ".lsp.json");
   try {
     const content = await readFile22(lspJsonPath, "utf-8");
     const parsed = jsonParse(content);
@@ -351252,7 +351339,7 @@ var init_LSPClient = __esm(() => {
 });
 
 // services/lsp/LSPServerInstance.ts
-import * as path16 from "path";
+import * as path17 from "path";
 import { pathToFileURL as pathToFileURL4 } from "url";
 function createLSPServerInstance(name, config) {
   if (config.restartOnCrash !== undefined) {
@@ -351299,7 +351386,7 @@ function createLSPServerInstance(name, config) {
         workspaceFolders: [
           {
             uri: workspaceUri,
-            name: path16.basename(workspaceFolder)
+            name: path17.basename(workspaceFolder)
           }
         ],
         rootPath: workspaceFolder,
@@ -351498,7 +351585,7 @@ var init_LSPServerInstance = __esm(() => {
 });
 
 // services/lsp/LSPServerManager.ts
-import * as path17 from "path";
+import * as path18 from "path";
 import { pathToFileURL as pathToFileURL5 } from "url";
 function createLSPServerManager() {
   const servers = new Map;
@@ -351561,7 +351648,7 @@ function createLSPServerManager() {
     }
   }
   function getServerForFile(filePath) {
-    const ext = path17.extname(filePath).toLowerCase();
+    const ext = path18.extname(filePath).toLowerCase();
     const serverNames = extensionMap.get(ext);
     if (!serverNames || serverNames.length === 0) {
       return;
@@ -351606,12 +351693,12 @@ function createLSPServerManager() {
     const server = await ensureServerStarted(filePath);
     if (!server)
       return;
-    const fileUri = pathToFileURL5(path17.resolve(filePath)).href;
+    const fileUri = pathToFileURL5(path18.resolve(filePath)).href;
     if (openedFiles.get(fileUri) === server.name) {
       logForDebugging(`LSP: File already open, skipping didOpen for ${filePath}`);
       return;
     }
-    const ext = path17.extname(filePath).toLowerCase();
+    const ext = path18.extname(filePath).toLowerCase();
     const languageId = server.config.extensionToLanguage[ext] || "plaintext";
     try {
       await server.sendNotification("textDocument/didOpen", {
@@ -351635,7 +351722,7 @@ function createLSPServerManager() {
     if (!server || server.state !== "running") {
       return openFile(filePath, content);
     }
-    const fileUri = pathToFileURL5(path17.resolve(filePath)).href;
+    const fileUri = pathToFileURL5(path18.resolve(filePath)).href;
     if (openedFiles.get(fileUri) !== server.name) {
       return openFile(filePath, content);
     }
@@ -351661,7 +351748,7 @@ function createLSPServerManager() {
     try {
       await server.sendNotification("textDocument/didSave", {
         textDocument: {
-          uri: pathToFileURL5(path17.resolve(filePath)).href
+          uri: pathToFileURL5(path18.resolve(filePath)).href
         }
       });
       logForDebugging(`LSP: Sent didSave for ${filePath}`);
@@ -351675,7 +351762,7 @@ function createLSPServerManager() {
     const server = getServerForFile(filePath);
     if (!server || server.state !== "running")
       return;
-    const fileUri = pathToFileURL5(path17.resolve(filePath)).href;
+    const fileUri = pathToFileURL5(path18.resolve(filePath)).href;
     try {
       await server.sendNotification("textDocument/didClose", {
         textDocument: {
@@ -351691,7 +351778,7 @@ function createLSPServerManager() {
     }
   }
   function isFileOpen(filePath) {
-    const fileUri = pathToFileURL5(path17.resolve(filePath)).href;
+    const fileUri = pathToFileURL5(path18.resolve(filePath)).href;
     return openedFiles.has(fileUri);
   }
   return {
@@ -352714,8 +352801,8 @@ var init_bashPipeCommand = __esm(() => {
 // utils/bash/ShellSnapshot.ts
 import { execFile as execFile9 } from "child_process";
 import { mkdir as mkdir18, stat as stat23 } from "fs/promises";
-import * as os8 from "os";
-import { join as join73 } from "path";
+import * as os9 from "os";
+import { join as join74 } from "path";
 function createArgv0ShellFunction(funcName, argv0, binaryPath, prependArgs = []) {
   const quotedPath = quote([binaryPath]);
   const argSuffix = prependArgs.length > 0 ? `${prependArgs.join(" ")} "$@"` : '"$@"';
@@ -352771,7 +352858,7 @@ function createFindGrepShellIntegration() {
 }
 function getConfigFile(shellPath) {
   const fileName = shellPath.includes("zsh") ? ".zshrc" : shellPath.includes("bash") ? ".bashrc" : ".profile";
-  const configPath = join73(os8.homedir(), fileName);
+  const configPath = join74(os9.homedir(), fileName);
   return configPath;
 }
 function getUserSnapshotContent(configFile) {
@@ -352925,9 +353012,9 @@ var LITERAL_BACKSLASH = "\\", SNAPSHOT_CREATION_TIMEOUT = 1e4, VCS_DIRECTORIES_T
       }
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 8);
-      const snapshotsDir = join73(getClaudeConfigHomeDir(), "shell-snapshots");
+      const snapshotsDir = join74(getClaudeConfigHomeDir(), "shell-snapshots");
       logForDebugging(`Snapshots directory: ${snapshotsDir}`);
-      const shellSnapshotPath = join73(snapshotsDir, `snapshot-${shellType}-${timestamp}-${randomId}.sh`);
+      const shellSnapshotPath = join74(snapshotsDir, `snapshot-${shellType}-${timestamp}-${randomId}.sh`);
       await mkdir18(snapshotsDir, { recursive: true });
       const snapshotScript = await getSnapshotScript(binShell, shellSnapshotPath, configFileExists);
       logForDebugging(`Creating snapshot at: ${shellSnapshotPath}`);
@@ -352969,7 +353056,7 @@ ${stdout}`);
             logForDebugging(`No stderr output captured`);
           }
           logError2(new Error(`Failed to create shell snapshot: ${error.message}`));
-          const signalNumber = execError?.signal ? os8.constants.signals[execError.signal] : undefined;
+          const signalNumber = execError?.signal ? os9.constants.signals[execError.signal] : undefined;
           logEvent("tengu_shell_snapshot_failed", {
             stderr_length: stderr?.length || 0,
             has_error_code: !!execError?.code,
@@ -353482,7 +353569,7 @@ var init_powershellDetection = __esm(() => {
 
 // utils/shell/powershellProvider.ts
 import { tmpdir as tmpdir5 } from "os";
-import { join as join74 } from "path";
+import { join as join75 } from "path";
 import { join as posixJoin2 } from "path/posix";
 function buildPowerShellArgs(cmd) {
   return ["-NoProfile", "-NonInteractive", "-Command", cmd];
@@ -353498,7 +353585,7 @@ function createPowerShellProvider(shellPath) {
     detached: false,
     async buildExecCommand(command, opts) {
       currentSandboxTmpDir = opts.useSandbox ? opts.sandboxTmpDir : undefined;
-      const cwdFilePath = opts.useSandbox && opts.sandboxTmpDir ? posixJoin2(opts.sandboxTmpDir, `claude-pwd-ps-${opts.id}`) : join74(tmpdir5(), `claude-pwd-ps-${opts.id}`);
+      const cwdFilePath = opts.useSandbox && opts.sandboxTmpDir ? posixJoin2(opts.sandboxTmpDir, `claude-pwd-ps-${opts.id}`) : join75(tmpdir5(), `claude-pwd-ps-${opts.id}`);
       const escapedCwdFilePath = cwdFilePath.replace(/'/g, "''");
       const cwdTracking = `
 ; $_ec = if ($null -ne $LASTEXITCODE) { $LASTEXITCODE } elseif ($?) { 0 } else { 1 }
@@ -353536,7 +353623,7 @@ var init_powershellProvider = __esm(() => {
 
 // utils/Shell.ts
 import { execFileSync as execFileSync3, spawn as spawn5 } from "child_process";
-import { constants as fsConstants6, readFileSync as readFileSync12, unlinkSync as unlinkSync2 } from "fs";
+import { constants as fsConstants6, readFileSync as readFileSync13, unlinkSync as unlinkSync2 } from "fs";
 import { mkdir as mkdir19, open as open9, realpath as realpath8 } from "fs/promises";
 import { isAbsolute as isAbsolute15, resolve as resolve23 } from "path";
 import { join as posixJoin3 } from "path/posix";
@@ -353697,7 +353784,7 @@ async function exec3(command, abortSignal, shellType, options) {
       }
       if (result && !preventCwdChanges && !result.backgroundTaskId) {
         try {
-          let newCwd = readFileSync12(nativeCwdFilePath, {
+          let newCwd = readFileSync13(nativeCwdFilePath, {
             encoding: "utf8"
           }).trim();
           if (getPlatform() === "windows") {
@@ -353816,7 +353903,7 @@ var init_semanticNumber = __esm(() => {
 
 // components/shell/ShellProgressMessage.tsx
 function ShellProgressMessage(t0) {
-  const $ = import_compiler_runtime105.c(30);
+  const $ = import_compiler_runtime104.c(30);
   const {
     output,
     fullOutput,
@@ -353840,7 +353927,7 @@ function ShellProgressMessage(t0) {
   if ($[2] !== output || $[3] !== strippedFullOutput || $[4] !== verbose) {
     const strippedOutput = stripAnsi(output.trim());
     lines = strippedOutput.split(`
-`).filter(_temp31);
+`).filter(_temp30);
     t2 = verbose ? strippedFullOutput : lines.slice(-5).join(`
 `);
     $[2] = output;
@@ -353993,10 +354080,10 @@ function ShellProgressMessage(t0) {
   }
   return t10;
 }
-function _temp31(line) {
+function _temp30(line) {
   return line;
 }
-var import_compiler_runtime105, jsx_runtime116;
+var import_compiler_runtime104, jsx_runtime116;
 var init_ShellProgressMessage = __esm(() => {
   init_strip_ansi();
   init_ink2();
@@ -354004,7 +354091,7 @@ var init_ShellProgressMessage = __esm(() => {
   init_MessageResponse();
   init_OffscreenFreeze();
   init_ShellTimeDisplay();
-  import_compiler_runtime105 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime104 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime116 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -354184,7 +354271,7 @@ var init_sedEditParser = __esm(() => {
 
 // tools/BashTool/UI.tsx
 function BackgroundHint(t0) {
-  const $ = import_compiler_runtime106.c(9);
+  const $ = import_compiler_runtime105.c(9);
   let t1;
   if ($[0] !== t0) {
     t1 = t0 === undefined ? {} : t0;
@@ -354352,7 +354439,7 @@ function renderToolUseErrorMessage3(result, {
     verbose
   });
 }
-var import_compiler_runtime106, jsx_runtime117, MAX_COMMAND_DISPLAY_LINES = 2, MAX_COMMAND_DISPLAY_CHARS = 160;
+var import_compiler_runtime105, jsx_runtime117, MAX_COMMAND_DISPLAY_LINES = 2, MAX_COMMAND_DISPLAY_CHARS = 160;
 var init_UI6 = __esm(() => {
   init_KeyboardShortcutHint();
   init_FallbackToolUseErrorMessage();
@@ -354369,7 +354456,7 @@ var init_UI6 = __esm(() => {
   init_fullscreen();
   init_BashToolResultMessage();
   init_sedEditParser();
-  import_compiler_runtime106 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime105 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime117 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -356928,7 +357015,7 @@ var init_modeValidation = __esm(() => {
 });
 
 // tools/PowerShellTool/pathValidation.ts
-import { homedir as homedir24 } from "os";
+import { homedir as homedir25 } from "os";
 import { isAbsolute as isAbsolute16, resolve as resolve25 } from "path";
 function matchesParam(paramLower, paramList) {
   for (const p of paramList) {
@@ -356951,7 +357038,7 @@ function formatDirectoryList2(directories) {
 }
 function expandTilde2(filePath) {
   if (filePath === "~" || filePath.startsWith("~/") || filePath.startsWith("~\\")) {
-    return homedir24() + filePath.slice(1);
+    return homedir25() + filePath.slice(1);
   }
   return filePath;
 }
@@ -360953,16 +361040,16 @@ import {
   basename as basename21,
   dirname as dirname28,
   isAbsolute as isAbsolute17,
-  join as join75,
+  join as join76,
   sep as pathSep,
   relative as relative12
 } from "path";
 function getSkillsPath(source, dir) {
   switch (source) {
     case "policySettings":
-      return join75(getManagedFilePath(), ".claude", dir);
+      return join76(getManagedFilePath(), ".claude", dir);
     case "userSettings":
-      return join75(getClaudeConfigHomeDir(), dir);
+      return join76(getClaudeConfigHomeDir(), dir);
     case "projectSettings":
       return `.claude/${dir}`;
     case "plugin":
@@ -361132,8 +361219,8 @@ async function loadSkillsFromSkillsDir(basePath, source) {
       if (!entry.isDirectory() && !entry.isSymbolicLink()) {
         return null;
       }
-      const skillDirPath = join75(basePath, entry.name);
-      const skillFilePath = join75(skillDirPath, "SKILL.md");
+      const skillDirPath = join76(basePath, entry.name);
+      const skillFilePath = join76(skillDirPath, "SKILL.md");
       let content;
       try {
         content = await fs.readFile(skillFilePath, { encoding: "utf-8" });
@@ -361288,7 +361375,7 @@ async function discoverSkillDirsForPaths(filePaths, cwd) {
   for (const filePath of filePaths) {
     let currentDir = dirname28(filePath);
     while (currentDir.startsWith(resolvedCwd + pathSep)) {
-      const skillDir = join75(currentDir, ".evilclaude", "skills");
+      const skillDir = join76(currentDir, ".evilclaude", "skills");
       if (!dynamicSkillDirs.has(skillDir)) {
         dynamicSkillDirs.add(skillDir);
         try {
@@ -361411,8 +361498,8 @@ var init_loadSkillsDir = __esm(() => {
   init_types3();
   import_ignore2 = __toESM(require_ignore(), 1);
   getSkillDirCommands = memoize_default(async (cwd) => {
-    const userSkillsDir = join75(getClaudeConfigHomeDir(), "skills");
-    const managedSkillsDir = join75(getManagedFilePath(), ".evilclaude", "skills");
+    const userSkillsDir = join76(getClaudeConfigHomeDir(), "skills");
+    const managedSkillsDir = join76(getManagedFilePath(), ".evilclaude", "skills");
     const projectSkillsDirs = getProjectDirsUpToHome("skills", cwd);
     logForDebugging(`Loading skills from: managed=${managedSkillsDir}, user=${userSkillsDir}, project=[${projectSkillsDirs.join(", ")}]`);
     const additionalDirs = getAdditionalDirectoriesForClaudeMd();
@@ -361423,7 +361510,7 @@ var init_loadSkillsDir = __esm(() => {
         logForDebugging(`[bare] Skipping skill dir discovery (${additionalDirs.length === 0 ? "no --add-dir" : "projectSettings disabled or skillsLocked"})`);
         return [];
       }
-      const additionalSkillsNested = await Promise.all(additionalDirs.map((dir) => loadSkillsFromSkillsDir(join75(dir, ".evilclaude", "skills"), "projectSettings")));
+      const additionalSkillsNested = await Promise.all(additionalDirs.map((dir) => loadSkillsFromSkillsDir(join76(dir, ".evilclaude", "skills"), "projectSettings")));
       return additionalSkillsNested.flat().map((s) => s.skill);
     }
     const [
@@ -361436,7 +361523,7 @@ var init_loadSkillsDir = __esm(() => {
       isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_POLICY_SKILLS) ? Promise.resolve([]) : loadSkillsFromSkillsDir(managedSkillsDir, "policySettings"),
       isSettingSourceEnabled("userSettings") && !skillsLocked ? loadSkillsFromSkillsDir(userSkillsDir, "userSettings") : Promise.resolve([]),
       projectSettingsEnabled ? Promise.all(projectSkillsDirs.map((dir) => loadSkillsFromSkillsDir(dir, "projectSettings"))) : Promise.resolve([]),
-      projectSettingsEnabled ? Promise.all(additionalDirs.map((dir) => loadSkillsFromSkillsDir(join75(dir, ".evilclaude", "skills"), "projectSettings"))) : Promise.resolve([]),
+      projectSettingsEnabled ? Promise.all(additionalDirs.map((dir) => loadSkillsFromSkillsDir(join76(dir, ".evilclaude", "skills"), "projectSettings"))) : Promise.resolve([]),
       skillsLocked ? Promise.resolve([]) : loadSkillsFromCommandsDir(cwd)
     ]);
     const allSkillsWithPaths = [
@@ -361804,7 +361891,7 @@ var init_fileOperationAnalytics = __esm(() => {
 
 // utils/gitDiff.ts
 import { access as access5, readFile as readFile24 } from "fs/promises";
-import { dirname as dirname29, join as join76, relative as relative13, sep as sep16 } from "path";
+import { dirname as dirname29, join as join77, relative as relative13, sep as sep16 } from "path";
 async function fetchGitDiff() {
   const isGit = await getIsGit();
   if (!isGit)
@@ -361955,7 +362042,7 @@ async function isInTransientGitState() {
     "CHERRY_PICK_HEAD",
     "REVERT_HEAD"
   ];
-  const results = await Promise.all(transientFiles.map((file) => access5(join76(gitDir, file)).then(() => true).catch(() => false)));
+  const results = await Promise.all(transientFiles.map((file) => access5(join77(gitDir, file)).then(() => true).catch(() => false)));
   return results.some(Boolean);
 }
 async function fetchUntrackedFiles(maxFiles) {
@@ -362203,7 +362290,7 @@ function cachedHighlight(hl, code, language) {
   return out;
 }
 function HighlightedCodeFallback(t0) {
-  const $ = import_compiler_runtime107.c(20);
+  const $ = import_compiler_runtime106.c(20);
   const {
     code,
     filePath,
@@ -362279,7 +362366,7 @@ function HighlightedCodeFallback(t0) {
   }
   let t7;
   if ($[14] !== t5 || $[15] !== t6) {
-    t7 = /* @__PURE__ */ jsx_runtime120.jsx(import_react76.Suspense, {
+    t7 = /* @__PURE__ */ jsx_runtime120.jsx(import_react77.Suspense, {
       fallback: t5,
       children: t6
     });
@@ -362304,7 +362391,7 @@ function HighlightedCodeFallback(t0) {
   return t8;
 }
 function Highlighted(t0) {
-  const $ = import_compiler_runtime107.c(10);
+  const $ = import_compiler_runtime106.c(10);
   const {
     codeWithSpaces,
     language
@@ -362316,7 +362403,7 @@ function Highlighted(t0) {
   } else {
     t1 = $[0];
   }
-  const hl = import_react76.use(t1);
+  const hl = import_react77.use(t1);
   let t2;
   if ($[1] !== codeWithSpaces || $[2] !== hl || $[3] !== language) {
     bb0: {
@@ -362373,14 +362460,14 @@ function Highlighted(t0) {
   }
   return t3;
 }
-var import_compiler_runtime107, import_react76, jsx_runtime120, HL_CACHE_MAX = 500, hlCache;
+var import_compiler_runtime106, import_react77, jsx_runtime120, HL_CACHE_MAX = 500, hlCache;
 var init_Fallback = __esm(() => {
   init_ink2();
   init_cliHighlight();
   init_debug();
   init_file();
-  import_compiler_runtime107 = __toESM(require_compiler_runtime(), 1);
-  import_react76 = __toESM(require_react(), 1);
+  import_compiler_runtime106 = __toESM(require_compiler_runtime(), 1);
+  import_react77 = __toESM(require_react(), 1);
   jsx_runtime120 = __toESM(require_jsx_runtime(), 1);
   hlCache = new Map;
 });
@@ -362443,7 +362530,7 @@ var init_colorDiff = __esm(() => {
 
 // components/HighlightedCode.tsx
 function CodeLine(t0) {
-  const $ = import_compiler_runtime108.c(13);
+  const $ = import_compiler_runtime107.c(13);
   const {
     line,
     gutterWidth
@@ -362512,7 +362599,7 @@ function CodeLine(t0) {
   }
   return t5;
 }
-var import_compiler_runtime108, import_react77, jsx_runtime121, DEFAULT_WIDTH = 80, HighlightedCode;
+var import_compiler_runtime107, import_react78, jsx_runtime121, DEFAULT_WIDTH = 80, HighlightedCode;
 var init_HighlightedCode = __esm(() => {
   init_useSettings();
   init_ink2();
@@ -362521,11 +362608,11 @@ var init_HighlightedCode = __esm(() => {
   init_stringUtils();
   init_Fallback();
   init_colorDiff();
-  import_compiler_runtime108 = __toESM(require_compiler_runtime(), 1);
-  import_react77 = __toESM(require_react(), 1);
+  import_compiler_runtime107 = __toESM(require_compiler_runtime(), 1);
+  import_react78 = __toESM(require_react(), 1);
   jsx_runtime121 = __toESM(require_jsx_runtime(), 1);
-  HighlightedCode = import_react77.memo(function HighlightedCode(t0) {
-    const $ = import_compiler_runtime108.c(21);
+  HighlightedCode = import_react78.memo(function HighlightedCode(t0) {
+    const $ = import_compiler_runtime107.c(21);
     const {
       code,
       filePath,
@@ -362533,8 +362620,8 @@ var init_HighlightedCode = __esm(() => {
       dim: t1
     } = t0;
     const dim = t1 === undefined ? false : t1;
-    const ref = import_react77.useRef(null);
-    const [measuredWidth, setMeasuredWidth] = import_react77.useState(width || DEFAULT_WIDTH);
+    const ref = import_react78.useRef(null);
+    const [measuredWidth, setMeasuredWidth] = import_react78.useState(width || DEFAULT_WIDTH);
     const [theme] = useTheme();
     const settings = useSettings();
     const syntaxHighlightingDisabled = settings.syntaxHighlightingDisabled ?? false;
@@ -362589,7 +362676,7 @@ var init_HighlightedCode = __esm(() => {
       t3 = $[5];
       t4 = $[6];
     }
-    import_react77.useEffect(t3, t4);
+    import_react78.useEffect(t3, t4);
     let t5;
     bb1: {
       if (colorFile === null) {
@@ -362666,7 +362753,7 @@ var init_HighlightedCode = __esm(() => {
 
 // components/StructuredDiff/Fallback.tsx
 function StructuredDiffFallback(t0) {
-  const $ = import_compiler_runtime109.c(10);
+  const $ = import_compiler_runtime108.c(10);
   const {
     patch,
     dim,
@@ -362688,7 +362775,7 @@ function StructuredDiffFallback(t0) {
   const diff = t1;
   let t2;
   if ($[6] !== diff) {
-    t2 = diff.map(_temp39);
+    t2 = diff.map(_temp31);
     $[6] = diff;
     $[7] = t2;
   } else {
@@ -362708,7 +362795,7 @@ function StructuredDiffFallback(t0) {
   }
   return t3;
 }
-function _temp39(node, i) {
+function _temp31(node, i) {
   return /* @__PURE__ */ jsx_runtime122.jsx(ThemedBox_default, {
     children: node
   }, i);
@@ -363037,12 +363124,12 @@ function numberDiffLines(diff, startLine) {
   }
   return result;
 }
-var import_compiler_runtime109, jsx_runtime122, CHANGE_THRESHOLD = 0.4;
+var import_compiler_runtime108, jsx_runtime122, CHANGE_THRESHOLD = 0.4;
 var init_Fallback2 = __esm(() => {
   init_libesm();
   init_stringWidth();
   init_ink2();
-  import_compiler_runtime109 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime108 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime122 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -363086,7 +363173,7 @@ function renderColorDiff(patch, firstLine, filePath, fileContent, theme, width, 
   perHunk.set(key, entry);
   return entry;
 }
-var import_compiler_runtime110, import_react78, jsx_runtime123, RENDER_CACHE, StructuredDiff;
+var import_compiler_runtime109, import_react79, jsx_runtime123, RENDER_CACHE, StructuredDiff;
 var init_StructuredDiff = __esm(() => {
   init_useSettings();
   init_ink2();
@@ -363094,12 +363181,12 @@ var init_StructuredDiff = __esm(() => {
   init_sliceAnsi();
   init_colorDiff();
   init_Fallback2();
-  import_compiler_runtime110 = __toESM(require_compiler_runtime(), 1);
-  import_react78 = __toESM(require_react(), 1);
+  import_compiler_runtime109 = __toESM(require_compiler_runtime(), 1);
+  import_react79 = __toESM(require_react(), 1);
   jsx_runtime123 = __toESM(require_jsx_runtime(), 1);
   RENDER_CACHE = new WeakMap;
-  StructuredDiff = import_react78.memo(function StructuredDiff(t0) {
-    const $ = import_compiler_runtime110.c(26);
+  StructuredDiff = import_react79.memo(function StructuredDiff(t0) {
+    const $ = import_compiler_runtime109.c(26);
     const {
       patch,
       dim,
@@ -363258,7 +363345,7 @@ var init_StructuredDiffList = __esm(() => {
 // components/FileEditToolUseRejectedMessage.tsx
 import { relative as relative14 } from "path";
 function FileEditToolUseRejectedMessage(t0) {
-  const $ = import_compiler_runtime111.c(38);
+  const $ = import_compiler_runtime110.c(38);
   const {
     file_path,
     operation,
@@ -363462,7 +363549,7 @@ function FileEditToolUseRejectedMessage(t0) {
   }
   return t7;
 }
-var import_compiler_runtime111, jsx_runtime125, MAX_LINES_TO_RENDER = 10;
+var import_compiler_runtime110, jsx_runtime125, MAX_LINES_TO_RENDER = 10;
 var init_FileEditToolUseRejectedMessage = __esm(() => {
   init_useTerminalSize();
   init_cwd2();
@@ -363470,13 +363557,13 @@ var init_FileEditToolUseRejectedMessage = __esm(() => {
   init_HighlightedCode();
   init_MessageResponse();
   init_StructuredDiffList();
-  import_compiler_runtime111 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime110 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime125 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/FileEditToolUpdatedMessage.tsx
 function FileEditToolUpdatedMessage(t0) {
-  const $ = import_compiler_runtime112.c(22);
+  const $ = import_compiler_runtime111.c(22);
   const {
     filePath,
     structuredPatch,
@@ -363619,9 +363706,9 @@ function FileEditToolUpdatedMessage(t0) {
   return t8;
 }
 function _temp45(acc_0, hunk_0) {
-  return acc_0 + count2(hunk_0.lines, _temp310);
+  return acc_0 + count2(hunk_0.lines, _temp39);
 }
-function _temp310(__0) {
+function _temp39(__0) {
   return __0.startsWith("-");
 }
 function _temp211(acc, hunk) {
@@ -363630,13 +363717,13 @@ function _temp211(acc, hunk) {
 function _temp40(_) {
   return _.startsWith("+");
 }
-var import_compiler_runtime112, jsx_runtime126;
+var import_compiler_runtime111, jsx_runtime126;
 var init_FileEditToolUpdatedMessage = __esm(() => {
   init_useTerminalSize();
   init_ink2();
   init_MessageResponse();
   init_StructuredDiffList();
-  import_compiler_runtime112 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime111 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime126 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -364268,7 +364355,7 @@ function renderToolUseErrorMessage5(result, options) {
   });
 }
 function EditRejectionDiff(t0) {
-  const $ = import_compiler_runtime113.c(16);
+  const $ = import_compiler_runtime112.c(16);
   const {
     filePath,
     oldString,
@@ -364288,7 +364375,7 @@ function EditRejectionDiff(t0) {
   } else {
     t1 = $[4];
   }
-  const [dataPromise] = import_react79.useState(t1);
+  const [dataPromise] = import_react80.useState(t1);
   let t2;
   if ($[5] !== filePath || $[6] !== verbose) {
     t2 = /* @__PURE__ */ jsx_runtime127.jsx(FileEditToolUseRejectedMessage, {
@@ -364321,7 +364408,7 @@ function EditRejectionDiff(t0) {
   }
   let t4;
   if ($[13] !== t2 || $[14] !== t3) {
-    t4 = /* @__PURE__ */ jsx_runtime127.jsx(import_react79.Suspense, {
+    t4 = /* @__PURE__ */ jsx_runtime127.jsx(import_react80.Suspense, {
       fallback: t2,
       children: t3
     });
@@ -364334,7 +364421,7 @@ function EditRejectionDiff(t0) {
   return t4;
 }
 function EditRejectionBody(t0) {
-  const $ = import_compiler_runtime113.c(7);
+  const $ = import_compiler_runtime112.c(7);
   const {
     promise,
     filePath,
@@ -364345,7 +364432,7 @@ function EditRejectionBody(t0) {
     patch,
     firstLine,
     fileContent
-  } = import_react79.use(promise);
+  } = import_react80.use(promise);
   let t1;
   if ($[0] !== fileContent || $[1] !== filePath || $[2] !== firstLine || $[3] !== patch || $[4] !== style || $[5] !== verbose) {
     t1 = /* @__PURE__ */ jsx_runtime127.jsx(FileEditToolUseRejectedMessage, {
@@ -364412,7 +364499,7 @@ async function loadRejectionDiff(filePath, oldString, newString, replaceAll) {
     };
   }
 }
-var import_compiler_runtime113, import_react79, jsx_runtime127;
+var import_compiler_runtime112, import_react80, jsx_runtime127;
 var init_UI8 = __esm(() => {
   init_FileEditToolUseRejectedMessage();
   init_MessageResponse();
@@ -364428,8 +364515,8 @@ var init_UI8 = __esm(() => {
   init_readEditContext();
   init_stringUtils();
   init_utils11();
-  import_compiler_runtime113 = __toESM(require_compiler_runtime(), 1);
-  import_react79 = __toESM(require_react(), 1);
+  import_compiler_runtime112 = __toESM(require_compiler_runtime(), 1);
+  import_react80 = __toESM(require_react(), 1);
   jsx_runtime127 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -364851,7 +364938,7 @@ function countLines(content) {
   return content.endsWith(EOL4) ? parts.length - 1 : parts.length;
 }
 function FileWriteToolCreatedMessage(t0) {
-  const $ = import_compiler_runtime114.c(25);
+  const $ = import_compiler_runtime113.c(25);
   const {
     filePath,
     content,
@@ -365037,7 +365124,7 @@ function renderToolUseRejectedMessage4({
   });
 }
 function WriteRejectionDiff(t0) {
-  const $ = import_compiler_runtime114.c(20);
+  const $ = import_compiler_runtime113.c(20);
   const {
     filePath,
     content,
@@ -365053,7 +365140,7 @@ function WriteRejectionDiff(t0) {
   } else {
     t1 = $[2];
   }
-  const [dataPromise] = import_react80.useState(t1);
+  const [dataPromise] = import_react81.useState(t1);
   let t2;
   if ($[3] !== content) {
     t2 = content.split(`
@@ -365104,7 +365191,7 @@ function WriteRejectionDiff(t0) {
   }
   let t5;
   if ($[17] !== createFallback || $[18] !== t4) {
-    t5 = /* @__PURE__ */ jsx_runtime128.jsx(import_react80.Suspense, {
+    t5 = /* @__PURE__ */ jsx_runtime128.jsx(import_react81.Suspense, {
       fallback: createFallback,
       children: t4
     });
@@ -365117,7 +365204,7 @@ function WriteRejectionDiff(t0) {
   return t5;
 }
 function WriteRejectionBody(t0) {
-  const $ = import_compiler_runtime114.c(8);
+  const $ = import_compiler_runtime113.c(8);
   const {
     promise,
     filePath,
@@ -365126,7 +365213,7 @@ function WriteRejectionBody(t0) {
     style,
     verbose
   } = t0;
-  const data = import_react80.use(promise);
+  const data = import_react81.use(promise);
   if (data.type === "create") {
     return createFallback;
   }
@@ -365283,7 +365370,7 @@ function renderToolResultMessage9({
     }
   }
 }
-var import_compiler_runtime114, import_react80, jsx_runtime128, MAX_LINES_TO_RENDER2 = 10, EOL4 = `
+var import_compiler_runtime113, import_react81, jsx_runtime128, MAX_LINES_TO_RENDER2 = 10, EOL4 = `
 `;
 var init_UI9 = __esm(() => {
   init_MessageResponse();
@@ -365302,8 +365389,8 @@ var init_UI9 = __esm(() => {
   init_log3();
   init_plans();
   init_readEditContext();
-  import_compiler_runtime114 = __toESM(require_compiler_runtime(), 1);
-  import_react80 = __toESM(require_react(), 1);
+  import_compiler_runtime113 = __toESM(require_compiler_runtime(), 1);
+  import_react81 = __toESM(require_react(), 1);
   jsx_runtime128 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -365573,9 +365660,9 @@ var init_FileWriteTool = __esm(() => {
 });
 
 // utils/plugins/orphanedPluginFilter.ts
-import { dirname as dirname32, isAbsolute as isAbsolute20, join as join77, normalize as normalize10, relative as relative16, sep as sep19 } from "path";
+import { dirname as dirname32, isAbsolute as isAbsolute20, join as join78, normalize as normalize10, relative as relative16, sep as sep19 } from "path";
 async function getGlobExclusionsForPluginCache(searchPath) {
-  const cachePath = normalize10(join77(getPluginsDirectory(), "cache"));
+  const cachePath = normalize10(join78(getPluginsDirectory(), "cache"));
   if (searchPath && !pathsOverlap(searchPath, cachePath)) {
     return [];
   }
@@ -365623,7 +365710,7 @@ var init_orphanedPluginFilter = __esm(() => {
 });
 
 // utils/glob.ts
-import { basename as basename22, dirname as dirname33, isAbsolute as isAbsolute21, join as join78, sep as sep20 } from "path";
+import { basename as basename22, dirname as dirname33, isAbsolute as isAbsolute21, join as join79, sep as sep20 } from "path";
 function extractGlobBaseDirectory(pattern) {
   const globChars = /[*?[{]/;
   const match = pattern.match(globChars);
@@ -365675,7 +365762,7 @@ async function glob(filePattern, cwd, { limit, offset }, abortSignal, toolPermis
     args.push("--glob", exclusion);
   }
   const allPaths = await ripGrep(args, searchDir, abortSignal);
-  const absolutePaths = allPaths.map((p) => isAbsolute21(p) ? p : join78(searchDir, p));
+  const absolutePaths = allPaths.map((p) => isAbsolute21(p) ? p : join79(searchDir, p));
   const truncated = absolutePaths.length > offset + limit;
   const files = absolutePaths.slice(offset, offset + limit);
   return { files, truncated };
@@ -365690,7 +365777,7 @@ var init_glob = __esm(() => {
 
 // tools/GrepTool/UI.tsx
 function SearchResultSummary(t0) {
-  const $ = import_compiler_runtime115.c(26);
+  const $ = import_compiler_runtime114.c(26);
   const {
     count,
     countLabel,
@@ -365933,7 +366020,7 @@ function getToolUseSummary3(input) {
   }
   return truncate(input.pattern, TOOL_SUMMARY_MAX_LENGTH);
 }
-var import_compiler_runtime115, jsx_runtime129;
+var import_compiler_runtime114, jsx_runtime129;
 var init_UI10 = __esm(() => {
   init_CtrlOToExpand();
   init_FallbackToolUseErrorMessage();
@@ -365943,7 +366030,7 @@ var init_UI10 = __esm(() => {
   init_file();
   init_format();
   init_messages3();
-  import_compiler_runtime115 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime114 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime129 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -366719,7 +366806,7 @@ var DESCRIPTION10 = "Replace the contents of a specific cell in a Jupyter notebo
 // components/NotebookEditToolUseRejectedMessage.tsx
 import { relative as relative17 } from "path";
 function NotebookEditToolUseRejectedMessage(t0) {
-  const $ = import_compiler_runtime116.c(20);
+  const $ = import_compiler_runtime115.c(20);
   const {
     notebook_path,
     cell_id,
@@ -366834,13 +366921,13 @@ function NotebookEditToolUseRejectedMessage(t0) {
   }
   return t8;
 }
-var import_compiler_runtime116, jsx_runtime131;
+var import_compiler_runtime115, jsx_runtime131;
 var init_NotebookEditToolUseRejectedMessage = __esm(() => {
   init_cwd2();
   init_ink2();
   init_HighlightedCode();
   init_MessageResponse();
-  import_compiler_runtime116 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime115 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime131 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -384580,7 +384667,7 @@ To complete your request, I need to fetch content from the redirected URL. Pleas
 
 // utils/listSessionsImpl.ts
 import { readdir as readdir12, stat as stat26 } from "fs/promises";
-import { basename as basename23, join as join79 } from "path";
+import { basename as basename23, join as join80 } from "path";
 async function listCandidates(projectDir, doStat, projectPath) {
   let names;
   try {
@@ -384594,7 +384681,7 @@ async function listCandidates(projectDir, doStat, projectPath) {
     const sessionId = validateUuid(name.slice(0, -6));
     if (!sessionId)
       return null;
-    const filePath = join79(projectDir, name);
+    const filePath = join80(projectDir, name);
     if (!doStat)
       return { sessionId, filePath, mtime: 0, projectPath };
     try {
@@ -384613,9 +384700,9 @@ var init_listSessionsImpl = __esm(() => {
 
 // services/autoDream/consolidationLock.ts
 import { mkdir as mkdir20, readFile as readFile25, stat as stat27, unlink as unlink12, utimes, writeFile as writeFile19 } from "fs/promises";
-import { join as join80 } from "path";
+import { join as join81 } from "path";
 function lockPath() {
-  return join80(getAutoMemPath(), LOCK_FILE);
+  return join81(getAutoMemPath(), LOCK_FILE);
 }
 async function readLastConsolidatedAt() {
   try {
@@ -385161,7 +385248,7 @@ function renderToolResultMessage15(output, _progressMessages, options) {
   });
 }
 function AttachmentList(t0) {
-  const $ = import_compiler_runtime117.c(4);
+  const $ = import_compiler_runtime116.c(4);
   const {
     attachments
   } = t0;
@@ -385217,7 +385304,7 @@ function _temp41(att) {
     ]
   }, att.path);
 }
-var import_compiler_runtime117, jsx_runtime135;
+var import_compiler_runtime116, jsx_runtime135;
 var init_UI15 = __esm(() => {
   init_figures();
   init_Markdown();
@@ -385225,7 +385312,7 @@ var init_UI15 = __esm(() => {
   init_ink2();
   init_file();
   init_format();
-  import_compiler_runtime117 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime116 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime135 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -385430,7 +385517,7 @@ async function waitForTaskCompletion(taskId, getAppState, timeoutMs, abortContro
   return finalState.tasks?.[taskId] ?? null;
 }
 function TaskOutputResultDisplay(t0) {
-  const $ = import_compiler_runtime118.c(54);
+  const $ = import_compiler_runtime117.c(54);
   const {
     content,
     verbose: t1,
@@ -385789,7 +385876,7 @@ function TaskOutputResultDisplay(t0) {
   }
   return t5;
 }
-var import_compiler_runtime118, jsx_runtime136, inputSchema20, TaskOutputTool;
+var import_compiler_runtime117, jsx_runtime136, inputSchema20, TaskOutputTool;
 var init_TaskOutputTool = __esm(() => {
   init_v4();
   init_FallbackToolUseErrorMessage();
@@ -385808,7 +385895,7 @@ var init_TaskOutputTool = __esm(() => {
   init_outputFormatting();
   init_UI4();
   init_BashToolResultMessage();
-  import_compiler_runtime118 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime117 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime136 = __toESM(require_jsx_runtime(), 1);
   inputSchema20 = lazySchema(() => strictObject({
     task_id: string2().describe("The task ID to get output from"),
@@ -387009,7 +387096,7 @@ var init_TungstenTool = __esm(() => {
 
 // tools/AskUserQuestionTool/AskUserQuestionTool.tsx
 function AskUserQuestionResultMessage(t0) {
-  const $ = import_compiler_runtime119.c(3);
+  const $ = import_compiler_runtime118.c(3);
   const {
     answers
   } = t0;
@@ -387082,7 +387169,7 @@ function validateHtmlPreview(preview) {
   }
   return null;
 }
-var import_compiler_runtime119, jsx_runtime139, questionOptionSchema, questionSchema, annotationsSchema, UNIQUENESS_REFINE, commonFields, inputSchema24, outputSchema19, AskUserQuestionTool;
+var import_compiler_runtime118, jsx_runtime139, questionOptionSchema, questionSchema, annotationsSchema, UNIQUENESS_REFINE, commonFields, inputSchema24, outputSchema19, AskUserQuestionTool;
 var init_AskUserQuestionTool = __esm(() => {
   init_state();
   init_MessageResponse();
@@ -387092,7 +387179,7 @@ var init_AskUserQuestionTool = __esm(() => {
   init_ink2();
   init_Tool();
   init_prompt9();
-  import_compiler_runtime119 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime118 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime139 = __toESM(require_jsx_runtime(), 1);
   questionOptionSchema = lazySchema(() => object({
     label: string2().describe("The display text for this option that the user will see and select. Should be concise (1-5 words) and clearly describe the choice."),
@@ -387792,7 +387879,7 @@ var init_symbolContext = __esm(() => {
 
 // tools/LSPTool/UI.tsx
 function LSPResultSummary(t0) {
-  const $ = import_compiler_runtime120.c(24);
+  const $ = import_compiler_runtime119.c(24);
   const {
     operation,
     resultCount,
@@ -388018,7 +388105,7 @@ function renderToolResultMessage18(output, _progressMessages, {
     })
   });
 }
-var import_compiler_runtime120, jsx_runtime140, OPERATION_LABELS;
+var import_compiler_runtime119, jsx_runtime140, OPERATION_LABELS;
 var init_UI18 = __esm(() => {
   init_CtrlOToExpand();
   init_FallbackToolUseErrorMessage();
@@ -388027,7 +388114,7 @@ var init_UI18 = __esm(() => {
   init_file();
   init_messages3();
   init_symbolContext();
-  import_compiler_runtime120 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime119 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime140 = __toESM(require_jsx_runtime(), 1);
   OPERATION_LABELS = {
     goToDefinition: {
@@ -388072,7 +388159,7 @@ var init_UI18 = __esm(() => {
 
 // tools/LSPTool/LSPTool.ts
 import { open as open11 } from "fs/promises";
-import * as path18 from "path";
+import * as path19 from "path";
 import { pathToFileURL as pathToFileURL6 } from "url";
 function getMethodAndParams(input, absolutePath) {
   const uri = pathToFileURL6(absolutePath).href;
@@ -388511,10 +388598,10 @@ var init_LSPTool = __esm(() => {
         }
         let result = await manager.sendRequest(absolutePath, method, params);
         if (result === undefined) {
-          logForDebugging(`No LSP server available for file type ${path18.extname(absolutePath)} for operation ${input.operation} on file ${input.filePath}`);
+          logForDebugging(`No LSP server available for file type ${path19.extname(absolutePath)} for operation ${input.operation} on file ${input.filePath}`);
           const output = {
             operation: input.operation,
-            result: `No LSP server available for file type: ${path18.extname(absolutePath)}`,
+            result: `No LSP server available for file type: ${path19.extname(absolutePath)}`,
             filePath: input.filePath
           };
           return {
@@ -391343,9 +391430,9 @@ var init_TeamDeleteTool = __esm(() => {
 
 // utils/concurrentSessions.ts
 import { chmod as chmod7, mkdir as mkdir21, readdir as readdir13, readFile as readFile26, unlink as unlink13, writeFile as writeFile21 } from "fs/promises";
-import { join as join81 } from "path";
+import { join as join82 } from "path";
 function getSessionsDir() {
-  return join81(getClaudeConfigHomeDir(), "sessions");
+  return join82(getClaudeConfigHomeDir(), "sessions");
 }
 function envSessionKind() {
   if (false) {}
@@ -391356,7 +391443,7 @@ async function registerSession() {
     return false;
   const kind = envSessionKind() ?? "interactive";
   const dir = getSessionsDir();
-  const pidFile = join81(dir, `${process.pid}.json`);
+  const pidFile = join82(dir, `${process.pid}.json`);
   registerCleanup(async () => {
     try {
       await unlink13(pidFile);
@@ -391385,7 +391472,7 @@ async function registerSession() {
   }
 }
 async function updatePidFile(patch) {
-  const pidFile = join81(getSessionsDir(), `${process.pid}.json`);
+  const pidFile = join82(getSessionsDir(), `${process.pid}.json`);
   try {
     const data = jsonParse(await readFile26(pidFile, "utf8"));
     await writeFile21(pidFile, jsonStringify({ ...data, ...patch }));
@@ -391424,7 +391511,7 @@ async function countConcurrentSessions() {
     if (isProcessRunning(pid)) {
       count++;
     } else if (getPlatform() !== "wsl") {
-      unlink13(join81(dir, file)).catch(() => {});
+      unlink13(join82(dir, file)).catch(() => {});
     }
   }
   return count;
@@ -392787,14 +392874,14 @@ var init_tools2 = __esm(() => {
 
 // utils/swarm/It2SetupPrompt.tsx
 function It2SetupPrompt(t0) {
-  const $ = import_compiler_runtime121.c(44);
+  const $ = import_compiler_runtime120.c(44);
   const {
     onDone,
     tmuxAvailable
   } = t0;
-  const [step, setStep] = import_react81.useState("initial");
-  const [packageManager, setPackageManager] = import_react81.useState(null);
-  const [error, setError] = import_react81.useState(null);
+  const [step, setStep] = import_react82.useState("initial");
+  const [packageManager, setPackageManager] = import_react82.useState(null);
+  const [error, setError] = import_react82.useState(null);
   const exitState = useExitOnCtrlCDWithKeybindings();
   let t1;
   let t2;
@@ -392811,7 +392898,7 @@ function It2SetupPrompt(t0) {
     t1 = $[0];
     t2 = $[1];
   }
-  import_react81.useEffect(t1, t2);
+  import_react82.useEffect(t1, t2);
   let t3;
   if ($[2] !== onDone) {
     t3 = () => {
@@ -393314,7 +393401,7 @@ function _temp47(line, i) {
     children: line
   }, i);
 }
-var import_compiler_runtime121, import_react81, jsx_runtime146;
+var import_compiler_runtime120, import_react82, jsx_runtime146;
 var init_It2SetupPrompt = __esm(() => {
   init_CustomSelect();
   init_Pane();
@@ -393323,8 +393410,8 @@ var init_It2SetupPrompt = __esm(() => {
   init_ink2();
   init_useKeybinding();
   init_it2Setup();
-  import_compiler_runtime121 = __toESM(require_compiler_runtime(), 1);
-  import_react81 = __toESM(require_react(), 1);
+  import_compiler_runtime120 = __toESM(require_compiler_runtime(), 1);
+  import_react82 = __toESM(require_react(), 1);
   jsx_runtime146 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -393451,7 +393538,7 @@ async function handleSpawnSplitPane(input, context) {
     const tmuxAvailable = await isTmuxAvailable();
     const setupResult = await new Promise((resolve) => {
       context.setToolJSX({
-        jsx: import_react82.default.createElement(It2SetupPrompt, {
+        jsx: import_react83.default.createElement(It2SetupPrompt, {
           onDone: resolve,
           tmuxAvailable
         }),
@@ -393910,7 +393997,7 @@ async function handleSpawn(input, context) {
 async function spawnTeammate(config, context) {
   return handleSpawn(config, context);
 }
-var import_react82;
+var import_react83;
 var init_spawnMultiAgent = __esm(() => {
   init_state();
   init_Task();
@@ -393934,7 +394021,7 @@ var init_spawnMultiAgent = __esm(() => {
   init_framework();
   init_teammateMailbox();
   init_loadAgentsDir();
-  import_react82 = __toESM(require_react(), 1);
+  import_react83 = __toESM(require_react(), 1);
 });
 
 // tools/AgentTool/prompt.ts
@@ -401971,13 +402058,13 @@ var init_memoryTypes = __esm(() => {
 
 // memdir/memoryScan.ts
 import { readdir as readdir14 } from "fs/promises";
-import { basename as basename24, join as join82 } from "path";
+import { basename as basename24, join as join83 } from "path";
 async function scanMemoryFiles(memoryDir, signal) {
   try {
     const entries = await readdir14(memoryDir, { recursive: true });
     const mdFiles = entries.filter((f) => f.endsWith(".md") && basename24(f) !== "MEMORY.md");
     const headerResults = await Promise.allSettled(mdFiles.map(async (relativePath) => {
-      const filePath = join82(memoryDir, relativePath);
+      const filePath = join83(memoryDir, relativePath);
       const { content, mtimeMs } = await readFileInRange(filePath, 0, FRONTMATTER_MAX_LINES, undefined, signal);
       const { frontmatter } = parseFrontmatter(content, filePath);
       return {
@@ -403429,9 +403516,9 @@ function getAnthropicEnvMetadata() {
   };
 }
 function getBuildAgeMinutes() {
-  if (!"2026-11-10T11:10:41.276Z")
+  if (!"2026-11-10T11:36:45.347Z")
     return;
-  const buildTime = new Date("2026-11-10T11:10:41.276Z").getTime();
+  const buildTime = new Date("2026-11-10T11:36:45.347Z").getTime();
   if (isNaN(buildTime))
     return;
   return Math.floor((Date.now() - buildTime) / 60000);
@@ -405421,7 +405508,7 @@ var init_postCompactCleanup = __esm(() => {
 
 // services/SessionMemory/prompts.ts
 import { readFile as readFile29 } from "fs/promises";
-import { join as join83 } from "path";
+import { join as join84 } from "path";
 function getDefaultUpdatePrompt() {
   return `IMPORTANT: This message and these instructions are NOT part of the actual user conversation. Do NOT include any references to "note-taking", "session notes extraction", or these update instructions in the notes content.
 
@@ -405462,7 +405549,7 @@ You ONLY update the actual content that comes AFTER these two preserved lines. T
 REMEMBER: Use the Edit tool in parallel and stop. Do not continue after the edits. Only include insights from the actual user conversation, never from these note-taking instructions. Do not delete or change section headers or italic _section descriptions_.`;
 }
 async function loadSessionMemoryTemplate() {
-  const templatePath = join83(getClaudeConfigHomeDir(), "session-memory", "config", "template.md");
+  const templatePath = join84(getClaudeConfigHomeDir(), "session-memory", "config", "template.md");
   try {
     return await readFile29(templatePath, { encoding: "utf-8" });
   } catch (e) {
@@ -405475,7 +405562,7 @@ async function loadSessionMemoryTemplate() {
   }
 }
 async function loadSessionMemoryPrompt() {
-  const promptPath = join83(getClaudeConfigHomeDir(), "session-memory", "config", "prompt.md");
+  const promptPath = join84(getClaudeConfigHomeDir(), "session-memory", "config", "prompt.md");
   try {
     return await readFile29(promptPath, { encoding: "utf-8" });
   } catch (e) {
@@ -407080,7 +407167,7 @@ var init_toolSearch = __esm(() => {
 // services/vcr.ts
 import { createHash as createHash18, randomUUID as randomUUID22 } from "crypto";
 import { mkdir as mkdir22, readFile as readFile30, writeFile as writeFile22 } from "fs/promises";
-import { dirname as dirname34, join as join84 } from "path";
+import { dirname as dirname34, join as join85 } from "path";
 function shouldUseVCR() {
   if (false) {}
   if (process.env.USER_TYPE === "ant" && isEnvTruthy(process.env.FORCE_VCR)) {
@@ -407093,7 +407180,7 @@ async function withFixture(input, fixtureName, f) {
     return await f();
   }
   const hash = createHash18("sha1").update(jsonStringify(input)).digest("hex").slice(0, 12);
-  const filename = join84(process.env.CLAUDE_CODE_TEST_FIXTURES_ROOT ?? getCwd(), `fixtures/${fixtureName}-${hash}.json`);
+  const filename = join85(process.env.CLAUDE_CODE_TEST_FIXTURES_ROOT ?? getCwd(), `fixtures/${fixtureName}-${hash}.json`);
   try {
     const cached = jsonParse(await readFile30(filename, { encoding: "utf8" }));
     return cached;
@@ -407127,7 +407214,7 @@ async function withVCR(messages, f) {
     return true;
   }));
   const dehydratedInput = mapMessages(messagesForAPI.map((_) => _.message.content), dehydrateValue);
-  const filename = join84(process.env.CLAUDE_CODE_TEST_FIXTURES_ROOT ?? getCwd(), `fixtures/${dehydratedInput.map((_) => createHash18("sha1").update(jsonStringify(_)).digest("hex").slice(0, 6)).join("-")}.json`);
+  const filename = join85(process.env.CLAUDE_CODE_TEST_FIXTURES_ROOT ?? getCwd(), `fixtures/${dehydratedInput.map((_) => createHash18("sha1").update(jsonStringify(_)).digest("hex").slice(0, 6)).join("-")}.json`);
   try {
     const cached = jsonParse(await readFile30(filename, { encoding: "utf8" }));
     cached.output.forEach(addCachedCostToTotalSessionCost);
@@ -407594,7 +407681,7 @@ var init_tokenEstimation = __esm(() => {
 // utils/pdf.ts
 import { randomUUID as randomUUID23 } from "crypto";
 import { mkdir as mkdir23, readdir as readdir15, readFile as readFile31 } from "fs/promises";
-import { join as join85 } from "path";
+import { join as join86 } from "path";
 async function readPDF(filePath) {
   try {
     const fs = getFsImplementation();
@@ -407704,9 +407791,9 @@ async function extractPDFPages(filePath, options) {
       };
     }
     const uuid = randomUUID23();
-    const outputDir = join85(getToolResultsDir(), `pdf-${uuid}`);
+    const outputDir = join86(getToolResultsDir(), `pdf-${uuid}`);
     await mkdir23(outputDir, { recursive: true });
-    const prefix = join85(outputDir, "page");
+    const prefix = join86(outputDir, "page");
     const args = ["-jpeg", "-r", "100"];
     if (options?.firstPage) {
       args.push("-f", String(options.firstPage));
@@ -408059,7 +408146,7 @@ var init_UI25 = __esm(() => {
 
 // tools/FileReadTool/FileReadTool.ts
 import { readdir as readdir16, readFile as readFileAsync } from "fs/promises";
-import * as path19 from "path";
+import * as path20 from "path";
 import { posix as posix7, win32 as win323 } from "path";
 function isBlockedDevicePath(filePath) {
   if (BLOCKED_DEVICE_PATHS.has(filePath))
@@ -408069,7 +408156,7 @@ function isBlockedDevicePath(filePath) {
   return false;
 }
 function getAlternateScreenshotPath(filePath) {
-  const filename = path19.basename(filePath);
+  const filename = path20.basename(filePath);
   const amPmPattern = /^(.+)([ \u202F])(AM|PM)(\.png)$/;
   const match = filename.match(amPmPattern);
   if (!match)
@@ -408212,7 +408299,7 @@ async function callInner(file_path, fullFilePath, resolvedFilePath, ext, offset,
       const entries = await readdir16(extractResult.data.file.outputDir);
       const imageFiles = entries.filter((f) => f.endsWith(".jpg")).sort();
       const imageBlocks = await Promise.all(imageFiles.map(async (f) => {
-        const imgPath = path19.join(extractResult.data.file.outputDir, f);
+        const imgPath = path20.join(extractResult.data.file.outputDir, f);
         const imgBuffer = await readFileAsync(imgPath);
         const resized = await maybeResizeAndDownsampleImageBuffer(imgBuffer, imgBuffer.length, "jpeg");
         return {
@@ -408617,7 +408704,7 @@ var init_FileReadTool = __esm(() => {
       if (isUncPath) {
         return { result: true };
       }
-      const ext = path19.extname(fullFilePath).toLowerCase();
+      const ext = path20.extname(fullFilePath).toLowerCase();
       if (hasBinaryExtension(fullFilePath) && !isPDFExtension(ext) && !IMAGE_EXTENSIONS.has(ext.slice(1))) {
         return {
           result: false,
@@ -408645,7 +408732,7 @@ var init_FileReadTool = __esm(() => {
           hasMaxSizeBytes: fileReadingLimits.maxSizeBytes !== undefined
         });
       }
-      const ext = path19.extname(file_path).toLowerCase().slice(1);
+      const ext = path20.extname(file_path).toLowerCase().slice(1);
       const fullFilePath = expandPath(file_path);
       const dedupKillswitch = getFeatureValue_CACHED_MAY_BE_STALE("tengu_read_dedup_killswitch", false);
       const existingState = dedupKillswitch ? undefined : readFileState.get(fullFilePath);
@@ -410907,7 +410994,7 @@ var init_attachments2 = __esm(() => {
 });
 
 // utils/plugins/loadPluginCommands.ts
-import { basename as basename26, dirname as dirname36, join as join87 } from "path";
+import { basename as basename26, dirname as dirname36, join as join88 } from "path";
 function isSkillFile2(filePath) {
   return /^skill\.md$/i.test(basename26(filePath));
 }
@@ -411086,7 +411173,7 @@ function clearPluginCommandCache() {
 async function loadSkillsFromDirectory(skillsPath, pluginName, sourceName, pluginManifest, pluginPath, loadedPaths) {
   const fs = getFsImplementation();
   const skills = [];
-  const directSkillPath = join87(skillsPath, "SKILL.md");
+  const directSkillPath = join88(skillsPath, "SKILL.md");
   let directSkillContent = null;
   try {
     directSkillContent = await fs.readFile(directSkillPath, {
@@ -411137,8 +411224,8 @@ async function loadSkillsFromDirectory(skillsPath, pluginName, sourceName, plugi
     if (!entry.isDirectory() && !entry.isSymbolicLink()) {
       return;
     }
-    const skillDirPath = join87(skillsPath, entry.name);
-    const skillFilePath = join87(skillDirPath, "SKILL.md");
+    const skillDirPath = join88(skillsPath, entry.name);
+    const skillFilePath = join88(skillDirPath, "SKILL.md");
     let content;
     try {
       content = await fs.readFile(skillFilePath, { encoding: "utf-8" });
@@ -411242,7 +411329,7 @@ var init_loadPluginCommands = __esm(() => {
               if (plugin.commandsMetadata) {
                 for (const [name, metadata] of Object.entries(plugin.commandsMetadata)) {
                   if (metadata.source) {
-                    const fullMetadataPath = join87(plugin.path, metadata.source);
+                    const fullMetadataPath = join88(plugin.path, metadata.source);
                     if (commandPath === fullMetadataPath) {
                       commandName = `${plugin.name}:${name}`;
                       metadataOverride = metadata;
@@ -411396,7 +411483,7 @@ import {
   writeFile as writeFile23
 } from "fs/promises";
 import { tmpdir as tmpdir6 } from "os";
-import { basename as basename27, dirname as dirname37, join as join88 } from "path";
+import { basename as basename27, dirname as dirname37, join as join89 } from "path";
 function isPluginZipCacheEnabled() {
   return isEnvTruthy(process.env.CLAUDE_CODE_PLUGIN_USE_ZIP_CACHE);
 }
@@ -411412,21 +411499,21 @@ function getZipCacheKnownMarketplacesPath() {
   if (!cachePath) {
     throw new Error("Plugin zip cache is not enabled");
   }
-  return join88(cachePath, "known_marketplaces.json");
+  return join89(cachePath, "known_marketplaces.json");
 }
 function getZipCacheMarketplacesDir() {
   const cachePath = getPluginZipCachePath();
   if (!cachePath) {
     throw new Error("Plugin zip cache is not enabled");
   }
-  return join88(cachePath, "marketplaces");
+  return join89(cachePath, "marketplaces");
 }
 function getZipCachePluginsDir() {
   const cachePath = getPluginZipCachePath();
   if (!cachePath) {
     throw new Error("Plugin zip cache is not enabled");
   }
-  return join88(cachePath, "plugins");
+  return join89(cachePath, "plugins");
 }
 async function getSessionPluginCachePath() {
   if (sessionPluginCachePath) {
@@ -411435,7 +411522,7 @@ async function getSessionPluginCachePath() {
   if (!sessionPluginCachePromise) {
     sessionPluginCachePromise = (async () => {
       const suffix = randomBytes11(8).toString("hex");
-      const dir = join88(tmpdir6(), `claude-plugin-session-${suffix}`);
+      const dir = join89(tmpdir6(), `claude-plugin-session-${suffix}`);
       await getFsImplementation().mkdir(dir);
       sessionPluginCachePath = dir;
       logForDebugging(`Created session plugin cache at ${dir}`);
@@ -411462,7 +411549,7 @@ async function atomicWriteToZipCache(targetPath, data) {
   const dir = dirname37(targetPath);
   await getFsImplementation().mkdir(dir);
   const tmpName = `.${basename27(targetPath)}.tmp.${randomBytes11(4).toString("hex")}`;
-  const tmpPath = join88(dir, tmpName);
+  const tmpPath = join89(dir, tmpName);
   try {
     if (typeof data === "string") {
       await writeFile23(tmpPath, data, { encoding: "utf-8" });
@@ -411487,7 +411574,7 @@ async function createZipFromDirectory(sourceDir) {
   return zipData;
 }
 async function collectFilesForZip(baseDir, relativePath, files, visited) {
-  const currentDir = relativePath ? join88(baseDir, relativePath) : baseDir;
+  const currentDir = relativePath ? join89(baseDir, relativePath) : baseDir;
   let entries;
   try {
     entries = await readdir18(currentDir);
@@ -411511,7 +411598,7 @@ async function collectFilesForZip(baseDir, relativePath, files, visited) {
     if (entry === ".git") {
       continue;
     }
-    const fullPath = join88(currentDir, entry);
+    const fullPath = join89(currentDir, entry);
     const relPath = relativePath ? `${relativePath}/${entry}` : entry;
     let fileStat;
     try {
@@ -411552,10 +411639,10 @@ async function extractZipToDirectory(zipPath, targetDir) {
   await getFsImplementation().mkdir(targetDir);
   for (const [relPath, data] of Object.entries(files)) {
     if (relPath.endsWith("/")) {
-      await getFsImplementation().mkdir(join88(targetDir, relPath));
+      await getFsImplementation().mkdir(join89(targetDir, relPath));
       continue;
     }
-    const fullPath = join88(targetDir, relPath);
+    const fullPath = join89(targetDir, relPath);
     await getFsImplementation().mkdir(dirname37(fullPath));
     await writeFile23(fullPath, data);
     const mode = modes[relPath];
@@ -411572,7 +411659,7 @@ async function convertDirectoryToZipInPlace(dirPath, zipPath) {
 }
 function getMarketplaceJsonRelativePath(marketplaceName) {
   const sanitized = marketplaceName.replace(/[^a-zA-Z0-9\-_]/g, "-");
-  return join88("marketplaces", `${sanitized}.json`);
+  return join89("marketplaces", `${sanitized}.json`);
 }
 function isMarketplaceSourceSupportedByZipCache(source) {
   return ["github", "git", "url", "settings"].includes(source.source);
@@ -411588,7 +411675,7 @@ var init_zipCache = __esm(() => {
 
 // utils/plugins/cacheUtils.ts
 import { readdir as readdir19, rm as rm6, stat as stat33, unlink as unlink14, writeFile as writeFile24 } from "fs/promises";
-import { join as join89 } from "path";
+import { join as join90 } from "path";
 function clearAllPluginCaches() {
   clearPluginCache();
   clearPluginCommandCache();
@@ -411625,11 +411712,11 @@ async function cleanupOrphanedPluginVersionsInBackground() {
     const now = Date.now();
     await Promise.all([...installedVersions].map((p) => removeOrphanedAtMarker(p)));
     for (const marketplace of await readSubdirs(cachePath)) {
-      const marketplacePath = join89(cachePath, marketplace);
+      const marketplacePath = join90(cachePath, marketplace);
       for (const plugin of await readSubdirs(marketplacePath)) {
-        const pluginPath = join89(marketplacePath, plugin);
+        const pluginPath = join90(marketplacePath, plugin);
         for (const version of await readSubdirs(pluginPath)) {
-          const versionPath = join89(pluginPath, version);
+          const versionPath = join90(pluginPath, version);
           if (installedVersions.has(versionPath))
             continue;
           await processOrphanedPluginVersion(versionPath, now);
@@ -411643,7 +411730,7 @@ async function cleanupOrphanedPluginVersionsInBackground() {
   }
 }
 function getOrphanedAtPath(versionPath) {
-  return join89(versionPath, ORPHANED_AT_FILENAME2);
+  return join90(versionPath, ORPHANED_AT_FILENAME2);
 }
 async function removeOrphanedAtMarker(versionPath) {
   const orphanedAtPath = getOrphanedAtPath(versionPath);
@@ -412046,7 +412133,7 @@ var init_marketplaceHelpers = __esm(() => {
 
 // utils/plugins/officialMarketplaceGcs.ts
 import { chmod as chmod9, mkdir as mkdir24, readFile as readFile33, rename as rename4, rm as rm7, writeFile as writeFile25 } from "fs/promises";
-import { dirname as dirname38, join as join90, resolve as resolve30, sep as sep21 } from "path";
+import { dirname as dirname38, join as join91, resolve as resolve30, sep as sep21 } from "path";
 async function fetchOfficialMarketplaceFromGcs(installLocation, marketplacesCacheDir) {
   const cacheDir = resolve30(marketplacesCacheDir);
   const resolvedLoc = resolve30(installLocation);
@@ -412069,7 +412156,7 @@ async function fetchOfficialMarketplaceFromGcs(installLocation, marketplacesCach
     if (!sha) {
       throw new Error("latest pointer returned empty body");
     }
-    const sentinelPath = join90(installLocation, ".gcs-sha");
+    const sentinelPath = join91(installLocation, ".gcs-sha");
     const currentSha = await readFile33(sentinelPath, "utf8").then((s) => s.trim(), () => null);
     if (currentSha === sha) {
       outcome = "noop";
@@ -412092,7 +412179,7 @@ async function fetchOfficialMarketplaceFromGcs(installLocation, marketplacesCach
       const rel = arcPath.slice(ARC_PREFIX.length);
       if (!rel || rel.endsWith("/"))
         continue;
-      const dest = join90(staging, rel);
+      const dest = join91(staging, rel);
       await mkdir24(dirname38(dest), { recursive: true });
       await writeFile25(dest, data);
       const mode = modes[arcPath];
@@ -412100,7 +412187,7 @@ async function fetchOfficialMarketplaceFromGcs(installLocation, marketplacesCach
         await chmod9(dest, mode & 511).catch(() => {});
       }
     }
-    await writeFile25(join90(staging, ".gcs-sha"), sha);
+    await writeFile25(join91(staging, ".gcs-sha"), sha);
     await rm7(installLocation, { recursive: true, force: true });
     await rename4(staging, installLocation);
     outcome = "updated";
@@ -412167,12 +412254,12 @@ var init_officialMarketplaceGcs = __esm(() => {
 
 // utils/plugins/marketplaceManager.ts
 import { writeFile as writeFile26 } from "fs/promises";
-import { basename as basename28, dirname as dirname39, isAbsolute as isAbsolute23, join as join91, resolve as resolve31, sep as sep22 } from "path";
+import { basename as basename28, dirname as dirname39, isAbsolute as isAbsolute23, join as join92, resolve as resolve31, sep as sep22 } from "path";
 function getKnownMarketplacesFile() {
-  return join91(getPluginsDirectory(), "known_marketplaces.json");
+  return join92(getPluginsDirectory(), "known_marketplaces.json");
 }
 function getMarketplacesCacheDir() {
-  return join91(getPluginsDirectory(), "marketplaces");
+  return join92(getPluginsDirectory(), "marketplaces");
 }
 function clearMarketplacesCache() {
   getMarketplace.cache?.clear?.();
@@ -412259,7 +412346,7 @@ async function saveKnownMarketplacesConfig(config) {
     throw new ConfigParseError(`Invalid marketplace config: ${parsed.error.message}`, configFile, config);
   }
   const fs = getFsImplementation();
-  const dir = join91(configFile, "..");
+  const dir = join92(configFile, "..");
   await fs.mkdir(dir);
   writeFileSync_DEPRECATED(configFile, jsonStringify(parsed.data, null, 2), {
     encoding: "utf-8",
@@ -412306,7 +412393,7 @@ async function registerSeedMarketplaces() {
   return false;
 }
 async function readSeedKnownMarketplaces(seedDir) {
-  const seedJsonPath = join91(seedDir, "known_marketplaces.json");
+  const seedJsonPath = join92(seedDir, "known_marketplaces.json");
   try {
     const content = await getFsImplementation().readFile(seedJsonPath, {
       encoding: "utf-8"
@@ -412325,8 +412412,8 @@ async function readSeedKnownMarketplaces(seedDir) {
   }
 }
 async function findSeedMarketplaceLocation(seedDir, name) {
-  const dirCandidate = join91(seedDir, "marketplaces", name);
-  const jsonCandidate = join91(seedDir, "marketplaces", `${name}.json`);
+  const dirCandidate = join92(seedDir, "marketplaces", name);
+  const jsonCandidate = join92(seedDir, "marketplaces", `${name}.json`);
   for (const candidate of [dirCandidate, jsonCandidate]) {
     try {
       await readCachedMarketplace(candidate);
@@ -412378,7 +412465,7 @@ async function gitPull(cwd, ref, options) {
 async function gitSubmoduleUpdate(cwd, credentialArgs, env, sparsePaths) {
   if (sparsePaths && sparsePaths.length > 0)
     return;
-  const hasGitmodules = await getFsImplementation().stat(join91(cwd, ".gitmodules")).then(() => true, () => false);
+  const hasGitmodules = await getFsImplementation().stat(join92(cwd, ".gitmodules")).then(() => true, () => false);
   if (!hasGitmodules)
     return;
   const result = await execFileNoThrowWithCwd(gitExe(), [
@@ -412740,7 +412827,7 @@ Technical details: ${error.message}`);
   }
   logPluginFetch("marketplace_url", url, "success", performance.now() - fetchStarted);
   safeCallProgress(onProgress, "Saving marketplace to cache");
-  const cacheDir = join91(cachePath, "..");
+  const cacheDir = join92(cachePath, "..");
   await fs.mkdir(cacheDir);
   writeFileSync_DEPRECATED(cachePath, jsonStringify(result.data, null, 2), {
     encoding: "utf-8",
@@ -412777,7 +412864,7 @@ async function loadAndCacheMarketplace(source, onProgress) {
   try {
     switch (source.source) {
       case "url": {
-        temporaryCachePath = join91(cacheDir, `${tempName}.json`);
+        temporaryCachePath = join92(cacheDir, `${tempName}.json`);
         cleanupNeeded = true;
         await cacheMarketplaceFromUrl(source.url, temporaryCachePath, source.headers, onProgress);
         marketplacePath = temporaryCachePath;
@@ -412786,7 +412873,7 @@ async function loadAndCacheMarketplace(source, onProgress) {
       case "github": {
         const sshUrl = `git@github.com:${source.repo}.git`;
         const httpsUrl = `https://github.com/${source.repo}.git`;
-        temporaryCachePath = join91(cacheDir, tempName);
+        temporaryCachePath = join92(cacheDir, tempName);
         cleanupNeeded = true;
         let lastError = null;
         const sshConfigured = await isGitHubSshLikelyConfigured();
@@ -412831,14 +412918,14 @@ async function loadAndCacheMarketplace(source, onProgress) {
         if (lastError) {
           throw lastError;
         }
-        marketplacePath = join91(temporaryCachePath, source.path || ".claude-plugin/marketplace.json");
+        marketplacePath = join92(temporaryCachePath, source.path || ".claude-plugin/marketplace.json");
         break;
       }
       case "git": {
-        temporaryCachePath = join91(cacheDir, tempName);
+        temporaryCachePath = join92(cacheDir, tempName);
         cleanupNeeded = true;
         await cacheMarketplaceFromGit(source.url, temporaryCachePath, source.ref, source.sparsePaths, onProgress);
-        marketplacePath = join91(temporaryCachePath, source.path || ".claude-plugin/marketplace.json");
+        marketplacePath = join92(temporaryCachePath, source.path || ".claude-plugin/marketplace.json");
         break;
       }
       case "npm": {
@@ -412853,14 +412940,14 @@ async function loadAndCacheMarketplace(source, onProgress) {
       }
       case "directory": {
         const absPath = resolve31(source.path);
-        marketplacePath = join91(absPath, ".claude-plugin", "marketplace.json");
+        marketplacePath = join92(absPath, ".claude-plugin", "marketplace.json");
         temporaryCachePath = absPath;
         cleanupNeeded = false;
         break;
       }
       case "settings": {
-        temporaryCachePath = join91(cacheDir, source.name);
-        marketplacePath = join91(temporaryCachePath, ".claude-plugin", "marketplace.json");
+        temporaryCachePath = join92(cacheDir, source.name);
+        marketplacePath = join92(temporaryCachePath, ".claude-plugin", "marketplace.json");
         cleanupNeeded = false;
         await fs.mkdir(dirname39(marketplacePath));
         await writeFile26(marketplacePath, jsonStringify({
@@ -412883,7 +412970,7 @@ async function loadAndCacheMarketplace(source, onProgress) {
       }
       throw new Error(`Failed to parse marketplace file at ${marketplacePath}: ${errorMessage(e)}`);
     }
-    const finalCachePath = join91(cacheDir, marketplace.name);
+    const finalCachePath = join92(cacheDir, marketplace.name);
     const resolvedFinal = resolve31(finalCachePath);
     const resolvedCacheDir = resolve31(cacheDir);
     if (!resolvedFinal.startsWith(resolvedCacheDir + sep22)) {
@@ -413004,9 +413091,9 @@ async function removeMarketplaceSource(name) {
   await saveKnownMarketplacesConfig(config);
   const fs = getFsImplementation();
   const cacheDir = getMarketplacesCacheDir();
-  const cachePath = join91(cacheDir, name);
+  const cachePath = join92(cacheDir, name);
   await fs.rm(cachePath, { recursive: true, force: true });
-  const jsonCachePath = join91(cacheDir, `${name}.json`);
+  const jsonCachePath = join92(cacheDir, `${name}.json`);
   await fs.rm(jsonCachePath, { force: true });
   const editableSources = ["userSettings", "projectSettings", "localSettings"];
   for (const source of editableSources) {
@@ -413057,7 +413144,7 @@ async function removeMarketplaceSource(name) {
   logForDebugging(`Removed marketplace source: ${name}`);
 }
 async function readCachedMarketplace(installLocation) {
-  const nestedPath = join91(installLocation, ".claude-plugin", "marketplace.json");
+  const nestedPath = join92(installLocation, ".claude-plugin", "marketplace.json");
   try {
     return await parseFileWithSchema(nestedPath, PluginMarketplaceSchema());
   } catch (e) {
@@ -413357,12 +413444,12 @@ var init_marketplaceManager = __esm(() => {
 });
 
 // utils/plugins/installedPluginsManager.ts
-import { dirname as dirname40, join as join92 } from "path";
+import { dirname as dirname40, join as join93 } from "path";
 function getInstalledPluginsFilePath() {
-  return join92(getPluginsDirectory(), "installed_plugins.json");
+  return join93(getPluginsDirectory(), "installed_plugins.json");
 }
 function getInstalledPluginsV2FilePath() {
-  return join92(getPluginsDirectory(), "installed_plugins_v2.json");
+  return join93(getPluginsDirectory(), "installed_plugins_v2.json");
 }
 function migrateToSinglePluginFile() {
   if (migrationCompleted) {
@@ -413430,12 +413517,12 @@ function cleanupLegacyCache(v2Data) {
         continue;
       }
       const entry = dirent.name;
-      const entryPath = join92(cachePath, entry);
+      const entryPath = join93(cachePath, entry);
       const subEntries = fs.readdirSync(entryPath);
       const hasVersionedStructure = subEntries.some((subDirent) => {
         if (!subDirent.isDirectory())
           return false;
-        const subPath = join92(entryPath, subDirent.name);
+        const subPath = join93(entryPath, subDirent.name);
         const versionEntries = fs.readdirSync(subPath);
         return versionEntries.some((vDirent) => vDirent.isDirectory());
       });
@@ -413690,7 +413777,7 @@ async function getGitCommitSha(dirPath) {
 }
 function getPluginVersionFromManifest(pluginCachePath, pluginId) {
   const fs = getFsImplementation();
-  const manifestPath = join92(pluginCachePath, ".claude-plugin", "plugin.json");
+  const manifestPath = join93(pluginCachePath, ".claude-plugin", "plugin.json");
   try {
     const manifestContent = fs.readFileSync(manifestPath, { encoding: "utf-8" });
     const manifest = jsonParse(manifestContent);
@@ -413784,13 +413871,13 @@ async function migrateFromEnabledPlugins() {
         let version = "unknown";
         let gitCommitSha = undefined;
         if (typeof entry.source === "string") {
-          installPath = join92(marketplaceInstallLocation, entry.source);
+          installPath = join93(marketplaceInstallLocation, entry.source);
           version = getPluginVersionFromManifest(installPath, pluginId);
           gitCommitSha = await getGitCommitSha(installPath);
         } else {
           const cachePath = getPluginCachePath();
           const sanitizedName = pluginName.replace(/[^a-zA-Z0-9-_]/g, "-");
-          const pluginCachePath = join92(cachePath, sanitizedName);
+          const pluginCachePath = join93(cachePath, sanitizedName);
           let dirEntries;
           try {
             dirEntries = (await getFsImplementation().readdir(pluginCachePath)).map((e) => typeof e === "string" ? e : e.name);
@@ -413923,7 +414010,7 @@ var init_pluginVersioning = __esm(() => {
 // utils/plugins/pluginInstallationHelpers.ts
 import { randomBytes as randomBytes12 } from "crypto";
 import { rename as rename5, rm as rm8 } from "fs/promises";
-import { dirname as dirname41, join as join93, resolve as resolve32, sep as sep23 } from "path";
+import { dirname as dirname41, join as join94, resolve as resolve32, sep as sep23 } from "path";
 function getCurrentTimestamp() {
   return new Date().toISOString();
 }
@@ -413952,7 +414039,7 @@ async function cacheAndRegisterPlugin(pluginId, entry, scope = "user", projectPa
     const normalizedCachePath = cacheResult.path.endsWith(sep23) ? cacheResult.path : cacheResult.path + sep23;
     const isSubdirectory = versionedPath.startsWith(normalizedCachePath);
     if (isSubdirectory) {
-      const tempPath = join93(dirname41(cacheResult.path), `.claude-plugin-temp-${Date.now()}-${randomBytes12(4).toString("hex")}`);
+      const tempPath = join94(dirname41(cacheResult.path), `.claude-plugin-temp-${Date.now()}-${randomBytes12(4).toString("hex")}`);
       await rename5(cacheResult.path, tempPath);
       await getFsImplementation().mkdir(dirname41(versionedPath));
       await rename5(tempPath, versionedPath);
@@ -414183,16 +414270,16 @@ import {
   stat as stat34,
   symlink as symlink3
 } from "fs/promises";
-import { basename as basename29, dirname as dirname42, join as join94, relative as relative20, resolve as resolve33, sep as sep24 } from "path";
+import { basename as basename29, dirname as dirname42, join as join95, relative as relative20, resolve as resolve33, sep as sep24 } from "path";
 function getPluginCachePath() {
-  return join94(getPluginsDirectory(), "cache");
+  return join95(getPluginsDirectory(), "cache");
 }
 function getVersionedCachePathIn(baseDir, pluginId, version) {
   const { name: pluginName, marketplace } = parsePluginIdentifier(pluginId);
   const sanitizedMarketplace = (marketplace || "unknown").replace(/[^a-zA-Z0-9\-_]/g, "-");
   const sanitizedPlugin = (pluginName || pluginId).replace(/[^a-zA-Z0-9\-_]/g, "-");
   const sanitizedVersion = version.replace(/[^a-zA-Z0-9\-_.]/g, "-");
-  return join94(baseDir, "cache", sanitizedMarketplace, sanitizedPlugin, sanitizedVersion);
+  return join95(baseDir, "cache", sanitizedMarketplace, sanitizedPlugin, sanitizedVersion);
 }
 function getVersionedCachePath(pluginId, version) {
   return getVersionedCachePathIn(getPluginsDirectory(), pluginId, version);
@@ -414218,7 +414305,7 @@ async function probeSeedCacheAnyVersion(pluginId) {
       const versions = await readdir20(pluginDir);
       if (versions.length !== 1)
         continue;
-      const versionDir = join94(pluginDir, versions[0]);
+      const versionDir = join95(pluginDir, versions[0]);
       const entries = await readdir20(versionDir);
       if (entries.length > 0)
         return versionDir;
@@ -414230,8 +414317,8 @@ async function copyDir(src, dest) {
   await getFsImplementation().mkdir(dest);
   const entries = await readdir20(src, { withFileTypes: true });
   for (const entry of entries) {
-    const srcPath = join94(src, entry.name);
-    const destPath = join94(dest, entry.name);
+    const srcPath = join95(src, entry.name);
+    const destPath = join95(dest, entry.name);
     if (entry.isDirectory()) {
       await copyDir(srcPath, destPath);
     } else if (entry.isFile()) {
@@ -414254,7 +414341,7 @@ async function copyDir(src, dest) {
       const srcPrefix = resolvedSrc.endsWith(sep24) ? resolvedSrc : resolvedSrc + sep24;
       if (resolvedTarget.startsWith(srcPrefix) || resolvedTarget === resolvedSrc) {
         const targetRelativeToSrc = relative20(resolvedSrc, resolvedTarget);
-        const destTargetPath = join94(dest, targetRelativeToSrc);
+        const destTargetPath = join95(dest, targetRelativeToSrc);
         const relativeLinkPath = relative20(dirname42(destPath), destTargetPath);
         await symlink3(relativeLinkPath, destPath);
       } else {
@@ -414302,7 +414389,7 @@ async function copyPluginToVersionedCache(sourcePath, pluginId, version, entry, 
     logForDebugging(`Copying plugin ${pluginId} to versioned cache (fallback to full copy)`);
     await copyDir(sourcePath, cachePath);
   }
-  const gitPath = join94(cachePath, ".git");
+  const gitPath = join95(cachePath, ".git");
   await rm9(gitPath, { recursive: true, force: true });
   const cacheEntries = await readdir20(cachePath);
   if (cacheEntries.length === 0) {
@@ -414333,10 +414420,10 @@ function validateGitUrl(url) {
   }
 }
 async function installFromNpm(packageName, targetPath, options = {}) {
-  const npmCachePath = join94(getPluginsDirectory(), "npm-cache");
+  const npmCachePath = join95(getPluginsDirectory(), "npm-cache");
   await getFsImplementation().mkdir(npmCachePath);
   const packageSpec = options.version ? `${packageName}@${options.version}` : packageName;
-  const packagePath = join94(npmCachePath, "node_modules", packageName);
+  const packagePath = join95(npmCachePath, "node_modules", packageName);
   const needsInstall = !await pathExists(packagePath);
   if (needsInstall) {
     logForDebugging(`Installing npm package ${packageSpec} to cache`);
@@ -414489,7 +414576,7 @@ async function installFromLocal(sourcePath, targetPath) {
     throw new Error(`Source path does not exist: ${sourcePath}`);
   }
   await copyDir(sourcePath, targetPath);
-  const gitPath = join94(targetPath, ".git");
+  const gitPath = join95(targetPath, ".git");
   await rm9(gitPath, { recursive: true, force: true });
 }
 function generateTemporaryCacheNameForPlugin(source) {
@@ -414525,7 +414612,7 @@ async function cachePlugin(source, options) {
   const cachePath = getPluginCachePath();
   await getFsImplementation().mkdir(cachePath);
   const tempName = generateTemporaryCacheNameForPlugin(source);
-  const tempPath = join94(cachePath, tempName);
+  const tempPath = join95(cachePath, tempName);
   let shouldCleanup = false;
   let gitCommitSha;
   try {
@@ -414569,8 +414656,8 @@ async function cachePlugin(source, options) {
     }
     throw error;
   }
-  const manifestPath = join94(tempPath, ".claude-plugin", "plugin.json");
-  const legacyManifestPath = join94(tempPath, "plugin.json");
+  const manifestPath = join95(tempPath, ".claude-plugin", "plugin.json");
+  const legacyManifestPath = join95(tempPath, "plugin.json");
   let manifest;
   if (await pathExists(manifestPath)) {
     try {
@@ -414627,7 +414714,7 @@ async function cachePlugin(source, options) {
     };
   }
   const finalName = manifest.name.replace(/[^a-zA-Z0-9-_]/g, "-");
-  const finalPath = join94(cachePath, finalName);
+  const finalPath = join95(cachePath, finalName);
   if (await pathExists(finalPath)) {
     logForDebugging(`Removing old cached version at ${finalPath}`);
     await rm9(finalPath, { recursive: true, force: true });
@@ -414681,7 +414768,7 @@ async function loadPluginHooks2(hooksConfigPath, pluginName) {
 }
 async function validatePluginPaths(relPaths, pluginPath, pluginName, source, component, componentLabel, contextLabel, errors) {
   const checks = await Promise.all(relPaths.map(async (relPath) => {
-    const fullPath = join94(pluginPath, relPath);
+    const fullPath = join95(pluginPath, relPath);
     return { relPath, fullPath, exists: await pathExists(fullPath) };
   }));
   const validPaths = [];
@@ -414704,7 +414791,7 @@ async function validatePluginPaths(relPaths, pluginPath, pluginName, source, com
 }
 async function createPluginFromPath(pluginPath, source, enabled, fallbackName, strict = true) {
   const errors = [];
-  const manifestPath = join94(pluginPath, ".claude-plugin", "plugin.json");
+  const manifestPath = join95(pluginPath, ".claude-plugin", "plugin.json");
   const manifest = await loadPluginManifest(manifestPath, fallbackName, source);
   const plugin = {
     name: manifest.name,
@@ -414720,12 +414807,12 @@ async function createPluginFromPath(pluginPath, source, enabled, fallbackName, s
     skillsDirExists,
     outputStylesDirExists
   ] = await Promise.all([
-    !manifest.commands ? pathExists(join94(pluginPath, "commands")) : false,
-    !manifest.agents ? pathExists(join94(pluginPath, "agents")) : false,
-    !manifest.skills ? pathExists(join94(pluginPath, "skills")) : false,
-    !manifest.outputStyles ? pathExists(join94(pluginPath, "output-styles")) : false
+    !manifest.commands ? pathExists(join95(pluginPath, "commands")) : false,
+    !manifest.agents ? pathExists(join95(pluginPath, "agents")) : false,
+    !manifest.skills ? pathExists(join95(pluginPath, "skills")) : false,
+    !manifest.outputStyles ? pathExists(join95(pluginPath, "output-styles")) : false
   ]);
-  const commandsPath = join94(pluginPath, "commands");
+  const commandsPath = join95(pluginPath, "commands");
   if (commandsDirExists) {
     plugin.commandsPath = commandsPath;
   }
@@ -414740,7 +414827,7 @@ async function createPluginFromPath(pluginPath, source, enabled, fallbackName, s
           return { commandName, metadata, kind: "skip" };
         }
         if (metadata.source) {
-          const fullPath = join94(pluginPath, metadata.source);
+          const fullPath = join95(pluginPath, metadata.source);
           return {
             commandName,
             metadata,
@@ -414788,7 +414875,7 @@ async function createPluginFromPath(pluginPath, source, enabled, fallbackName, s
         if (typeof cmdPath !== "string") {
           return { cmdPath, kind: "invalid" };
         }
-        const fullPath = join94(pluginPath, cmdPath);
+        const fullPath = join95(pluginPath, cmdPath);
         return {
           cmdPath,
           kind: "path",
@@ -414821,7 +414908,7 @@ async function createPluginFromPath(pluginPath, source, enabled, fallbackName, s
       }
     }
   }
-  const agentsPath = join94(pluginPath, "agents");
+  const agentsPath = join95(pluginPath, "agents");
   if (agentsDirExists) {
     plugin.agentsPath = agentsPath;
   }
@@ -414832,7 +414919,7 @@ async function createPluginFromPath(pluginPath, source, enabled, fallbackName, s
       plugin.agentsPaths = validPaths;
     }
   }
-  const skillsPath = join94(pluginPath, "skills");
+  const skillsPath = join95(pluginPath, "skills");
   if (skillsDirExists) {
     plugin.skillsPath = skillsPath;
   }
@@ -414843,7 +414930,7 @@ async function createPluginFromPath(pluginPath, source, enabled, fallbackName, s
       plugin.skillsPaths = validPaths;
     }
   }
-  const outputStylesPath = join94(pluginPath, "output-styles");
+  const outputStylesPath = join95(pluginPath, "output-styles");
   if (outputStylesDirExists) {
     plugin.outputStylesPath = outputStylesPath;
   }
@@ -414856,7 +414943,7 @@ async function createPluginFromPath(pluginPath, source, enabled, fallbackName, s
   }
   let mergedHooks;
   const loadedHookPaths = new Set;
-  const standardHooksPath = join94(pluginPath, "hooks", "hooks.json");
+  const standardHooksPath = join95(pluginPath, "hooks", "hooks.json");
   if (await pathExists(standardHooksPath)) {
     try {
       mergedHooks = await loadPluginHooks2(standardHooksPath, manifest.name);
@@ -414885,7 +414972,7 @@ async function createPluginFromPath(pluginPath, source, enabled, fallbackName, s
     const manifestHooksArray = Array.isArray(manifest.hooks) ? manifest.hooks : [manifest.hooks];
     for (const hookSpec of manifestHooksArray) {
       if (typeof hookSpec === "string") {
-        const hookFilePath = join94(pluginPath, hookSpec);
+        const hookFilePath = join95(pluginPath, hookSpec);
         if (!await pathExists(hookFilePath)) {
           logForDebugging(`Hooks file ${hookSpec} specified in manifest but not found at ${hookFilePath} for ${manifest.name}`, { level: "error" });
           logError2(new Error(`Plugin component file not found: ${hookFilePath} for ${manifest.name}`));
@@ -414975,7 +415062,7 @@ function parsePluginSettings(raw) {
   return data;
 }
 async function loadPluginSettings(pluginPath, manifest) {
-  const settingsJsonPath = join94(pluginPath, "settings.json");
+  const settingsJsonPath = join95(pluginPath, "settings.json");
   try {
     const content = await readFile34(settingsJsonPath, { encoding: "utf-8" });
     const parsed = jsonParse(content);
@@ -415118,7 +415205,7 @@ async function loadPluginFromMarketplaceEntryCacheOnly(entry, marketplaceInstall
   if (typeof entry.source === "string") {
     let marketplaceDir;
     try {
-      marketplaceDir = (await stat34(marketplaceInstallLocation)).isDirectory() ? marketplaceInstallLocation : join94(marketplaceInstallLocation, "..");
+      marketplaceDir = (await stat34(marketplaceInstallLocation)).isDirectory() ? marketplaceInstallLocation : join95(marketplaceInstallLocation, "..");
     } catch {
       errorsOut.push({
         type: "plugin-cache-miss",
@@ -415128,7 +415215,7 @@ async function loadPluginFromMarketplaceEntryCacheOnly(entry, marketplaceInstall
       });
       return null;
     }
-    pluginPath = join94(marketplaceDir, entry.source);
+    pluginPath = join95(marketplaceDir, entry.source);
   } else {
     if (!installPath || !await pathExists(installPath)) {
       errorsOut.push({
@@ -415143,7 +415230,7 @@ async function loadPluginFromMarketplaceEntryCacheOnly(entry, marketplaceInstall
   }
   if (isPluginZipCacheEnabled() && pluginPath.endsWith(".zip")) {
     const sessionDir = await getSessionPluginCachePath();
-    const extractDir = join94(sessionDir, pluginId.replace(/[^a-zA-Z0-9@\-_]/g, "-"));
+    const extractDir = join95(sessionDir, pluginId.replace(/[^a-zA-Z0-9@\-_]/g, "-"));
     try {
       await extractZipToDirectory(pluginPath, extractDir);
       pluginPath = extractDir;
@@ -415166,8 +415253,8 @@ async function loadPluginFromMarketplaceEntry(entry, marketplaceInstallLocation,
   logForDebugging(`Loading plugin ${entry.name} from source: ${jsonStringify(entry.source)}`);
   let pluginPath;
   if (typeof entry.source === "string") {
-    const marketplaceDir = (await stat34(marketplaceInstallLocation)).isDirectory() ? marketplaceInstallLocation : join94(marketplaceInstallLocation, "..");
-    const sourcePluginPath = join94(marketplaceDir, entry.source);
+    const marketplaceDir = (await stat34(marketplaceInstallLocation)).isDirectory() ? marketplaceInstallLocation : join95(marketplaceInstallLocation, "..");
+    const sourcePluginPath = join95(marketplaceDir, entry.source);
     if (!await pathExists(sourcePluginPath)) {
       const error = new Error(`Plugin path not found: ${sourcePluginPath}`);
       logForDebugging(`Plugin path not found: ${sourcePluginPath}`, {
@@ -415182,7 +415269,7 @@ async function loadPluginFromMarketplaceEntry(entry, marketplaceInstallLocation,
       return null;
     }
     try {
-      const manifestPath = join94(sourcePluginPath, ".claude-plugin", "plugin.json");
+      const manifestPath = join95(sourcePluginPath, ".claude-plugin", "plugin.json");
       let pluginManifest;
       try {
         pluginManifest = await loadPluginManifest(manifestPath, entry.name, entry.source);
@@ -415238,7 +415325,7 @@ async function loadPluginFromMarketplaceEntry(entry, marketplaceInstallLocation,
   }
   if (isPluginZipCacheEnabled() && pluginPath.endsWith(".zip")) {
     const sessionDir = await getSessionPluginCachePath();
-    const extractDir = join94(sessionDir, pluginId.replace(/[^a-zA-Z0-9@\-_]/g, "-"));
+    const extractDir = join95(sessionDir, pluginId.replace(/[^a-zA-Z0-9@\-_]/g, "-"));
     try {
       await extractZipToDirectory(pluginPath, extractDir);
       logForDebugging(`Extracted plugin ZIP to session dir: ${extractDir}`);
@@ -415253,7 +415340,7 @@ async function loadPluginFromMarketplaceEntry(entry, marketplaceInstallLocation,
 }
 async function finishLoadingPluginFromPath(entry, pluginId, enabled, errorsOut, pluginPath) {
   const errors = [];
-  const manifestPath = join94(pluginPath, ".claude-plugin", "plugin.json");
+  const manifestPath = join95(pluginPath, ".claude-plugin", "plugin.json");
   const hasManifest = await pathExists(manifestPath);
   const { plugin, errors: pluginErrors } = await createPluginFromPath(pluginPath, pluginId, enabled, entry.name, entry.strict ?? true);
   errors.push(...pluginErrors);
@@ -415278,7 +415365,7 @@ async function finishLoadingPluginFromPath(entry, pluginId, enabled, errorsOut, 
           if (!metadata || typeof metadata !== "object" || !metadata.source) {
             return { commandName, metadata, skip: true };
           }
-          const fullPath = join94(pluginPath, metadata.source);
+          const fullPath = join95(pluginPath, metadata.source);
           return {
             commandName,
             metadata,
@@ -415315,7 +415402,7 @@ async function finishLoadingPluginFromPath(entry, pluginId, enabled, errorsOut, 
           if (typeof cmdPath !== "string") {
             return { cmdPath, kind: "invalid" };
           }
-          const fullPath = join94(pluginPath, cmdPath);
+          const fullPath = join95(pluginPath, cmdPath);
           return {
             cmdPath,
             kind: "path",
@@ -415359,7 +415446,7 @@ async function finishLoadingPluginFromPath(entry, pluginId, enabled, errorsOut, 
       logForDebugging(`Processing ${Array.isArray(entry.skills) ? entry.skills.length : 1} skill paths for plugin ${entry.name}`);
       const skillPaths = Array.isArray(entry.skills) ? entry.skills : [entry.skills];
       const checks = await Promise.all(skillPaths.map(async (skillPath) => {
-        const fullPath = join94(pluginPath, skillPath);
+        const fullPath = join95(pluginPath, skillPath);
         return { skillPath, fullPath, exists: await pathExists(fullPath) };
       }));
       const validPaths = [];
@@ -415419,7 +415506,7 @@ async function finishLoadingPluginFromPath(entry, pluginId, enabled, errorsOut, 
           if (!metadata || typeof metadata !== "object" || !metadata.source) {
             return { commandName, metadata, skip: true };
           }
-          const fullPath = join94(pluginPath, metadata.source);
+          const fullPath = join95(pluginPath, metadata.source);
           return {
             commandName,
             metadata,
@@ -415459,7 +415546,7 @@ async function finishLoadingPluginFromPath(entry, pluginId, enabled, errorsOut, 
           if (typeof cmdPath !== "string") {
             return { cmdPath, kind: "invalid" };
           }
-          const fullPath = join94(pluginPath, cmdPath);
+          const fullPath = join95(pluginPath, cmdPath);
           return {
             cmdPath,
             kind: "path",
@@ -421963,13 +422050,13 @@ var init_applySettingsChange = __esm(() => {
 
 // state/AppState.tsx
 function AppStateProvider(t0) {
-  const $ = import_compiler_runtime122.c(13);
+  const $ = import_compiler_runtime121.c(13);
   const {
     children,
     initialState,
     onChangeAppState
   } = t0;
-  const hasAppStateContext = import_react83.useContext(HasAppStateContext);
+  const hasAppStateContext = import_react84.useContext(HasAppStateContext);
   if (hasAppStateContext) {
     throw new Error("AppStateProvider can not be nested within another AppStateProvider");
   }
@@ -421982,7 +422069,7 @@ function AppStateProvider(t0) {
   } else {
     t1 = $[2];
   }
-  const [store] = import_react83.useState(t1);
+  const [store] = import_react84.useState(t1);
   let t2;
   if ($[3] !== store) {
     t2 = () => {
@@ -422006,7 +422093,7 @@ function AppStateProvider(t0) {
   } else {
     t3 = $[5];
   }
-  import_react83.useEffect(t2, t3);
+  import_react84.useEffect(t2, t3);
   let t4;
   if ($[6] !== store.setState) {
     t4 = (source) => applySettingsChange(source, store.setState);
@@ -422015,7 +422102,7 @@ function AppStateProvider(t0) {
   } else {
     t4 = $[7];
   }
-  const onSettingsChange = import_react83.useEffectEvent(t4);
+  const onSettingsChange = import_react84.useEffectEvent(t4);
   useSettingsChange(onSettingsChange);
   let t5;
   if ($[8] !== children) {
@@ -422053,14 +422140,14 @@ function _temp48(prev) {
   };
 }
 function useAppStore() {
-  const store = import_react83.useContext(AppStoreContext);
+  const store = import_react84.useContext(AppStoreContext);
   if (!store) {
     throw new ReferenceError("useAppState/useSetAppState cannot be called outside of an <AppStateProvider />");
   }
   return store;
 }
 function useAppState(selector) {
-  const $ = import_compiler_runtime122.c(3);
+  const $ = import_compiler_runtime121.c(3);
   const store = useAppStore();
   let t0;
   if ($[0] !== selector || $[1] !== store) {
@@ -422077,7 +422164,7 @@ function useAppState(selector) {
     t0 = $[2];
   }
   const get = t0;
-  return import_react83.useSyncExternalStore(store.subscribe, get, get);
+  return import_react84.useSyncExternalStore(store.subscribe, get, get);
 }
 function useSetAppState() {
   return useAppStore().setState;
@@ -422086,8 +422173,8 @@ function useAppStateStore() {
   return useAppStore();
 }
 function useAppStateMaybeOutsideOfProvider(selector) {
-  const $ = import_compiler_runtime122.c(3);
-  const store = import_react83.useContext(AppStoreContext);
+  const $ = import_compiler_runtime121.c(3);
+  const store = import_react84.useContext(AppStoreContext);
   let t0;
   if ($[0] !== selector || $[1] !== store) {
     t0 = () => store ? selector(store.getState()) : undefined;
@@ -422097,9 +422184,9 @@ function useAppStateMaybeOutsideOfProvider(selector) {
   } else {
     t0 = $[2];
   }
-  return import_react83.useSyncExternalStore(store ? store.subscribe : NOOP_SUBSCRIBE2, t0);
+  return import_react84.useSyncExternalStore(store ? store.subscribe : NOOP_SUBSCRIBE2, t0);
 }
-var import_compiler_runtime122, import_react83, jsx_runtime150, VoiceProvider = ({
+var import_compiler_runtime121, import_react84, jsx_runtime150, VoiceProvider = ({
   children
 }) => children, AppStoreContext, HasAppStateContext, NOOP_SUBSCRIBE2 = () => () => {};
 var init_AppState = __esm(() => {
@@ -422110,18 +422197,18 @@ var init_AppState = __esm(() => {
   init_applySettingsChange();
   init_AppStateStore();
   init_AppStateStore();
-  import_compiler_runtime122 = __toESM(require_compiler_runtime(), 1);
-  import_react83 = __toESM(require_react(), 1);
+  import_compiler_runtime121 = __toESM(require_compiler_runtime(), 1);
+  import_react84 = __toESM(require_react(), 1);
   jsx_runtime150 = __toESM(require_jsx_runtime(), 1);
-  AppStoreContext = import_react83.default.createContext(null);
-  HasAppStateContext = import_react83.default.createContext(false);
+  AppStoreContext = import_react84.default.createContext(null);
+  HasAppStateContext = import_react84.default.createContext(false);
 });
 
 // context/notifications.tsx
 function useNotifications() {
   const store = useAppStateStore();
   const setAppState = useSetAppState();
-  const processQueue = import_react84.useCallback(() => {
+  const processQueue = import_react85.useCallback(() => {
     setAppState((prev) => {
       const next = getNext(prev.notifications.queue);
       if (prev.notifications.current !== null || !next) {
@@ -422152,7 +422239,7 @@ function useNotifications() {
       };
     });
   }, [setAppState]);
-  const addNotification = import_react84.useCallback((notif) => {
+  const addNotification = import_react85.useCallback((notif) => {
     if (notif.priority === "immediate") {
       if (currentTimeoutId) {
         clearTimeout(currentTimeoutId);
@@ -422248,7 +422335,7 @@ function useNotifications() {
     });
     processQueue();
   }, [setAppState, processQueue]);
-  const removeNotification = import_react84.useCallback((key) => {
+  const removeNotification = import_react85.useCallback((key) => {
     setAppState((prev) => {
       const isCurrent = prev.notifications.current?.key === key;
       const inQueue = prev.notifications.queue.some((n) => n.key === key);
@@ -422269,7 +422356,7 @@ function useNotifications() {
     });
     processQueue();
   }, [setAppState, processQueue]);
-  import_react84.useEffect(() => {
+  import_react85.useEffect(() => {
     if (store.getState().notifications.queue.length > 0) {
       processQueue();
     }
@@ -422284,10 +422371,10 @@ function getNext(queue) {
     return;
   return queue.reduce((min, n) => PRIORITIES[n.priority] < PRIORITIES[min.priority] ? n : min);
 }
-var import_react84, DEFAULT_TIMEOUT_MS2 = 8000, currentTimeoutId = null, PRIORITIES;
+var import_react85, DEFAULT_TIMEOUT_MS2 = 8000, currentTimeoutId = null, PRIORITIES;
 var init_notifications = __esm(() => {
   init_AppState();
-  import_react84 = __toESM(require_react(), 1);
+  import_react85 = __toESM(require_react(), 1);
   PRIORITIES = {
     immediate: 0,
     high: 1,
@@ -422299,10 +422386,10 @@ var init_notifications = __esm(() => {
 // hooks/useClipboardImageHint.ts
 function useClipboardImageHint(isFocused, enabled) {
   const { addNotification } = useNotifications();
-  const lastFocusedRef = import_react85.useRef(isFocused);
-  const lastHintTimeRef = import_react85.useRef(0);
-  const checkTimeoutRef = import_react85.useRef(null);
-  import_react85.useEffect(() => {
+  const lastFocusedRef = import_react86.useRef(isFocused);
+  const lastHintTimeRef = import_react86.useRef(0);
+  const checkTimeoutRef = import_react86.useRef(null);
+  import_react86.useEffect(() => {
     const wasFocused = lastFocusedRef.current;
     lastFocusedRef.current = isFocused;
     if (!enabled || !isFocused || wasFocused) {
@@ -422335,12 +422422,12 @@ function useClipboardImageHint(isFocused, enabled) {
     };
   }, [isFocused, enabled, addNotification]);
 }
-var import_react85, NOTIFICATION_KEY = "clipboard-image-hint", FOCUS_CHECK_DEBOUNCE_MS = 1000, HINT_COOLDOWN_MS = 30000;
+var import_react86, NOTIFICATION_KEY = "clipboard-image-hint", FOCUS_CHECK_DEBOUNCE_MS = 1000, HINT_COOLDOWN_MS = 30000;
 var init_useClipboardImageHint = __esm(() => {
   init_notifications();
   init_shortcutFormat();
   init_imagePaste();
-  import_react85 = __toESM(require_react(), 1);
+  import_react86 = __toESM(require_react(), 1);
 });
 
 // components/PromptInput/inputModes.ts
@@ -422370,9 +422457,9 @@ function isInputModeCharacter(input) {
 }
 
 // projectOnboardingState.ts
-import { join as join95 } from "path";
+import { join as join96 } from "path";
 function getSteps() {
-  const hasClaudeMd = getFsImplementation().existsSync(join95(getCwd(), "CLAUDE.md"));
+  const hasClaudeMd = getFsImplementation().existsSync(join96(getCwd(), "CLAUDE.md"));
   const isWorkspaceDirEmpty = isDirEmpty(getCwd());
   return [
     {
@@ -422425,8 +422512,8 @@ var init_projectOnboardingState = __esm(() => {
 
 // utils/appleTerminalBackup.ts
 import { stat as stat35 } from "fs/promises";
-import { homedir as homedir25 } from "os";
-import { join as join96 } from "path";
+import { homedir as homedir26 } from "os";
+import { join as join97 } from "path";
 function markTerminalSetupInProgress(backupPath) {
   saveGlobalConfig((current) => ({
     ...current,
@@ -422448,7 +422535,7 @@ function getTerminalRecoveryInfo() {
   };
 }
 function getTerminalPlistPath() {
-  return join96(homedir25(), "Library", "Preferences", "com.apple.Terminal.plist");
+  return join97(homedir26(), "Library", "Preferences", "com.apple.Terminal.plist");
 }
 async function backupTerminalPreferences() {
   const terminalPlistPath = getTerminalPlistPath();
@@ -422519,38 +422606,38 @@ var init_appleTerminalBackup = __esm(() => {
 });
 
 // utils/completionCache.ts
-import { homedir as homedir26 } from "os";
-import { dirname as dirname43, join as join97 } from "path";
+import { homedir as homedir27 } from "os";
+import { dirname as dirname43, join as join98 } from "path";
 function detectShell() {
   const shell = process.env.SHELL || "";
-  const home = homedir26();
+  const home = homedir27();
   const claudeDir = getClaudeConfigHomeDir();
   if (shell.endsWith("/zsh") || shell.endsWith("/zsh.exe")) {
-    const cacheFile = join97(claudeDir, "completion.zsh");
+    const cacheFile = join98(claudeDir, "completion.zsh");
     return {
       name: "zsh",
-      rcFile: join97(home, ".zshrc"),
+      rcFile: join98(home, ".zshrc"),
       cacheFile,
       completionLine: `[[ -f "${cacheFile}" ]] && source "${cacheFile}"`,
       shellFlag: "zsh"
     };
   }
   if (shell.endsWith("/bash") || shell.endsWith("/bash.exe")) {
-    const cacheFile = join97(claudeDir, "completion.bash");
+    const cacheFile = join98(claudeDir, "completion.bash");
     return {
       name: "bash",
-      rcFile: join97(home, ".bashrc"),
+      rcFile: join98(home, ".bashrc"),
       cacheFile,
       completionLine: `[ -f "${cacheFile}" ] && source "${cacheFile}"`,
       shellFlag: "bash"
     };
   }
   if (shell.endsWith("/fish") || shell.endsWith("/fish.exe")) {
-    const xdg = process.env.XDG_CONFIG_HOME || join97(home, ".config");
-    const cacheFile = join97(claudeDir, "completion.fish");
+    const xdg = process.env.XDG_CONFIG_HOME || join98(home, ".config");
+    const cacheFile = join98(claudeDir, "completion.fish");
     return {
       name: "fish",
-      rcFile: join97(xdg, "fish", "config.fish"),
+      rcFile: join98(xdg, "fish", "config.fish"),
       cacheFile,
       completionLine: `[ -f "${cacheFile}" ] && source "${cacheFile}"`,
       shellFlag: "fish"
@@ -422600,8 +422687,8 @@ __export(exports_terminalSetup, {
 });
 import { randomBytes as randomBytes14 } from "crypto";
 import { copyFile as copyFile8, mkdir as mkdir25, readFile as readFile35, writeFile as writeFile27 } from "fs/promises";
-import { homedir as homedir27, platform as platform5 } from "os";
-import { dirname as dirname44, join as join98 } from "path";
+import { homedir as homedir28, platform as platform5 } from "os";
+import { dirname as dirname44, join as join99 } from "path";
 import { pathToFileURL as pathToFileURL7 } from "url";
 function isVSCodeRemoteSSH() {
   const askpassMain = process.env.VSCODE_GIT_ASKPASS_MAIN ?? "";
@@ -422736,8 +422823,8 @@ async function installBindingsForVSCodeTerminal(editor = "VSCode", theme) {
 ]`)}${EOL6}`;
   }
   const editorDir = editor === "VSCode" ? "Code" : editor;
-  const userDirPath = join98(homedir27(), platform5() === "win32" ? join98("AppData", "Roaming", editorDir, "User") : platform5() === "darwin" ? join98("Library", "Application Support", editorDir, "User") : join98(".config", editorDir, "User"));
-  const keybindingsPath = join98(userDirPath, "keybindings.json");
+  const userDirPath = join99(homedir28(), platform5() === "win32" ? join99("AppData", "Roaming", editorDir, "User") : platform5() === "darwin" ? join99("Library", "Application Support", editorDir, "User") : join99(".config", editorDir, "User"));
+  const keybindingsPath = join99(userDirPath, "keybindings.json");
   try {
     await mkdir25(userDirPath, {
       recursive: true
@@ -422878,14 +422965,14 @@ chars = "\\u001B\\r"`;
   const configPaths = [];
   const xdgConfigHome = process.env.XDG_CONFIG_HOME;
   if (xdgConfigHome) {
-    configPaths.push(join98(xdgConfigHome, "alacritty", "alacritty.toml"));
+    configPaths.push(join99(xdgConfigHome, "alacritty", "alacritty.toml"));
   } else {
-    configPaths.push(join98(homedir27(), ".config", "alacritty", "alacritty.toml"));
+    configPaths.push(join99(homedir28(), ".config", "alacritty", "alacritty.toml"));
   }
   if (platform5() === "win32") {
     const appData = process.env.APPDATA;
     if (appData) {
-      configPaths.push(join98(appData, "alacritty", "alacritty.toml"));
+      configPaths.push(join99(appData, "alacritty", "alacritty.toml"));
     }
   }
   let configPath = null;
@@ -422946,8 +423033,8 @@ chars = "\\u001B\\r"`;
   }
 }
 async function installBindingsForZed(theme) {
-  const zedDir = join98(homedir27(), ".config", "zed");
-  const keymapPath = join98(zedDir, "keymap.json");
+  const zedDir = join99(homedir28(), ".config", "zed");
+  const keymapPath = join99(zedDir, "keymap.json");
   try {
     await mkdir25(zedDir, {
       recursive: true
@@ -423029,15 +423116,15 @@ var init_terminalSetup = __esm(() => {
 // utils/pasteStore.ts
 import { createHash as createHash20 } from "crypto";
 import { mkdir as mkdir26, readdir as readdir21, readFile as readFile36, stat as stat36, unlink as unlink15, writeFile as writeFile28 } from "fs/promises";
-import { join as join99 } from "path";
+import { join as join100 } from "path";
 function getPasteStoreDir() {
-  return join99(getClaudeConfigHomeDir(), PASTE_STORE_DIR);
+  return join100(getClaudeConfigHomeDir(), PASTE_STORE_DIR);
 }
 function hashPastedText(content) {
   return createHash20("sha256").update(content).digest("hex").slice(0, 16);
 }
 function getPastePath(hash) {
-  return join99(getPasteStoreDir(), `${hash}.txt`);
+  return join100(getPasteStoreDir(), `${hash}.txt`);
 }
 async function storePastedText(hash, content) {
   try {
@@ -423074,7 +423161,7 @@ async function cleanupOldPastes(cutoffDate) {
     if (!file.endsWith(".txt")) {
       continue;
     }
-    const filePath = join99(pasteDir, file);
+    const filePath = join100(pasteDir, file);
     try {
       const stats = await stat36(filePath);
       if (stats.mtimeMs < cutoffTime) {
@@ -423093,7 +423180,7 @@ var init_pasteStore = __esm(() => {
 
 // history.ts
 import { appendFile as appendFile5, writeFile as writeFile29 } from "fs/promises";
-import { join as join100 } from "path";
+import { join as join101 } from "path";
 function getPastedTextRefNumLines(text) {
   return (text.match(/\r\n|\r|\n/g) || []).length;
 }
@@ -423135,7 +423222,7 @@ async function* makeLogEntryReader() {
   for (let i = pendingEntries.length - 1;i >= 0; i--) {
     yield pendingEntries[i];
   }
-  const historyPath = join100(getClaudeConfigHomeDir(), "history.jsonl");
+  const historyPath = join101(getClaudeConfigHomeDir(), "history.jsonl");
   try {
     for await (const line of readLinesReverse(historyPath)) {
       try {
@@ -423230,7 +423317,7 @@ async function immediateFlushHistory() {
   }
   let release;
   try {
-    const historyPath = join100(getClaudeConfigHomeDir(), "history.jsonl");
+    const historyPath = join101(getClaudeConfigHomeDir(), "history.jsonl");
     await writeFile29(historyPath, "", {
       encoding: "utf8",
       mode: 384,
@@ -424743,17 +424830,17 @@ function usePasteHandler({
   onInput,
   onImagePaste
 }) {
-  const [pasteState, setPasteState] = import_react86.default.useState({ chunks: [], timeoutId: null });
-  const [isPasting, setIsPasting] = import_react86.default.useState(false);
-  const isMountedRef = import_react86.default.useRef(true);
-  const pastePendingRef = import_react86.default.useRef(false);
-  const isMacOS = import_react86.default.useMemo(() => getPlatform() === "macos", []);
-  import_react86.default.useEffect(() => {
+  const [pasteState, setPasteState] = import_react87.default.useState({ chunks: [], timeoutId: null });
+  const [isPasting, setIsPasting] = import_react87.default.useState(false);
+  const isMountedRef = import_react87.default.useRef(true);
+  const pastePendingRef = import_react87.default.useRef(false);
+  const isMacOS = import_react87.default.useMemo(() => getPlatform() === "macos", []);
+  import_react87.default.useEffect(() => {
     return () => {
       isMountedRef.current = false;
     };
   }, []);
-  const checkClipboardForImageImpl = import_react86.default.useCallback(() => {
+  const checkClipboardForImageImpl = import_react87.default.useCallback(() => {
     if (!onImagePaste || !isMountedRef.current)
       return;
     getImageFromClipboard().then((imageData) => {
@@ -424771,7 +424858,7 @@ function usePasteHandler({
     });
   }, [onImagePaste]);
   const checkClipboardForImage = useDebounceCallback(checkClipboardForImageImpl, CLIPBOARD_CHECK_DEBOUNCE_MS);
-  const resetPasteTimeout = import_react86.default.useCallback((currentTimeoutId) => {
+  const resetPasteTimeout = import_react87.default.useCallback((currentTimeoutId) => {
     if (currentTimeoutId) {
       clearTimeout(currentTimeoutId);
     }
@@ -424854,13 +424941,13 @@ function usePasteHandler({
     isPasting
   };
 }
-var import_react86, CLIPBOARD_CHECK_DEBOUNCE_MS = 50, PASTE_COMPLETION_TIMEOUT_MS = 100;
+var import_react87, CLIPBOARD_CHECK_DEBOUNCE_MS = 50, PASTE_COMPLETION_TIMEOUT_MS = 100;
 var init_usePasteHandler = __esm(() => {
   init_log3();
   init_dist7();
   init_imagePaste();
   init_platform2();
-  import_react86 = __toESM(require_react(), 1);
+  import_react87 = __toESM(require_react(), 1);
 });
 
 // utils/textHighlighting.ts
@@ -424973,7 +425060,7 @@ var init_textHighlighting = __esm(() => {
 
 // components/PromptInput/ShimmeredInput.tsx
 function HighlightedInput(t0) {
-  const $ = import_compiler_runtime123.c(23);
+  const $ = import_compiler_runtime122.c(23);
   const {
     text,
     highlights
@@ -425124,18 +425211,18 @@ function HighlightedInput(t0) {
 function _temp49(h) {
   return h.shimmerColor;
 }
-var import_compiler_runtime123, jsx_runtime151;
+var import_compiler_runtime122, jsx_runtime151;
 var init_ShimmeredInput = __esm(() => {
   init_ink2();
   init_textHighlighting();
   init_ShimmerChar();
-  import_compiler_runtime123 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime122 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime151 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/BaseTextInput.tsx
 function BaseTextInput(t0) {
-  const $ = import_compiler_runtime124.c(14);
+  const $ = import_compiler_runtime123.c(14);
   const {
     inputState,
     children,
@@ -425183,7 +425270,7 @@ function BaseTextInput(t0) {
   const {
     onIsPastingChange
   } = props;
-  import_react87.default.useEffect(() => {
+  import_react88.default.useEffect(() => {
     if (onIsPastingChange) {
       onIsPastingChange(isPasting);
     }
@@ -425285,15 +425372,15 @@ function BaseTextInput(t0) {
   }
   return t8;
 }
-var import_compiler_runtime124, import_react87, jsx_runtime152;
+var import_compiler_runtime123, import_react88, jsx_runtime152;
 var init_BaseTextInput = __esm(() => {
   init_renderPlaceholder();
   init_usePasteHandler();
   init_use_declared_cursor();
   init_ink2();
   init_ShimmeredInput();
-  import_compiler_runtime124 = __toESM(require_compiler_runtime(), 1);
-  import_react87 = __toESM(require_react(), 1);
+  import_compiler_runtime123 = __toESM(require_compiler_runtime(), 1);
+  import_react88 = __toESM(require_react(), 1);
   jsx_runtime152 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -425301,13 +425388,13 @@ var init_BaseTextInput = __esm(() => {
 function TextInput(props) {
   const [theme] = useTheme();
   const isTerminalFocused = useTerminalFocus();
-  const accessibilityEnabled = import_react88.useMemo(() => isEnvTruthy(process.env.CLAUDE_CODE_ACCESSIBILITY), []);
+  const accessibilityEnabled = import_react89.useMemo(() => isEnvTruthy(process.env.CLAUDE_CODE_ACCESSIBILITY), []);
   const settings = useSettings();
   const reducedMotion = settings.prefersReducedMotion ?? false;
   const voiceState = "idle";
   const isVoiceRecording = voiceState === "recording";
   const audioLevels = [];
-  const smoothedRef = import_react88.useRef(new Array(CURSOR_WAVEFORM_WIDTH).fill(0));
+  const smoothedRef = import_react89.useRef(new Array(CURSOR_WAVEFORM_WIDTH).fill(0));
   const needsAnimation = isVoiceRecording && !reducedMotion;
   const [animRef, animTime] = [() => {}, 0];
   useClipboardImageHint(isTerminalFocused, !!props.onImagePaste);
@@ -425377,7 +425464,7 @@ function TextInput(props) {
     })
   });
 }
-var import_react88, jsx_runtime153, BARS = " ▁▂▃▄▅▆▇█", CURSOR_WAVEFORM_WIDTH = 1, SMOOTH = 0.7, LEVEL_BOOST = 1.8, SILENCE_THRESHOLD = 0.15;
+var import_react89, jsx_runtime153, BARS = " ▁▂▃▄▅▆▇█", CURSOR_WAVEFORM_WIDTH = 1, SMOOTH = 0.7, LEVEL_BOOST = 1.8, SILENCE_THRESHOLD = 0.15;
 var init_TextInput = __esm(() => {
   init_source();
   init_voice();
@@ -425388,12 +425475,12 @@ var init_TextInput = __esm(() => {
   init_envUtils();
   init_BaseTextInput();
   init_utils9();
-  import_react88 = __toESM(require_react(), 1);
+  import_react89 = __toESM(require_react(), 1);
   jsx_runtime153 = __toESM(require_jsx_runtime(), 1);
 });
 
 // utils/suggestions/directoryCompletion.ts
-import { basename as basename33, dirname as dirname45, join as join101, sep as sep25 } from "path";
+import { basename as basename33, dirname as dirname45, join as join102, sep as sep25 } from "path";
 function parsePartialPath(partialPath, basePath) {
   if (!partialPath) {
     const directory = basePath || getCwd();
@@ -425417,7 +425504,7 @@ async function scanDirectory(dirPath) {
     const entries = await fs.readdir(dirPath);
     const directories = entries.filter((entry) => entry.isDirectory() && !entry.name.startsWith(".")).map((entry) => ({
       name: entry.name,
-      path: join101(dirPath, entry.name),
+      path: join102(dirPath, entry.name),
       type: "directory"
     })).slice(0, 100);
     directoryCache.set(dirPath, directories);
@@ -425454,7 +425541,7 @@ async function scanDirectoryForPaths(dirPath, includeHidden = false) {
     const entries = await fs.readdir(dirPath);
     const paths = entries.filter((entry) => includeHidden || !entry.name.startsWith(".")).map((entry) => ({
       name: entry.name,
-      path: join101(dirPath, entry.name),
+      path: join102(dirPath, entry.name),
       type: entry.isDirectory() ? "directory" : "file"
     })).sort((a, b) => {
       if (a.type === "directory" && b.type !== "directory")
@@ -425537,7 +425624,7 @@ function isUnifiedSuggestion(itemId) {
   return itemId.startsWith("file-") || itemId.startsWith("mcp-resource-") || itemId.startsWith("agent-");
 }
 function PromptInputFooterSuggestions(t0) {
-  const $ = import_compiler_runtime125.c(22);
+  const $ = import_compiler_runtime124.c(22);
   const {
     suggestions,
     selectedSuggestion,
@@ -425623,17 +425710,17 @@ function PromptInputFooterSuggestions(t0) {
 function _temp50(item) {
   return stringWidth(item.displayText);
 }
-var import_compiler_runtime125, import_react89, jsx_runtime154, OVERLAY_MAX_ITEMS = 5, SuggestionItemRow, PromptInputFooterSuggestions_default;
+var import_compiler_runtime124, import_react90, jsx_runtime154, OVERLAY_MAX_ITEMS = 5, SuggestionItemRow, PromptInputFooterSuggestions_default;
 var init_PromptInputFooterSuggestions = __esm(() => {
   init_useTerminalSize();
   init_stringWidth();
   init_ink2();
   init_format();
-  import_compiler_runtime125 = __toESM(require_compiler_runtime(), 1);
-  import_react89 = __toESM(require_react(), 1);
+  import_compiler_runtime124 = __toESM(require_compiler_runtime(), 1);
+  import_react90 = __toESM(require_react(), 1);
   jsx_runtime154 = __toESM(require_jsx_runtime(), 1);
-  SuggestionItemRow = import_react89.memo(function SuggestionItemRow(t0) {
-    const $ = import_compiler_runtime125.c(36);
+  SuggestionItemRow = import_react90.memo(function SuggestionItemRow(t0) {
+    const $ = import_compiler_runtime124.c(36);
     const {
       item,
       maxColumnWidth,
@@ -425820,12 +425907,12 @@ var init_PromptInputFooterSuggestions = __esm(() => {
     }
     return t7;
   });
-  PromptInputFooterSuggestions_default = import_react89.memo(PromptInputFooterSuggestions);
+  PromptInputFooterSuggestions_default = import_react90.memo(PromptInputFooterSuggestions);
 });
 
 // components/permissions/rules/AddWorkspaceDirectory.tsx
 function PermissionDescription() {
-  const $ = import_compiler_runtime126.c(1);
+  const $ = import_compiler_runtime125.c(1);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = /* @__PURE__ */ jsx_runtime155.jsx(ThemedText, {
@@ -425839,7 +425926,7 @@ function PermissionDescription() {
   return t0;
 }
 function DirectoryDisplay(t0) {
-  const $ = import_compiler_runtime126.c(5);
+  const $ = import_compiler_runtime125.c(5);
   const {
     path
   } = t0;
@@ -425880,7 +425967,7 @@ function DirectoryDisplay(t0) {
   return t3;
 }
 function DirectoryInput(t0) {
-  const $ = import_compiler_runtime126.c(14);
+  const $ = import_compiler_runtime125.c(14);
   const {
     value,
     onChange,
@@ -425971,15 +426058,15 @@ function DirectoryInput(t0) {
 }
 function _temp51() {}
 function AddWorkspaceDirectory(t0) {
-  const $ = import_compiler_runtime126.c(34);
+  const $ = import_compiler_runtime125.c(34);
   const {
     onAddDirectory,
     onCancel,
     permissionContext,
     directoryPath
   } = t0;
-  const [directoryInput, setDirectoryInput] = import_react90.useState("");
-  const [error, setError] = import_react90.useState(null);
+  const [directoryInput, setDirectoryInput] = import_react91.useState("");
+  const [error, setError] = import_react91.useState(null);
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = [];
@@ -425987,8 +426074,8 @@ function AddWorkspaceDirectory(t0) {
   } else {
     t1 = $[0];
   }
-  const [suggestions, setSuggestions] = import_react90.useState(t1);
-  const [selectedSuggestion, setSelectedSuggestion] = import_react90.useState(0);
+  const [suggestions, setSuggestions] = import_react91.useState(t1);
+  const [selectedSuggestion, setSelectedSuggestion] = import_react91.useState(0);
   let t2;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = async (path) => {
@@ -426022,7 +426109,7 @@ function AddWorkspaceDirectory(t0) {
     t3 = $[4];
     t4 = $[5];
   }
-  import_react90.useEffect(t3, t4);
+  import_react91.useEffect(t3, t4);
   let t5;
   if ($[6] === Symbol.for("react.memo_cache_sentinel")) {
     t5 = (suggestion) => {
@@ -426235,7 +426322,7 @@ function _temp212(exitState) {
     ]
   });
 }
-var import_compiler_runtime126, import_react90, jsx_runtime155, REMEMBER_DIRECTORY_OPTIONS;
+var import_compiler_runtime125, import_react91, jsx_runtime155, REMEMBER_DIRECTORY_OPTIONS;
 var init_AddWorkspaceDirectory = __esm(() => {
   init_figures();
   init_dist7();
@@ -426250,8 +426337,8 @@ var init_AddWorkspaceDirectory = __esm(() => {
   init_Dialog();
   init_KeyboardShortcutHint();
   init_PromptInputFooterSuggestions();
-  import_compiler_runtime126 = __toESM(require_compiler_runtime(), 1);
-  import_react90 = __toESM(require_react(), 1);
+  import_compiler_runtime125 = __toESM(require_compiler_runtime(), 1);
+  import_react91 = __toESM(require_react(), 1);
   jsx_runtime155 = __toESM(require_jsx_runtime(), 1);
   REMEMBER_DIRECTORY_OPTIONS = [{
     value: "yes-session",
@@ -426271,7 +426358,7 @@ __export(exports_add_dir, {
   call: () => call6
 });
 function AddDirError(t0) {
-  const $ = import_compiler_runtime127.c(10);
+  const $ = import_compiler_runtime126.c(10);
   const {
     message,
     args,
@@ -426292,7 +426379,7 @@ function AddDirError(t0) {
     t1 = $[1];
     t2 = $[2];
   }
-  import_react91.useEffect(t1, t2);
+  import_react92.useEffect(t1, t2);
   let t3;
   if ($[3] !== args) {
     t3 = /* @__PURE__ */ jsx_runtime156.jsxs(ThemedText, {
@@ -426399,7 +426486,7 @@ async function call6(onDone, context, args) {
     }
   });
 }
-var import_compiler_runtime127, import_react91, jsx_runtime156;
+var import_compiler_runtime126, import_react92, jsx_runtime156;
 var init_add_dir = __esm(() => {
   init_source();
   init_figures();
@@ -426410,8 +426497,8 @@ var init_add_dir = __esm(() => {
   init_PermissionUpdate();
   init_sandbox_adapter();
   init_validation3();
-  import_compiler_runtime127 = __toESM(require_compiler_runtime(), 1);
-  import_react91 = __toESM(require_react(), 1);
+  import_compiler_runtime126 = __toESM(require_compiler_runtime(), 1);
+  import_react92 = __toESM(require_react(), 1);
   jsx_runtime156 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -426447,10 +426534,10 @@ function ScrollBox({
   stickyScroll,
   ...style
 }) {
-  const domRef = import_react92.useRef(null);
-  const [, forceRender] = import_react92.useState(0);
-  const listenersRef = import_react92.useRef(new Set);
-  const renderQueuedRef = import_react92.useRef(false);
+  const domRef = import_react93.useRef(null);
+  const [, forceRender] = import_react93.useState(0);
+  const listenersRef = import_react93.useRef(new Set);
+  const renderQueuedRef = import_react93.useRef(false);
   const notify = () => {
     for (const l of listenersRef.current)
       l();
@@ -426468,7 +426555,7 @@ function ScrollBox({
       scheduleRenderFrom(el);
     });
   }
-  import_react92.useImperativeHandle(ref, () => ({
+  import_react93.useImperativeHandle(ref, () => ({
     scrollTo(y) {
       const el = domRef.current;
       if (!el)
@@ -426574,13 +426661,13 @@ function ScrollBox({
     })
   });
 }
-var import_react92, jsx_runtime157, ScrollBox_default;
+var import_react93, jsx_runtime157, ScrollBox_default;
 var init_ScrollBox = __esm(() => {
   init_state();
   init_dom();
   init_reconciler();
   init_Box();
-  import_react92 = __toESM(require_react(), 1);
+  import_react93 = __toESM(require_react(), 1);
   jsx_runtime157 = __toESM(require_jsx_runtime(), 1);
   ScrollBox_default = ScrollBox;
 });
@@ -426674,16 +426761,16 @@ __export(exports_btw, {
   call: () => call7
 });
 function BtwSideQuestion(t0) {
-  const $ = import_compiler_runtime128.c(25);
+  const $ = import_compiler_runtime127.c(25);
   const {
     question,
     context,
     onDone
   } = t0;
-  const [response, setResponse] = import_react93.useState(null);
-  const [error, setError] = import_react93.useState(null);
-  const [frame, setFrame] = import_react93.useState(0);
-  const scrollRef = import_react93.useRef(null);
+  const [response, setResponse] = import_react94.useState(null);
+  const [error, setError] = import_react94.useState(null);
+  const [frame, setFrame] = import_react94.useState(0);
+  const scrollRef = import_react94.useRef(null);
   const {
     rows
   } = useModalOrTerminalSize(useTerminalSize());
@@ -426760,7 +426847,7 @@ function BtwSideQuestion(t0) {
     t3 = $[5];
     t4 = $[6];
   }
-  import_react93.useEffect(t3, t4);
+  import_react94.useEffect(t3, t4);
   const maxContentHeight = Math.max(5, rows - CHROME_ROWS - OUTER_CHROME_ROWS);
   let t5;
   if ($[7] === Symbol.for("react.memo_cache_sentinel")) {
@@ -426931,7 +427018,7 @@ async function call7(onDone, context, args) {
     onDone
   });
 }
-var import_compiler_runtime128, import_react93, jsx_runtime158, CHROME_ROWS = 5, OUTER_CHROME_ROWS = 6, SCROLL_LINES = 3;
+var import_compiler_runtime127, import_react94, jsx_runtime158, CHROME_ROWS = 5, OUTER_CHROME_ROWS = 6, SCROLL_LINES = 3;
 var init_btw = __esm(() => {
   init_dist7();
   init_Markdown();
@@ -426949,8 +427036,8 @@ var init_btw = __esm(() => {
   init_forkedAgent();
   init_messages3();
   init_sideQuestion();
-  import_compiler_runtime128 = __toESM(require_compiler_runtime(), 1);
-  import_react93 = __toESM(require_react(), 1);
+  import_compiler_runtime127 = __toESM(require_compiler_runtime(), 1);
+  import_react94 = __toESM(require_react(), 1);
   jsx_runtime158 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -427032,18 +427119,18 @@ function Feedback({
   onDone,
   backgroundTasks = {}
 }) {
-  const [step, setStep] = import_react94.useState("userInput");
-  const [cursorOffset, setCursorOffset] = import_react94.useState(0);
-  const [description, setDescription] = import_react94.useState(initialDescription ?? "");
-  const [feedbackId, setFeedbackId] = import_react94.useState(null);
-  const [error, setError] = import_react94.useState(null);
-  const [envInfo, setEnvInfo] = import_react94.useState({
+  const [step, setStep] = import_react95.useState("userInput");
+  const [cursorOffset, setCursorOffset] = import_react95.useState(0);
+  const [description, setDescription] = import_react95.useState(initialDescription ?? "");
+  const [feedbackId, setFeedbackId] = import_react95.useState(null);
+  const [error, setError] = import_react95.useState(null);
+  const [envInfo, setEnvInfo] = import_react95.useState({
     isGit: false,
     gitState: null
   });
-  const [title, setTitle] = import_react94.useState(null);
+  const [title, setTitle] = import_react95.useState(null);
   const textInputColumns = useTerminalSize().columns - 4;
-  import_react94.useEffect(() => {
+  import_react95.useEffect(() => {
     async function loadEnvInfo() {
       const isGit = await getIsGit();
       let gitState = null;
@@ -427057,7 +427144,7 @@ function Feedback({
     }
     loadEnvInfo();
   }, []);
-  const submitReport = import_react94.useCallback(async () => {
+  const submitReport = import_react95.useCallback(async () => {
     setStep("submitting");
     setError(null);
     setFeedbackId(null);
@@ -427078,7 +427165,7 @@ function Feedback({
       platform: env4.platform,
       gitRepo: envInfo.isGit,
       terminal: env4.terminal,
-      version: "1.0.26",
+      version: "1.0.27",
       transcript: normalizeMessagesForAPI(messages),
       errors: sanitizedErrors,
       lastApiRequest: getLastAPIRequest(),
@@ -427113,7 +427200,7 @@ function Feedback({
       setStep("userInput");
     }
   }, [description, envInfo.isGit, messages]);
-  const handleCancel = import_react94.useCallback(() => {
+  const handleCancel = import_react95.useCallback(() => {
     if (step === "done") {
       if (error) {
         onDone("Error submitting feedback / bug report", {
@@ -427270,7 +427357,7 @@ function Feedback({
                       ", ",
                       env4.terminal,
                       ", v",
-                      "1.0.26"
+                      "1.0.27"
                     ]
                   })
                 ]
@@ -427376,7 +427463,7 @@ ${sanitizedDescription}
 ` + `**Environment Info**
 ` + `- Platform: ${env4.platform}
 ` + `- Terminal: ${env4.terminal}
-` + `- Version: ${"1.0.26" || "unknown"}
+` + `- Version: ${"1.0.27" || "unknown"}
 ` + `- Feedback ID: ${feedbackId}
 ` + `
 **Errors**
@@ -427540,7 +427627,7 @@ async function submitFeedback(data, signal) {
     };
   }
 }
-var import_react94, jsx_runtime159, GITHUB_URL_LIMIT = 7250, GITHUB_ISSUES_REPO_URL = "https://github.com/anthropics/claude-code/issues";
+var import_react95, jsx_runtime159, GITHUB_URL_LIMIT = 7250, GITHUB_ISSUES_REPO_URL = "https://github.com/anthropics/claude-code/issues";
 var init_Feedback = __esm(() => {
   init_axios2();
   init_state();
@@ -427566,7 +427653,7 @@ var init_Feedback = __esm(() => {
   init_Dialog();
   init_KeyboardShortcutHint();
   init_TextInput();
-  import_react94 = __toESM(require_react(), 1);
+  import_react95 = __toESM(require_react(), 1);
   jsx_runtime159 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -427851,7 +427938,7 @@ var init_file_index = __esm(() => {
 
 // hooks/fileSuggestions.ts
 import { statSync as statSync8 } from "fs";
-import * as path20 from "path";
+import * as path21 from "path";
 function getFileIndex() {
   if (!fileIndex) {
     fileIndex = new FileIndex;
@@ -427898,7 +427985,7 @@ function getGitIndexMtime() {
   if (!repoRoot)
     return null;
   try {
-    return statSync8(path20.join(repoRoot, ".git", "index")).mtimeMs;
+    return statSync8(path21.join(repoRoot, ".git", "index")).mtimeMs;
   } catch {
     return null;
   }
@@ -427908,8 +427995,8 @@ function normalizeGitPaths(files, repoRoot, originalCwd) {
     return files;
   }
   return files.map((f) => {
-    const absolutePath = path20.join(repoRoot, f);
-    return path20.relative(originalCwd, absolutePath);
+    const absolutePath = path21.join(repoRoot, f);
+    return path21.relative(originalCwd, absolutePath);
   });
 }
 async function mergeUntrackedIntoNormalizedCache(normalizedUntracked) {
@@ -427944,7 +428031,7 @@ async function loadRipgrepIgnorePatterns(repoRoot, cwd) {
   const directories = [...new Set([repoRoot, cwd])];
   const ig = import_ignore3.default();
   let hasPatterns = false;
-  const paths = directories.flatMap((dir) => ignoreFiles.map((f) => path20.join(dir, f)));
+  const paths = directories.flatMap((dir) => ignoreFiles.map((f) => path21.join(dir, f)));
   const contents = await Promise.all(paths.map((p) => fs.readFile(p, { encoding: "utf8" }).catch(() => null)));
   for (const [i, content] of contents.entries()) {
     if (content === null)
@@ -428044,13 +428131,13 @@ async function getDirectoryNamesAsync(files) {
       chunkStart = performance.now();
     }
   }
-  return [...directoryNames].map((d) => d + path20.sep);
+  return [...directoryNames].map((d) => d + path21.sep);
 }
 function collectDirectoryNames(files, start, end, out) {
   for (let i = start;i < end; i++) {
-    let currentDir = path20.dirname(files[i]);
+    let currentDir = path21.dirname(files[i]);
     while (currentDir !== "." && !out.has(currentDir)) {
-      const parent = path20.dirname(currentDir);
+      const parent = path21.dirname(currentDir);
       if (parent === currentDir)
         break;
       out.add(currentDir);
@@ -428092,7 +428179,7 @@ async function getProjectFiles(abortSignal, respectGitignore) {
     rgArgs.push("--no-ignore-vcs");
   }
   const files = await ripGrep(rgArgs, ".", abortSignal);
-  const relativePaths = files.map((f) => path20.relative(getCwd(), f));
+  const relativePaths = files.map((f) => path21.relative(getCwd(), f));
   const duration = Date.now() - startTime;
   logForDebugging(`[FileIndex] ripgrep: ${relativePaths.length} files in ${duration}ms`);
   logEvent("tengu_file_suggestions_ripgrep", {
@@ -428201,9 +428288,9 @@ async function getTopLevelPaths() {
   try {
     const entries = await fs.readdir(cwd);
     return entries.map((entry) => {
-      const fullPath = path20.join(cwd, entry.name);
-      const relativePath = path20.relative(cwd, fullPath);
-      return entry.isDirectory() ? relativePath + path20.sep : relativePath;
+      const fullPath = path21.join(cwd, entry.name);
+      const relativePath = path21.relative(cwd, fullPath);
+      return entry.isDirectory() ? relativePath + path21.sep : relativePath;
     });
   } catch (error) {
     logError2(error);
@@ -428232,7 +428319,7 @@ async function generateFileSuggestions(partialPath, showOnEmpty = false) {
     const wasBuilding = fileListRefreshPromise !== null;
     startBackgroundCacheRefresh();
     let normalizedPath = partialPath;
-    const currentDirPrefix = "." + path20.sep;
+    const currentDirPrefix = "." + path21.sep;
     if (partialPath.startsWith(currentDirPrefix)) {
       normalizedPath = partialPath.substring(2);
     }
@@ -428287,7 +428374,7 @@ var init_fileSuggestions = __esm(() => {
 });
 
 // services/MagicDocs/prompts.ts
-import { join as join103 } from "path";
+import { join as join104 } from "path";
 function getUpdatePromptTemplate() {
   return `IMPORTANT: This message and these instructions are NOT part of the actual user conversation. Do NOT include any references to "documentation updates", "magic docs", or these update instructions in the document content.
 
@@ -428342,7 +428429,7 @@ REMEMBER: Only update if there is substantial new information. The Magic Doc hea
 }
 async function loadMagicDocsPrompt() {
   const fs = getFsImplementation();
-  const promptPath = join103(getClaudeConfigHomeDir(), "magic-docs", "prompt.md");
+  const promptPath = join104(getClaudeConfigHomeDir(), "magic-docs", "prompt.md");
   try {
     return await fs.readFile(promptPath, { encoding: "utf-8" });
   } catch {
@@ -428923,7 +429010,7 @@ __export(exports_copy, {
 });
 import { mkdir as mkdir27, writeFile as writeFile30 } from "fs/promises";
 import { tmpdir as tmpdir7 } from "os";
-import { join as join104 } from "path";
+import { join as join105 } from "path";
 function extractCodeBlocks(markdown) {
   const tokens = g.lexer(stripPromptXMLTags(markdown));
   const blocks = [];
@@ -428965,7 +429052,7 @@ function fileExtension2(lang) {
   return ".txt";
 }
 async function writeToFile(text, filename) {
-  const filePath = join104(COPY_DIR, filename);
+  const filePath = join105(COPY_DIR, filename);
   await mkdir27(COPY_DIR, {
     recursive: true
   });
@@ -429006,14 +429093,14 @@ function truncateLine(text, maxLen) {
   return result + "…";
 }
 function CopyPicker(t0) {
-  const $ = import_compiler_runtime129.c(33);
+  const $ = import_compiler_runtime128.c(33);
   const {
     fullText,
     codeBlocks,
     messageAge,
     onDone
   } = t0;
-  const focusedRef = import_react95.useRef("full");
+  const focusedRef = import_react96.useRef("full");
   const t1 = `${fullText.length} chars, ${countCharInString(fullText, `
 `) + 1} lines`;
   let t2;
@@ -429261,7 +429348,7 @@ function _temp55(block, index) {
     description: [block.lang, blockLines > 1 ? `${blockLines} lines` : undefined].filter(Boolean).join(", ") || undefined
   };
 }
-var import_compiler_runtime129, import_react95, jsx_runtime161, COPY_DIR, RESPONSE_FILENAME = "response.md", MAX_LOOKBACK = 20, call11 = async (onDone, context, args) => {
+var import_compiler_runtime128, import_react96, jsx_runtime161, COPY_DIR, RESPONSE_FILENAME = "response.md", MAX_LOOKBACK = 20, call11 = async (onDone, context, args) => {
   const texts = collectRecentAssistantTexts(context.messages);
   if (texts.length === 0) {
     onDone("No assistant message to copy");
@@ -429314,10 +429401,10 @@ var init_copy = __esm(() => {
   init_config2();
   init_messages3();
   init_stringUtils();
-  import_compiler_runtime129 = __toESM(require_compiler_runtime(), 1);
-  import_react95 = __toESM(require_react(), 1);
+  import_compiler_runtime128 = __toESM(require_compiler_runtime(), 1);
+  import_react96 = __toESM(require_react(), 1);
   jsx_runtime161 = __toESM(require_jsx_runtime(), 1);
-  COPY_DIR = join104(tmpdir7(), "claude");
+  COPY_DIR = join105(tmpdir7(), "claude");
 });
 
 // commands/copy/index.ts
@@ -429334,7 +429421,7 @@ var init_copy2 = __esm(() => {
 
 // utils/desktopDeepLink.ts
 import { readdir as readdir22 } from "fs/promises";
-import { join as join105 } from "path";
+import { join as join106 } from "path";
 function isDevMode() {
   if (false) {}
   const pathsToCheck = [process.argv[1] || "", process.execPath || ""];
@@ -429395,7 +429482,7 @@ async function getDesktopVersion() {
     if (!localAppData) {
       return null;
     }
-    const installDir = join105(localAppData, "AnthropicClaude");
+    const installDir = join106(localAppData, "AnthropicClaude");
     try {
       const entries = await readdir22(installDir);
       const versions = entries.filter((e) => e.startsWith("app-")).map((e) => e.slice(4)).filter((v) => import_semver7.coerce(v) !== null).sort((a, b) => {
@@ -429489,7 +429576,7 @@ var init_desktopDeepLink = __esm(() => {
 
 // components/design-system/LoadingState.tsx
 function LoadingState(t0) {
-  const $ = import_compiler_runtime130.c(10);
+  const $ = import_compiler_runtime129.c(10);
   const {
     message,
     bold: t1,
@@ -429556,11 +429643,11 @@ function LoadingState(t0) {
   }
   return t6;
 }
-var import_compiler_runtime130, jsx_runtime162;
+var import_compiler_runtime129, jsx_runtime162;
 var init_LoadingState = __esm(() => {
   init_ink2();
   init_Spinner2();
-  import_compiler_runtime130 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime129 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime162 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -429574,13 +429661,13 @@ function getDownloadUrl() {
   }
 }
 function DesktopHandoff(t0) {
-  const $ = import_compiler_runtime131.c(20);
+  const $ = import_compiler_runtime130.c(20);
   const {
     onDone
   } = t0;
-  const [state, setState] = import_react96.useState("checking");
-  const [error, setError] = import_react96.useState(null);
-  const [downloadMessage, setDownloadMessage] = import_react96.useState("");
+  const [state, setState] = import_react97.useState("checking");
+  const [error, setError] = import_react97.useState(null);
+  const [downloadMessage, setDownloadMessage] = import_react97.useState("");
   let t1;
   if ($[0] !== error || $[1] !== onDone || $[2] !== state) {
     t1 = (input) => {
@@ -429656,7 +429743,7 @@ Learn more at ${DESKTOP_DOCS_URL}`, {
     t2 = $[5];
     t3 = $[6];
   }
-  import_react96.useEffect(t2, t3);
+  import_react97.useEffect(t2, t3);
   if (state === "error") {
     let t4;
     if ($[7] !== error) {
@@ -429769,7 +429856,7 @@ async function _temp214(onDone_0) {
   await gracefulShutdown(0, "other");
 }
 function _temp56() {}
-var import_compiler_runtime131, import_react96, jsx_runtime163, DESKTOP_DOCS_URL = "https://clau.de/desktop";
+var import_compiler_runtime130, import_react97, jsx_runtime163, DESKTOP_DOCS_URL = "https://clau.de/desktop";
 var init_DesktopHandoff = __esm(() => {
   init_ink2();
   init_browser();
@@ -429778,8 +429865,8 @@ var init_DesktopHandoff = __esm(() => {
   init_gracefulShutdown();
   init_sessionStorage();
   init_LoadingState();
-  import_compiler_runtime131 = __toESM(require_compiler_runtime(), 1);
-  import_react96 = __toESM(require_react(), 1);
+  import_compiler_runtime130 = __toESM(require_compiler_runtime(), 1);
+  import_react97 = __toESM(require_react(), 1);
   jsx_runtime163 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -430151,7 +430238,7 @@ var init_compact3 = __esm(() => {
 
 // components/design-system/Tabs.tsx
 function Tabs(t0) {
-  const $ = import_compiler_runtime132.c(25);
+  const $ = import_compiler_runtime131.c(25);
   const {
     title,
     color,
@@ -430175,11 +430262,11 @@ function Tabs(t0) {
   const tabs = children.map(_temp57);
   const defaultTabIndex = defaultTab ? tabs.findIndex((tab) => defaultTab === tab[0]) : 0;
   const isControlled = controlledSelectedTab !== undefined;
-  const [internalSelectedTab, setInternalSelectedTab] = import_react97.useState(defaultTabIndex !== -1 ? defaultTabIndex : 0);
+  const [internalSelectedTab, setInternalSelectedTab] = import_react98.useState(defaultTabIndex !== -1 ? defaultTabIndex : 0);
   const controlledTabIndex = isControlled ? tabs.findIndex((tab_0) => tab_0[0] === controlledSelectedTab) : -1;
   const selectedTabIndex = isControlled ? controlledTabIndex !== -1 ? controlledTabIndex : 0 : internalSelectedTab;
   const modalScrollRef = useModalScrollRef();
-  const [headerFocused, setHeaderFocused] = import_react97.useState(initialHeaderFocused);
+  const [headerFocused, setHeaderFocused] = import_react98.useState(initialHeaderFocused);
   let t3;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t3 = () => setHeaderFocused(true);
@@ -430196,12 +430283,12 @@ function Tabs(t0) {
     t4 = $[1];
   }
   const blurHeader = t4;
-  const [optInCount, setOptInCount] = import_react97.useState(0);
+  const [optInCount, setOptInCount] = import_react98.useState(0);
   let t5;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
     t5 = () => {
       setOptInCount(_temp215);
-      return () => setOptInCount(_temp311);
+      return () => setOptInCount(_temp310);
     };
     $[2] = t5;
   } else {
@@ -430386,7 +430473,7 @@ function _temp410(sum, t0) {
   const [, tabTitle] = t0;
   return sum + (tabTitle ? stringWidth(tabTitle) : 0) + 2 + 1;
 }
-function _temp311(n_0) {
+function _temp310(n_0) {
   return n_0 - 1;
 }
 function _temp215(n) {
@@ -430396,7 +430483,7 @@ function _temp57(child) {
   return [child.props.id ?? child.props.title, child.props.title];
 }
 function Tab(t0) {
-  const $ = import_compiler_runtime132.c(4);
+  const $ = import_compiler_runtime131.c(4);
   const {
     title,
     id,
@@ -430405,7 +430492,7 @@ function Tab(t0) {
   const {
     selectedTab,
     width
-  } = import_react97.useContext(TabsContext);
+  } = import_react98.useContext(TabsContext);
   const insideModal = useIsInsideModal();
   if (selectedTab !== (id ?? title)) {
     return null;
@@ -430430,17 +430517,17 @@ function Tab(t0) {
 function useTabsWidth() {
   const {
     width
-  } = import_react97.useContext(TabsContext);
+  } = import_react98.useContext(TabsContext);
   return width;
 }
 function useTabHeaderFocus() {
-  const $ = import_compiler_runtime132.c(6);
+  const $ = import_compiler_runtime131.c(6);
   const {
     headerFocused,
     focusHeader,
     blurHeader,
     registerOptIn
-  } = import_react97.useContext(TabsContext);
+  } = import_react98.useContext(TabsContext);
   let t0;
   if ($[0] !== registerOptIn) {
     t0 = [registerOptIn];
@@ -430449,7 +430536,7 @@ function useTabHeaderFocus() {
   } else {
     t0 = $[1];
   }
-  import_react97.useEffect(registerOptIn, t0);
+  import_react98.useEffect(registerOptIn, t0);
   let t1;
   if ($[2] !== blurHeader || $[3] !== focusHeader || $[4] !== headerFocused) {
     t1 = {
@@ -430466,7 +430553,7 @@ function useTabHeaderFocus() {
   }
   return t1;
 }
-var import_compiler_runtime132, import_react97, jsx_runtime165, TabsContext;
+var import_compiler_runtime131, import_react98, jsx_runtime165, TabsContext;
 var init_Tabs = __esm(() => {
   init_modalContext();
   init_useTerminalSize();
@@ -430474,10 +430561,10 @@ var init_Tabs = __esm(() => {
   init_stringWidth();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime132 = __toESM(require_compiler_runtime(), 1);
-  import_react97 = __toESM(require_react(), 1);
+  import_compiler_runtime131 = __toESM(require_compiler_runtime(), 1);
+  import_react98 = __toESM(require_react(), 1);
   jsx_runtime165 = __toESM(require_jsx_runtime(), 1);
-  TabsContext = import_react97.createContext({
+  TabsContext = import_react98.createContext({
     selectedTab: undefined,
     width: undefined,
     headerFocused: false,
@@ -430497,7 +430584,7 @@ function buildPrimarySection() {
   });
   return [{
     label: "Version",
-    value: "1.0.26"
+    value: "1.0.27"
   }, {
     label: "Session name",
     value: nameValue
@@ -430525,7 +430612,7 @@ async function buildDiagnostics() {
   return [...await buildInstallationDiagnostics(), ...await buildInstallationHealthDiagnostics(), ...await buildMemoryDiagnostics()];
 }
 function PropertyValue(t0) {
-  const $ = import_compiler_runtime133.c(8);
+  const $ = import_compiler_runtime132.c(8);
   const {
     value
   } = t0;
@@ -430582,7 +430669,7 @@ function PropertyValue(t0) {
   return value;
 }
 function Status(t0) {
-  const $ = import_compiler_runtime133.c(20);
+  const $ = import_compiler_runtime132.c(20);
   const {
     context,
     diagnosticsPromise
@@ -430633,7 +430720,7 @@ function Status(t0) {
   }
   let t5;
   if ($[10] !== diagnosticsPromise) {
-    t5 = /* @__PURE__ */ jsx_runtime166.jsx(import_react98.Suspense, {
+    t5 = /* @__PURE__ */ jsx_runtime166.jsx(import_react99.Suspense, {
       fallback: null,
       children: /* @__PURE__ */ jsx_runtime166.jsx(Diagnostics, {
         promise: diagnosticsPromise
@@ -430698,10 +430785,10 @@ function Status(t0) {
 function _temp411(properties, i) {
   return properties.length > 0 && /* @__PURE__ */ jsx_runtime166.jsx(ThemedBox_default, {
     flexDirection: "column",
-    children: properties.map(_temp312)
+    children: properties.map(_temp311)
   }, i);
 }
-function _temp312(t0, j) {
+function _temp311(t0, j) {
   const {
     label,
     value
@@ -430731,11 +430818,11 @@ function _temp58(s) {
   return s.mainLoopModel;
 }
 function Diagnostics(t0) {
-  const $ = import_compiler_runtime133.c(5);
+  const $ = import_compiler_runtime132.c(5);
   const {
     promise
   } = t0;
-  const diagnostics = import_react98.use(promise);
+  const diagnostics = import_react99.use(promise);
   if (diagnostics.length === 0) {
     return null;
   }
@@ -430791,7 +430878,7 @@ function _temp59(diagnostic, i) {
     ]
   }, i);
 }
-var import_compiler_runtime133, import_react98, jsx_runtime166;
+var import_compiler_runtime132, import_react99, jsx_runtime166;
 var init_Status = __esm(() => {
   init_figures();
   init_state();
@@ -430802,8 +430889,8 @@ var init_Status = __esm(() => {
   init_sessionStorage();
   init_status();
   init_ConfigurableShortcutHint();
-  import_compiler_runtime133 = __toESM(require_compiler_runtime(), 1);
-  import_react98 = __toESM(require_react(), 1);
+  import_compiler_runtime132 = __toESM(require_compiler_runtime(), 1);
+  import_react99 = __toESM(require_react(), 1);
   jsx_runtime166 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -430832,7 +430919,7 @@ var init_bridgeEnabled = __esm(() => {
 
 // components/ThemePicker.tsx
 function ThemePicker(t0) {
-  const $ = import_compiler_runtime134.c(59);
+  const $ = import_compiler_runtime133.c(59);
   const {
     onThemeSelect,
     showIntroText: t1,
@@ -431243,7 +431330,7 @@ function _temp217() {}
 function _temp60(s) {
   return s.settings.syntaxHighlightingDisabled;
 }
-var import_compiler_runtime134, jsx_runtime167;
+var import_compiler_runtime133, jsx_runtime167;
 var init_ThemePicker = __esm(() => {
   init_useExitOnCtrlCDWithKeybindings();
   init_useTerminalSize();
@@ -431259,7 +431346,7 @@ var init_ThemePicker = __esm(() => {
   init_KeyboardShortcutHint();
   init_colorDiff();
   init_StructuredDiff();
-  import_compiler_runtime134 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime133 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime167 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -431291,7 +431378,7 @@ var init_EffortIndicator = __esm(() => {
 
 // components/ModelPicker.tsx
 function ModelPicker(t0) {
-  const $ = import_compiler_runtime135.c(82);
+  const $ = import_compiler_runtime134.c(82);
   const {
     initial,
     sessionModel,
@@ -431305,9 +431392,9 @@ function ModelPicker(t0) {
   const setAppState = useSetAppState();
   const exitState = useExitOnCtrlCDWithKeybindings();
   const initialValue = initial === null ? NO_PREFERENCE : initial;
-  const [focusedValue, setFocusedValue] = import_react99.useState(initialValue);
+  const [focusedValue, setFocusedValue] = import_react100.useState(initialValue);
   const isFastMode = useAppState(_temp61);
-  const [hasToggledEffort, setHasToggledEffort] = import_react99.useState(false);
+  const [hasToggledEffort, setHasToggledEffort] = import_react100.useState(false);
   const effortValue = useAppState(_temp218);
   let t1;
   if ($[0] !== effortValue) {
@@ -431317,7 +431404,7 @@ function ModelPicker(t0) {
   } else {
     t1 = $[1];
   }
-  const [effort, setEffort] = import_react99.useState(t1);
+  const [effort, setEffort] = import_react100.useState(t1);
   const t2 = isFastMode ?? false;
   let t3;
   if ($[2] !== t2) {
@@ -431369,7 +431456,7 @@ function ModelPicker(t0) {
   const optionsWithInitial = t4;
   let t5;
   if ($[12] !== optionsWithInitial) {
-    t5 = optionsWithInitial.map(_temp313);
+    t5 = optionsWithInitial.map(_temp312);
     $[12] = optionsWithInitial;
     $[13] = t5;
   } else {
@@ -431790,7 +431877,7 @@ function ModelPicker(t0) {
   return t29;
 }
 function _temp412() {}
-function _temp313(opt_0) {
+function _temp312(opt_0) {
   return {
     ...opt_0,
     value: opt_0.value === null ? NO_PREFERENCE : opt_0.value
@@ -431808,7 +431895,7 @@ function resolveOptionModel(value) {
   return value === NO_PREFERENCE ? getDefaultMainLoopModel() : parseUserSpecifiedModel(value);
 }
 function EffortLevelIndicator(t0) {
-  const $ = import_compiler_runtime135.c(5);
+  const $ = import_compiler_runtime134.c(5);
   const {
     effort
   } = t0;
@@ -431851,7 +431938,7 @@ function getDefaultEffortLevelForOption(value) {
   const defaultValue = getDefaultEffortForModel(resolved);
   return defaultValue !== undefined ? convertEffortValueToLevel(defaultValue) : "high";
 }
-var import_compiler_runtime135, import_react99, jsx_runtime168, NO_PREFERENCE = "__NO_PREFERENCE__";
+var import_compiler_runtime134, import_react100, jsx_runtime168, NO_PREFERENCE = "__NO_PREFERENCE__";
 var init_ModelPicker = __esm(() => {
   init_capitalize();
   init_useExitOnCtrlCDWithKeybindings();
@@ -431870,8 +431957,8 @@ var init_ModelPicker = __esm(() => {
   init_KeyboardShortcutHint();
   init_Pane();
   init_EffortIndicator();
-  import_compiler_runtime135 = __toESM(require_compiler_runtime(), 1);
-  import_react99 = __toESM(require_react(), 1);
+  import_compiler_runtime134 = __toESM(require_compiler_runtime(), 1);
+  import_react100 = __toESM(require_react(), 1);
   jsx_runtime168 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -431897,7 +431984,7 @@ var init_extraUsage = __esm(() => {
 
 // components/ClaudeMdExternalIncludesDialog.tsx
 function ClaudeMdExternalIncludesDialog(t0) {
-  const $ = import_compiler_runtime136.c(18);
+  const $ = import_compiler_runtime135.c(18);
   const {
     onDone,
     isStandaloneDialog,
@@ -431910,7 +431997,7 @@ function ClaudeMdExternalIncludesDialog(t0) {
   } else {
     t1 = $[0];
   }
-  import_react100.default.useEffect(_temp63, t1);
+  import_react101.default.useEffect(_temp63, t1);
   let t2;
   if ($[1] !== onDone) {
     t2 = (value) => {
@@ -431919,7 +432006,7 @@ function ClaudeMdExternalIncludesDialog(t0) {
         saveCurrentProjectConfig(_temp219);
       } else {
         logEvent("tengu_claude_md_external_includes_dialog_accepted", {});
-        saveCurrentProjectConfig(_temp314);
+        saveCurrentProjectConfig(_temp313);
       }
       onDone();
     };
@@ -432044,7 +432131,7 @@ function _temp413(include, i) {
     ]
   }, i);
 }
-function _temp314(current_0) {
+function _temp313(current_0) {
   return {
     ...current_0,
     hasClaudeMdExternalIncludesApproved: true,
@@ -432061,21 +432148,21 @@ function _temp219(current) {
 function _temp63() {
   logEvent("tengu_claude_md_includes_dialog_shown", {});
 }
-var import_compiler_runtime136, import_react100, jsx_runtime169;
+var import_compiler_runtime135, import_react101, jsx_runtime169;
 var init_ClaudeMdExternalIncludesDialog = __esm(() => {
   init_analytics();
   init_ink2();
   init_config2();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime136 = __toESM(require_compiler_runtime(), 1);
-  import_react100 = __toESM(require_react(), 1);
+  import_compiler_runtime135 = __toESM(require_compiler_runtime(), 1);
+  import_react101 = __toESM(require_react(), 1);
   jsx_runtime169 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/ChannelDowngradeDialog.tsx
 function ChannelDowngradeDialog(t0) {
-  const $ = import_compiler_runtime137.c(17);
+  const $ = import_compiler_runtime136.c(17);
   const {
     currentVersion,
     onChoice
@@ -432183,12 +432270,12 @@ function ChannelDowngradeDialog(t0) {
   }
   return t9;
 }
-var import_compiler_runtime137, jsx_runtime170;
+var import_compiler_runtime136, jsx_runtime170;
 var init_ChannelDowngradeDialog = __esm(() => {
   init_ink2();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime137 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime136 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime170 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -432201,7 +432288,7 @@ function mapConfigsToOptions(styles) {
   }));
 }
 function OutputStylePicker(t0) {
-  const $ = import_compiler_runtime138.c(16);
+  const $ = import_compiler_runtime137.c(16);
   const {
     initialStyle,
     onComplete,
@@ -432215,8 +432302,8 @@ function OutputStylePicker(t0) {
   } else {
     t1 = $[0];
   }
-  const [styleOptions, setStyleOptions] = import_react101.useState(t1);
-  const [isLoading, setIsLoading] = import_react101.useState(true);
+  const [styleOptions, setStyleOptions] = import_react102.useState(t1);
+  const [isLoading, setIsLoading] = import_react102.useState(true);
   let t2;
   let t3;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
@@ -432238,7 +432325,7 @@ function OutputStylePicker(t0) {
     t2 = $[1];
     t3 = $[2];
   }
-  import_react101.useEffect(t2, t3);
+  import_react102.useEffect(t2, t3);
   let t4;
   if ($[3] !== onComplete) {
     t4 = (style) => {
@@ -432311,28 +432398,28 @@ function OutputStylePicker(t0) {
   }
   return t9;
 }
-var import_compiler_runtime138, import_react101, jsx_runtime171, DEFAULT_OUTPUT_STYLE_LABEL = "Default", DEFAULT_OUTPUT_STYLE_DESCRIPTION = "EvilClaude completes coding tasks efficiently and provides concise responses";
+var import_compiler_runtime137, import_react102, jsx_runtime171, DEFAULT_OUTPUT_STYLE_LABEL = "Default", DEFAULT_OUTPUT_STYLE_DESCRIPTION = "EvilClaude completes coding tasks efficiently and provides concise responses";
 var init_OutputStylePicker = __esm(() => {
   init_outputStyles();
   init_ink2();
   init_cwd2();
   init_select();
   init_Dialog();
-  import_compiler_runtime138 = __toESM(require_compiler_runtime(), 1);
-  import_react101 = __toESM(require_react(), 1);
+  import_compiler_runtime137 = __toESM(require_compiler_runtime(), 1);
+  import_react102 = __toESM(require_react(), 1);
   jsx_runtime171 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/LanguagePicker.tsx
 function LanguagePicker(t0) {
-  const $ = import_compiler_runtime139.c(13);
+  const $ = import_compiler_runtime138.c(13);
   const {
     initialLanguage,
     onComplete,
     onCancel
   } = t0;
-  const [language, setLanguage] = import_react102.useState(initialLanguage);
-  const [cursorOffset, setCursorOffset] = import_react102.useState((initialLanguage ?? "").length);
+  const [language, setLanguage] = import_react103.useState(initialLanguage);
+  const [cursorOffset, setCursorOffset] = import_react103.useState((initialLanguage ?? "").length);
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = {
@@ -432430,20 +432517,20 @@ function LanguagePicker(t0) {
   }
   return t8;
 }
-var import_compiler_runtime139, import_react102, jsx_runtime172;
+var import_compiler_runtime138, import_react103, jsx_runtime172;
 var init_LanguagePicker = __esm(() => {
   init_figures();
   init_ink2();
   init_useKeybinding();
   init_TextInput();
-  import_compiler_runtime139 = __toESM(require_compiler_runtime(), 1);
-  import_react102 = __toESM(require_react(), 1);
+  import_compiler_runtime138 = __toESM(require_compiler_runtime(), 1);
+  import_react103 = __toESM(require_react(), 1);
   jsx_runtime172 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/SearchBox.tsx
 function SearchBox(t0) {
-  const $ = import_compiler_runtime140.c(17);
+  const $ = import_compiler_runtime139.c(17);
   const {
     query,
     placeholder: t1,
@@ -432550,10 +432637,10 @@ function SearchBox(t0) {
   }
   return t11;
 }
-var import_compiler_runtime140, jsx_runtime173;
+var import_compiler_runtime139, jsx_runtime173;
 var init_SearchBox = __esm(() => {
   init_ink2();
-  import_compiler_runtime140 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime139 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime173 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -432582,9 +432669,9 @@ function useSearchInput({
 }) {
   const { columns: terminalColumns } = useTerminalSize();
   const effectiveColumns = columns ?? terminalColumns;
-  const [query, setQueryState] = import_react103.useState(initialQuery);
-  const [cursorOffset, setCursorOffset] = import_react103.useState(initialQuery.length);
-  const setQuery = import_react103.useCallback((q) => {
+  const [query, setQueryState] = import_react104.useState(initialQuery);
+  const [cursorOffset, setCursorOffset] = import_react104.useState(initialQuery.length);
+  const setQuery = import_react104.useCallback((q) => {
     setQueryState(q);
     setCursorOffset(q.length);
   }, []);
@@ -432809,13 +432896,13 @@ function useSearchInput({
   }, { isActive });
   return { query, setQuery, cursorOffset, handleKeyDown };
 }
-var import_react103, UNHANDLED_SPECIAL_KEYS;
+var import_react104, UNHANDLED_SPECIAL_KEYS;
 var init_useSearchInput = __esm(() => {
   init_keyboard_event();
   init_ink2();
   init_Cursor();
   init_useTerminalSize();
-  import_react103 = __toESM(require_react(), 1);
+  import_react104 = __toESM(require_react(), 1);
   UNHANDLED_SPECIAL_KEYS = new Set([
     "pageup",
     "pagedown",
@@ -432853,17 +432940,17 @@ function Config({
   const insideModal = useIsInsideModal();
   const [, setTheme] = useTheme();
   const themeSetting = useThemeSetting();
-  const [globalConfig, setGlobalConfig] = import_react104.useState(getGlobalConfig());
-  const initialConfig = React52.useRef(getGlobalConfig());
-  const [settingsData, setSettingsData] = import_react104.useState(getInitialSettings());
-  const initialSettingsData = React52.useRef(getInitialSettings());
-  const [currentOutputStyle, setCurrentOutputStyle] = import_react104.useState(settingsData?.outputStyle || DEFAULT_OUTPUT_STYLE_NAME);
-  const initialOutputStyle = React52.useRef(currentOutputStyle);
-  const [currentLanguage, setCurrentLanguage] = import_react104.useState(settingsData?.language);
-  const initialLanguage = React52.useRef(currentLanguage);
-  const [selectedIndex, setSelectedIndex] = import_react104.useState(0);
-  const [scrollOffset, setScrollOffset] = import_react104.useState(0);
-  const [isSearchMode, setIsSearchMode] = import_react104.useState(true);
+  const [globalConfig, setGlobalConfig] = import_react105.useState(getGlobalConfig());
+  const initialConfig = React53.useRef(getGlobalConfig());
+  const [settingsData, setSettingsData] = import_react105.useState(getInitialSettings());
+  const initialSettingsData = React53.useRef(getInitialSettings());
+  const [currentOutputStyle, setCurrentOutputStyle] = import_react105.useState(settingsData?.outputStyle || DEFAULT_OUTPUT_STYLE_NAME);
+  const initialOutputStyle = React53.useRef(currentOutputStyle);
+  const [currentLanguage, setCurrentLanguage] = import_react105.useState(settingsData?.language);
+  const initialLanguage = React53.useRef(currentLanguage);
+  const [selectedIndex, setSelectedIndex] = import_react105.useState(0);
+  const [scrollOffset, setScrollOffset] = import_react105.useState(0);
+  const [isSearchMode, setIsSearchMode] = import_react105.useState(true);
   const isTerminalFocused = useTerminalFocus();
   const {
     rows
@@ -432878,13 +432965,13 @@ function Config({
   const showAutoInDefaultModePicker = false;
   const showDefaultViewPicker = false;
   const setAppState = useSetAppState();
-  const [changes, setChanges] = import_react104.useState({});
-  const initialThinkingEnabled = React52.useRef(thinkingEnabled);
-  const [initialLocalSettings] = import_react104.useState(() => getSettingsForSource("localSettings"));
-  const [initialUserSettings] = import_react104.useState(() => getSettingsForSource("userSettings"));
-  const initialThemeSetting = React52.useRef(themeSetting);
+  const [changes, setChanges] = import_react105.useState({});
+  const initialThinkingEnabled = React53.useRef(thinkingEnabled);
+  const [initialLocalSettings] = import_react105.useState(() => getSettingsForSource("localSettings"));
+  const [initialUserSettings] = import_react105.useState(() => getSettingsForSource("userSettings"));
+  const initialThemeSetting = React53.useRef(themeSetting);
   const store = useAppStateStore();
-  const [initialAppState] = import_react104.useState(() => {
+  const [initialAppState] = import_react105.useState(() => {
     const s_4 = store.getState();
     return {
       mainLoopModel: s_4.mainLoopModel,
@@ -432899,10 +432986,10 @@ function Config({
       settings: s_4.settings
     };
   });
-  const [initialUserMsgOptIn] = import_react104.useState(() => getUserMsgOptIn());
-  const isDirty = React52.useRef(false);
-  const [showThinkingWarning, setShowThinkingWarning] = import_react104.useState(false);
-  const [showSubmenu, setShowSubmenu] = import_react104.useState(null);
+  const [initialUserMsgOptIn] = import_react105.useState(() => getUserMsgOptIn());
+  const isDirty = React53.useRef(false);
+  const [showThinkingWarning, setShowThinkingWarning] = import_react105.useState(false);
+  const [showSubmenu, setShowSubmenu] = import_react105.useState(null);
   const {
     query: searchQuery,
     setQuery: setSearchQuery,
@@ -432914,12 +433001,12 @@ function Config({
     passthroughCtrlKeys: ["c", "d"]
   });
   const ownsEsc = isSearchMode && !headerFocused;
-  React52.useEffect(() => {
+  React53.useEffect(() => {
     onIsSearchModeChange?.(ownsEsc);
   }, [ownsEsc, onIsSearchModeChange]);
   const isConnectedToIde = hasAccessToIDEExtensionDiffFeature(context.options.mcpClients);
   const isFileCheckpointingAvailable = !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING);
-  const memoryFiles = React52.use(getMemoryFiles(true));
+  const memoryFiles = React53.use(getMemoryFiles(true));
   const shouldShowExternalIncludesToggle = hasExternalClaudeMdIncludes(memoryFiles);
   const autoUpdaterDisabledReason = getAutoUpdaterDisabledReason();
   function onChangeMainModelConfig(value) {
@@ -433620,7 +433707,7 @@ function Config({
       }
     }] : []
   ];
-  const filteredSettingsItems = React52.useMemo(() => {
+  const filteredSettingsItems = React53.useMemo(() => {
     if (!searchQuery)
       return settingsItems;
     const lowerQuery = searchQuery.toLowerCase();
@@ -433631,7 +433718,7 @@ function Config({
       return searchableText.toLowerCase().includes(lowerQuery);
     });
   }, [settingsItems, searchQuery]);
-  React52.useEffect(() => {
+  React53.useEffect(() => {
     if (selectedIndex >= filteredSettingsItems.length) {
       const newIndex = Math.max(0, filteredSettingsItems.length - 1);
       setSelectedIndex(newIndex);
@@ -433646,7 +433733,7 @@ function Config({
       return prev_21;
     });
   }, [filteredSettingsItems.length, selectedIndex, maxVisible]);
-  const adjustScrollOffset = import_react104.useCallback((newIndex_0) => {
+  const adjustScrollOffset = import_react105.useCallback((newIndex_0) => {
     setScrollOffset((prev_22) => {
       if (newIndex_0 < prev_22)
         return newIndex_0;
@@ -433655,7 +433742,7 @@ function Config({
       return prev_22;
     });
   }, [maxVisible]);
-  const handleSaveAndClose = import_react104.useCallback(() => {
+  const handleSaveAndClose = import_react105.useCallback(() => {
     if (showSubmenu !== null) {
       return;
     }
@@ -433737,7 +433824,7 @@ function Config({
       });
     }
   }, [showSubmenu, changes, globalConfig, mainLoopModel, currentOutputStyle, currentLanguage, settingsData?.autoUpdatesChannel, isFastModeEnabled() ? settingsData?.fastMode : undefined, onClose]);
-  const revertChanges = import_react104.useCallback(() => {
+  const revertChanges = import_react105.useCallback(() => {
     if (themeSetting !== initialThemeSetting.current) {
       setTheme(initialThemeSetting.current);
     }
@@ -433783,7 +433870,7 @@ function Config({
       setUserMsgOptIn(initialUserMsgOptIn);
     }
   }, [themeSetting, setTheme, initialLocalSettings, initialUserSettings, initialAppState, initialUserMsgOptIn, setAppState]);
-  const handleEscape = import_react104.useCallback(() => {
+  const handleEscape = import_react105.useCallback(() => {
     if (showSubmenu !== null) {
       return;
     }
@@ -433802,7 +433889,7 @@ function Config({
     context: "Settings",
     isActive: showSubmenu === null && !isSearchMode && !headerFocused
   });
-  const toggleSetting = import_react104.useCallback(() => {
+  const toggleSetting = import_react105.useCallback(() => {
     const setting_0 = filteredSettingsItems[selectedIndex];
     if (!setting_0 || !setting_0.onChange) {
       return;
@@ -433912,7 +433999,7 @@ function Config({
     context: "Settings",
     isActive: showSubmenu === null && !isSearchMode && !headerFocused
   });
-  const handleKeyDown = import_react104.useCallback((e) => {
+  const handleKeyDown = import_react105.useCallback((e) => {
     if (showSubmenu !== null)
       return;
     if (headerFocused)
@@ -434244,7 +434331,7 @@ function Config({
         }
       })
     }) : showSubmenu === "ChannelDowngrade" ? /* @__PURE__ */ jsx_runtime174.jsx(ChannelDowngradeDialog, {
-      currentVersion: "1.0.26",
+      currentVersion: "1.0.27",
       onChoice: (choice) => {
         setShowSubmenu(null);
         setTabsHidden(false);
@@ -434256,7 +434343,7 @@ function Config({
           autoUpdatesChannel: "stable"
         };
         if (choice === "stay") {
-          newSettings.minimumVersion = "1.0.26";
+          newSettings.minimumVersion = "1.0.27";
         }
         updateSettingsForSource("userSettings", newSettings);
         setSettingsData((prev_27) => ({
@@ -434304,7 +434391,7 @@ function Config({
               filteredSettingsItems.slice(scrollOffset, scrollOffset + maxVisible).map((setting_2, i) => {
                 const actualIndex = scrollOffset + i;
                 const isSelected = actualIndex === selectedIndex && !headerFocused && !isSearchMode;
-                return /* @__PURE__ */ jsx_runtime174.jsx(React52.Fragment, {
+                return /* @__PURE__ */ jsx_runtime174.jsx(React53.Fragment, {
                   children: /* @__PURE__ */ jsx_runtime174.jsxs(ThemedBox_default, {
                     children: [
                       /* @__PURE__ */ jsx_runtime174.jsx(ThemedBox_default, {
@@ -434469,7 +434556,7 @@ function teammateModelDisplayString(value) {
   return modelDisplayString(value);
 }
 function NotifChannelLabel(t0) {
-  const $ = import_compiler_runtime141.c(4);
+  const $ = import_compiler_runtime140.c(4);
   const {
     value
   } = t0;
@@ -434560,7 +434647,7 @@ function NotifChannelLabel(t0) {
     }
   }
 }
-var import_compiler_runtime141, React52, import_react104, jsx_runtime174, THEME_LABELS;
+var import_compiler_runtime140, React53, import_react105, jsx_runtime174, THEME_LABELS;
 var init_Config = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -434605,9 +434692,9 @@ var init_Config = __esm(() => {
   init_useTerminalSize();
   init_fastMode();
   init_fullscreen();
-  import_compiler_runtime141 = __toESM(require_compiler_runtime(), 1);
-  React52 = __toESM(require_react(), 1);
-  import_react104 = __toESM(require_react(), 1);
+  import_compiler_runtime140 = __toESM(require_compiler_runtime(), 1);
+  React53 = __toESM(require_react(), 1);
+  import_react105 = __toESM(require_react(), 1);
   jsx_runtime174 = __toESM(require_jsx_runtime(), 1);
   THEME_LABELS = {
     auto: "Auto (match terminal)",
@@ -434643,7 +434730,7 @@ function maybeRefreshOverageCreditCache() {
   refreshOverageCreditGrantCache();
 }
 function useShowOverageCreditUpsell() {
-  const [show] = import_react105.useState(_temp64);
+  const [show] = import_react106.useState(_temp64);
   return show;
 }
 function _temp64() {
@@ -434670,7 +434757,7 @@ function getFeedTitle(amount) {
   return `${amount} in extra usage`;
 }
 function OverageCreditUpsell(t0) {
-  const $ = import_compiler_runtime142.c(8);
+  const $ = import_compiler_runtime141.c(8);
   const {
     maxWidth,
     twoLine
@@ -434765,21 +434852,21 @@ function createOverageCreditFeed() {
     }
   };
 }
-var import_compiler_runtime142, import_react105, jsx_runtime175, MAX_IMPRESSIONS = 3, FEED_SUBTITLE = "On us. Works on third-party apps · /extra-usage";
+var import_compiler_runtime141, import_react106, jsx_runtime175, MAX_IMPRESSIONS = 3, FEED_SUBTITLE = "On us. Works on third-party apps · /extra-usage";
 var init_OverageCreditUpsell = __esm(() => {
   init_ink2();
   init_analytics();
   init_overageCreditGrant();
   init_config2();
   init_format();
-  import_compiler_runtime142 = __toESM(require_compiler_runtime(), 1);
-  import_react105 = __toESM(require_react(), 1);
+  import_compiler_runtime141 = __toESM(require_compiler_runtime(), 1);
+  import_react106 = __toESM(require_react(), 1);
   jsx_runtime175 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/Settings/Usage.tsx
 function LimitBar(t0) {
-  const $ = import_compiler_runtime143.c(34);
+  const $ = import_compiler_runtime142.c(34);
   const {
     title,
     limit,
@@ -434990,15 +435077,15 @@ function LimitBar(t0) {
   }
 }
 function Usage() {
-  const [utilization, setUtilization] = import_react106.useState(null);
-  const [error, setError] = import_react106.useState(null);
-  const [isLoading, setIsLoading] = import_react106.useState(true);
+  const [utilization, setUtilization] = import_react107.useState(null);
+  const [error, setError] = import_react107.useState(null);
+  const [isLoading, setIsLoading] = import_react107.useState(true);
   const {
     columns
   } = useTerminalSize();
   const availableWidth = columns - 2;
   const maxWidth = Math.min(availableWidth, 80);
-  const loadUtilization = React53.useCallback(async () => {
+  const loadUtilization = React54.useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -435013,7 +435100,7 @@ function Usage() {
       setIsLoading(false);
     }
   }, []);
-  import_react106.useEffect(() => {
+  import_react107.useEffect(() => {
     loadUtilization();
   }, [loadUtilization]);
   useKeybinding("settings:retry", () => {
@@ -435128,7 +435215,7 @@ function Usage() {
   });
 }
 function ExtraUsageSection(t0) {
-  const $ = import_compiler_runtime143.c(20);
+  const $ = import_compiler_runtime142.c(20);
   const {
     extraUsage: extraUsage2,
     maxWidth
@@ -435263,7 +435350,7 @@ function ExtraUsageSection(t0) {
   }
   return t10;
 }
-var import_compiler_runtime143, React53, import_react106, jsx_runtime176, EXTRA_USAGE_SECTION_TITLE = "Extra usage";
+var import_compiler_runtime142, React54, import_react107, jsx_runtime176, EXTRA_USAGE_SECTION_TITLE = "Extra usage";
 var init_Usage = __esm(() => {
   init_extra_usage2();
   init_cost_tracker();
@@ -435279,30 +435366,30 @@ var init_Usage = __esm(() => {
   init_Byline();
   init_ProgressBar();
   init_OverageCreditUpsell();
-  import_compiler_runtime143 = __toESM(require_compiler_runtime(), 1);
-  React53 = __toESM(require_react(), 1);
-  import_react106 = __toESM(require_react(), 1);
+  import_compiler_runtime142 = __toESM(require_compiler_runtime(), 1);
+  React54 = __toESM(require_react(), 1);
+  import_react107 = __toESM(require_react(), 1);
   jsx_runtime176 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/Settings/Settings.tsx
 function Settings(t0) {
-  const $ = import_compiler_runtime144.c(25);
+  const $ = import_compiler_runtime143.c(25);
   const {
     onClose,
     context,
     defaultTab
   } = t0;
-  const [selectedTab, setSelectedTab] = import_react107.useState(defaultTab);
-  const [tabsHidden, setTabsHidden] = import_react107.useState(false);
-  const [configOwnsEsc, setConfigOwnsEsc] = import_react107.useState(false);
-  const [gatesOwnsEsc, setGatesOwnsEsc] = import_react107.useState(false);
+  const [selectedTab, setSelectedTab] = import_react108.useState(defaultTab);
+  const [tabsHidden, setTabsHidden] = import_react108.useState(false);
+  const [configOwnsEsc, setConfigOwnsEsc] = import_react108.useState(false);
+  const [gatesOwnsEsc, setGatesOwnsEsc] = import_react108.useState(false);
   const insideModal = useIsInsideModal();
   const {
     rows
   } = useModalOrTerminalSize(useTerminalSize());
   const contentHeight = insideModal ? rows + 1 : Math.max(15, Math.min(Math.floor(rows * 0.8), 30));
-  const [diagnosticsPromise] = import_react107.useState(_temp220);
+  const [diagnosticsPromise] = import_react108.useState(_temp220);
   useExitOnCtrlCDWithKeybindings();
   let t1;
   if ($[0] !== onClose || $[1] !== tabsHidden) {
@@ -435353,7 +435440,7 @@ function Settings(t0) {
   if ($[8] !== contentHeight || $[9] !== context || $[10] !== onClose) {
     t5 = /* @__PURE__ */ jsx_runtime177.jsx(Tab, {
       title: "Config",
-      children: /* @__PURE__ */ jsx_runtime177.jsx(import_react107.Suspense, {
+      children: /* @__PURE__ */ jsx_runtime177.jsx(import_react108.Suspense, {
         fallback: null,
         children: /* @__PURE__ */ jsx_runtime177.jsx(Config, {
           context,
@@ -435433,7 +435520,7 @@ function _temp220() {
 function _temp65() {
   return [];
 }
-var import_compiler_runtime144, import_react107, jsx_runtime177;
+var import_compiler_runtime143, import_react108, jsx_runtime177;
 var init_Settings = __esm(() => {
   init_useKeybinding();
   init_useExitOnCtrlCDWithKeybindings();
@@ -435444,8 +435531,8 @@ var init_Settings = __esm(() => {
   init_Status();
   init_Config();
   init_Usage();
-  import_compiler_runtime144 = __toESM(require_compiler_runtime(), 1);
-  import_react107 = __toESM(require_react(), 1);
+  import_compiler_runtime143 = __toESM(require_compiler_runtime(), 1);
+  import_react108 = __toESM(require_react(), 1);
   jsx_runtime177 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -435619,7 +435706,7 @@ var init_contextSuggestions = __esm(() => {
 
 // components/design-system/StatusIcon.tsx
 function StatusIcon(t0) {
-  const $ = import_compiler_runtime145.c(5);
+  const $ = import_compiler_runtime144.c(5);
   const {
     status,
     withSpace: t1
@@ -435648,11 +435735,11 @@ function StatusIcon(t0) {
   }
   return t4;
 }
-var import_compiler_runtime145, jsx_runtime179, STATUS_CONFIG;
+var import_compiler_runtime144, jsx_runtime179, STATUS_CONFIG;
 var init_StatusIcon = __esm(() => {
   init_figures();
   init_ink2();
-  import_compiler_runtime145 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime144 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime179 = __toESM(require_jsx_runtime(), 1);
   STATUS_CONFIG = {
     success: {
@@ -435684,7 +435771,7 @@ var init_StatusIcon = __esm(() => {
 
 // components/ContextSuggestions.tsx
 function ContextSuggestions(t0) {
-  const $ = import_compiler_runtime146.c(5);
+  const $ = import_compiler_runtime145.c(5);
   const {
     suggestions
   } = t0;
@@ -435762,19 +435849,19 @@ function _temp66(suggestion, i) {
     ]
   }, i);
 }
-var import_compiler_runtime146, jsx_runtime180;
+var import_compiler_runtime145, jsx_runtime180;
 var init_ContextSuggestions = __esm(() => {
   init_figures();
   init_ink2();
   init_format();
   init_StatusIcon();
-  import_compiler_runtime146 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime145 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime180 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/ContextVisualization.tsx
 function CollapseStatus() {
-  const $ = import_compiler_runtime147.c(2);
+  const $ = import_compiler_runtime146.c(2);
   if (false) {}
   return null;
 }
@@ -435799,7 +435886,7 @@ function groupBySource(items) {
   return orderedGroups;
 }
 function ContextVisualization(t0) {
-  const $ = import_compiler_runtime147.c(87);
+  const $ = import_compiler_runtime146.c(87);
   const {
     data
   } = t0;
@@ -435842,7 +435929,7 @@ function ContextVisualization(t0) {
     }
     const hasDeferredMcpTools = t10;
     const hasDeferredBuiltinTools = deferredBuiltinTools.length > 0;
-    const autocompactCategory = categories.find(_temp315);
+    const autocompactCategory = categories.find(_temp314);
     T1 = ThemedBox_default;
     t6 = "column";
     t7 = 1;
@@ -436506,7 +436593,7 @@ function _temp414(square, colIndex) {
     children: square.squareFullness >= 0.7 ? "⛁ " : "⛀ "
   }, colIndex);
 }
-function _temp315(cat_1) {
+function _temp314(cat_1) {
   return cat_1.name === RESERVED_CATEGORY_NAME2;
 }
 function _temp221(cat_0) {
@@ -436515,7 +436602,7 @@ function _temp221(cat_0) {
 function _temp68(cat) {
   return cat.tokens > 0 && cat.name !== "Free space" && cat.name !== RESERVED_CATEGORY_NAME2 && !cat.isDeferred;
 }
-var import_compiler_runtime147, jsx_runtime181, RESERVED_CATEGORY_NAME2 = "Autocompact buffer", SOURCE_DISPLAY_ORDER;
+var import_compiler_runtime146, jsx_runtime181, RESERVED_CATEGORY_NAME2 = "Autocompact buffer", SOURCE_DISPLAY_ORDER;
 var init_ContextVisualization = __esm(() => {
   init_ink2();
   init_contextSuggestions();
@@ -436524,7 +436611,7 @@ var init_ContextVisualization = __esm(() => {
   init_constants2();
   init_stringUtils();
   init_ContextSuggestions();
-  import_compiler_runtime147 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime146 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime181 = __toESM(require_jsx_runtime(), 1);
   SOURCE_DISPLAY_ORDER = ["Project", "User", "Managed", "Plugin", "Built-in"];
 });
@@ -436532,7 +436619,7 @@ var init_ContextVisualization = __esm(() => {
 // utils/staticRender.tsx
 import { PassThrough as PassThrough5 } from "stream";
 function RenderOnceAndExit(t0) {
-  const $ = import_compiler_runtime148.c(5);
+  const $ = import_compiler_runtime147.c(5);
   const {
     children
   } = t0;
@@ -436554,7 +436641,7 @@ function RenderOnceAndExit(t0) {
     t1 = $[1];
     t2 = $[2];
   }
-  import_react108.useLayoutEffect(t1, t2);
+  import_react109.useLayoutEffect(t1, t2);
   let t3;
   if ($[3] !== children) {
     t3 = /* @__PURE__ */ jsx_runtime182.jsx(jsx_runtime182.Fragment, {
@@ -436601,12 +436688,12 @@ async function renderToString(node, columns) {
   const output = await renderToAnsiString(node, columns);
   return stripAnsi(output);
 }
-var import_compiler_runtime148, import_react108, jsx_runtime182, SYNC_START = "\x1B[?2026h", SYNC_END = "\x1B[?2026l";
+var import_compiler_runtime147, import_react109, jsx_runtime182, SYNC_START = "\x1B[?2026h", SYNC_END = "\x1B[?2026l";
 var init_staticRender = __esm(() => {
   init_strip_ansi();
   init_ink2();
-  import_compiler_runtime148 = __toESM(require_compiler_runtime(), 1);
-  import_react108 = __toESM(require_react(), 1);
+  import_compiler_runtime147 = __toESM(require_compiler_runtime(), 1);
+  import_react109 = __toESM(require_react(), 1);
   jsx_runtime182 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -436992,10 +437079,10 @@ var init_cost2 = __esm(() => {
 
 // hooks/useDiffData.ts
 function useDiffData() {
-  const [diffResult, setDiffResult] = import_react109.useState(null);
-  const [hunks, setHunks] = import_react109.useState(new Map);
-  const [loading, setLoading] = import_react109.useState(true);
-  import_react109.useEffect(() => {
+  const [diffResult, setDiffResult] = import_react110.useState(null);
+  const [hunks, setHunks] = import_react110.useState(new Map);
+  const [loading, setLoading] = import_react110.useState(true);
+  import_react110.useEffect(() => {
     let cancelled = false;
     async function loadDiffData() {
       try {
@@ -437021,7 +437108,7 @@ function useDiffData() {
       cancelled = true;
     };
   }, []);
-  return import_react109.useMemo(() => {
+  return import_react110.useMemo(() => {
     if (!diffResult) {
       return { stats: null, files: [], hunks: new Map, loading };
     }
@@ -437047,10 +437134,10 @@ function useDiffData() {
     return { stats, files, hunks, loading: false };
   }, [diffResult, hunks, loading]);
 }
-var import_react109, MAX_LINES_PER_FILE2 = 400;
+var import_react110, MAX_LINES_PER_FILE2 = 400;
 var init_useDiffData = __esm(() => {
   init_gitDiff();
-  import_react109 = __toESM(require_react(), 1);
+  import_react110 = __toESM(require_react(), 1);
 });
 
 // hooks/useTurnDiffs.ts
@@ -437102,13 +437189,13 @@ function computeTurnStats(turn) {
   };
 }
 function useTurnDiffs(messages) {
-  const cache = import_react110.useRef({
+  const cache = import_react111.useRef({
     completedTurns: [],
     currentTurn: null,
     lastProcessedIndex: 0,
     lastTurnIndex: 0
   });
-  return import_react110.useMemo(() => {
+  return import_react111.useMemo(() => {
     const c = cache.current;
     if (messages.length < c.lastProcessedIndex) {
       c.completedTurns = [];
@@ -437184,15 +437271,15 @@ function useTurnDiffs(messages) {
     return result.reverse();
   }, [messages]);
 }
-var import_react110;
+var import_react111;
 var init_useTurnDiffs = __esm(() => {
-  import_react110 = __toESM(require_react(), 1);
+  import_react111 = __toESM(require_react(), 1);
 });
 
 // components/diff/DiffDetailView.tsx
 import { resolve as resolve35 } from "path";
 function DiffDetailView(t0) {
-  const $ = import_compiler_runtime149.c(53);
+  const $ = import_compiler_runtime148.c(53);
   const {
     filePath,
     hunks,
@@ -437570,7 +437657,7 @@ function DiffDetailView(t0) {
   }
   return t9;
 }
-var import_compiler_runtime149, jsx_runtime184;
+var import_compiler_runtime148, jsx_runtime184;
 var init_DiffDetailView = __esm(() => {
   init_useTerminalSize();
   init_ink2();
@@ -437578,13 +437665,13 @@ var init_DiffDetailView = __esm(() => {
   init_file();
   init_Divider();
   init_StructuredDiff();
-  import_compiler_runtime149 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime148 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime184 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/diff/DiffFileList.tsx
 function DiffFileList(t0) {
-  const $ = import_compiler_runtime150.c(36);
+  const $ = import_compiler_runtime149.c(36);
   const {
     files,
     selectedIndex
@@ -437742,7 +437829,7 @@ function DiffFileList(t0) {
   return t6;
 }
 function FileItem(t0) {
-  const $ = import_compiler_runtime150.c(14);
+  const $ = import_compiler_runtime149.c(14);
   const {
     file,
     isSelected,
@@ -437816,7 +437903,7 @@ function FileItem(t0) {
   return t6;
 }
 function FileStats(t0) {
-  const $ = import_compiler_runtime150.c(20);
+  const $ = import_compiler_runtime149.c(20);
   const {
     file,
     isSelected
@@ -437934,14 +438021,14 @@ function FileStats(t0) {
   }
   return t5;
 }
-var import_compiler_runtime150, jsx_runtime185, MAX_VISIBLE_FILES = 5;
+var import_compiler_runtime149, jsx_runtime185, MAX_VISIBLE_FILES = 5;
 var init_DiffFileList = __esm(() => {
   init_figures();
   init_useTerminalSize();
   init_ink2();
   init_format();
   init_stringUtils();
-  import_compiler_runtime150 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime149 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime185 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -437972,16 +438059,16 @@ function turnDiffToDiffData(turn) {
   };
 }
 function DiffDialog(t0) {
-  const $ = import_compiler_runtime151.c(73);
+  const $ = import_compiler_runtime150.c(73);
   const {
     messages,
     onDone
   } = t0;
   const gitDiffData = useDiffData();
   const turnDiffs = useTurnDiffs(messages);
-  const [viewMode, setViewMode] = import_react111.useState("list");
-  const [selectedIndex, setSelectedIndex] = import_react111.useState(0);
-  const [sourceIndex, setSourceIndex] = import_react111.useState(0);
+  const [viewMode, setViewMode] = import_react112.useState("list");
+  const [selectedIndex, setSelectedIndex] = import_react112.useState(0);
+  const [sourceIndex, setSourceIndex] = import_react112.useState(0);
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = {
@@ -438040,8 +438127,8 @@ function DiffDialog(t0) {
     t5 = $[11];
     t6 = $[12];
   }
-  import_react111.useEffect(t5, t6);
-  const prevSourceIndex = import_react111.useRef(sourceIndex);
+  import_react112.useEffect(t5, t6);
+  const prevSourceIndex = import_react112.useRef(sourceIndex);
   let t7;
   let t8;
   if ($[13] !== sourceIndex) {
@@ -438059,7 +438146,7 @@ function DiffDialog(t0) {
     t7 = $[14];
     t8 = $[15];
   }
-  import_react111.useEffect(t7, t8);
+  import_react112.useEffect(t7, t8);
   useRegisterOverlay("diff-dialog");
   let t10;
   let t9;
@@ -438115,7 +438202,7 @@ function DiffDialog(t0) {
   if ($[25] !== viewMode) {
     t13 = () => {
       if (viewMode === "list") {
-        setSelectedIndex(_temp316);
+        setSelectedIndex(_temp315);
       }
     };
     $[25] = viewMode;
@@ -438410,7 +438497,7 @@ function DiffDialog(t0) {
   }
   return t25;
 }
-function _temp316(prev_1) {
+function _temp315(prev_1) {
   return Math.max(0, prev_1 - 1);
 }
 function _temp223(prev) {
@@ -438422,7 +438509,7 @@ function _temp69(turn) {
     turn
   };
 }
-var import_compiler_runtime151, import_react111, jsx_runtime186;
+var import_compiler_runtime150, import_react112, jsx_runtime186;
 var init_DiffDialog = __esm(() => {
   init_overlayContext();
   init_useDiffData();
@@ -438435,8 +438522,8 @@ var init_DiffDialog = __esm(() => {
   init_Dialog();
   init_DiffDetailView();
   init_DiffFileList();
-  import_compiler_runtime151 = __toESM(require_compiler_runtime(), 1);
-  import_react111 = __toESM(require_react(), 1);
+  import_compiler_runtime150 = __toESM(require_compiler_runtime(), 1);
+  import_react112 = __toESM(require_react(), 1);
   jsx_runtime186 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -438475,7 +438562,7 @@ var init_ctx_viz = __esm(() => {
 
 // components/KeybindingWarnings.tsx
 function KeybindingWarnings() {
-  const $ = import_compiler_runtime152.c(2);
+  const $ = import_compiler_runtime151.c(2);
   if (!isKeybindingCustomizationEnabled()) {
     return null;
   }
@@ -438518,7 +438605,7 @@ function KeybindingWarnings() {
             flexDirection: "column",
             marginTop: 1,
             children: [
-              errors.map(_temp317),
+              errors.map(_temp316),
               warns.map(_temp415)
             ]
           })
@@ -438572,7 +438659,7 @@ function _temp415(warning, i_0) {
     ]
   }, `warning-${i_0}`);
 }
-function _temp317(error, i) {
+function _temp316(error, i) {
   return /* @__PURE__ */ jsx_runtime188.jsxs(ThemedBox_default, {
     flexDirection: "column",
     children: [
@@ -438614,17 +438701,17 @@ function _temp224(w_0) {
 function _temp70(w) {
   return w.severity === "error";
 }
-var import_compiler_runtime152, jsx_runtime188;
+var import_compiler_runtime151, jsx_runtime188;
 var init_KeybindingWarnings = __esm(() => {
   init_ink2();
   init_loadUserBindings();
-  import_compiler_runtime152 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime151 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime188 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/McpParsingWarnings.tsx
 function McpConfigErrorSection(t0) {
-  const $ = import_compiler_runtime153.c(26);
+  const $ = import_compiler_runtime152.c(26);
   const {
     scope,
     parsingErrors,
@@ -438823,7 +438910,7 @@ function _temp71(error, i) {
   }, `error-${i}`);
 }
 function McpParsingWarnings() {
-  const $ = import_compiler_runtime153.c(6);
+  const $ = import_compiler_runtime152.c(6);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = {
@@ -438865,7 +438952,7 @@ function McpParsingWarnings() {
     t3 = $[3];
   }
   const scopes = t3;
-  const hasParsingErrors = scopes.some(_temp318);
+  const hasParsingErrors = scopes.some(_temp317);
   const hasWarnings = scopes.some(_temp416);
   if (!hasParsingErrors && !hasWarnings) {
     return null;
@@ -438928,7 +439015,7 @@ function _temp416(t0) {
   } = t0;
   return filterErrors(config_0.errors, "warning").length > 0;
 }
-function _temp318(t0) {
+function _temp317(t0) {
   const {
     config
   } = t0;
@@ -438937,18 +439024,18 @@ function _temp318(t0) {
 function filterErrors(errors, severity) {
   return errors.filter((e) => e.mcpErrorMetadata?.severity === severity);
 }
-var import_compiler_runtime153, jsx_runtime189;
+var import_compiler_runtime152, jsx_runtime189;
 var init_McpParsingWarnings = __esm(() => {
   init_config3();
   init_utils6();
   init_ink2();
-  import_compiler_runtime153 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime152 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime189 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/PressEnterToContinue.tsx
 function PressEnterToContinue() {
-  const $ = import_compiler_runtime154.c(1);
+  const $ = import_compiler_runtime153.c(1);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = /* @__PURE__ */ jsx_runtime190.jsxs(ThemedText, {
@@ -438968,16 +439055,16 @@ function PressEnterToContinue() {
   }
   return t0;
 }
-var import_compiler_runtime154, jsx_runtime190;
+var import_compiler_runtime153, jsx_runtime190;
 var init_PressEnterToContinue = __esm(() => {
   init_ink2();
-  import_compiler_runtime154 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime153 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime190 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/sandbox/SandboxDoctorSection.tsx
 function SandboxDoctorSection() {
-  const $ = import_compiler_runtime155.c(2);
+  const $ = import_compiler_runtime154.c(2);
   if (!SandboxManager2.isSupportedPlatform()) {
     return null;
   }
@@ -439052,11 +439139,11 @@ function _temp74(e, i) {
     ]
   }, i);
 }
-var import_compiler_runtime155, jsx_runtime191;
+var import_compiler_runtime154, jsx_runtime191;
 var init_SandboxDoctorSection = __esm(() => {
   init_ink2();
   init_sandbox_adapter();
-  import_compiler_runtime155 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime154 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime191 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -439205,7 +439292,7 @@ function buildNestedTree(errors) {
   return tree;
 }
 function ValidationErrorsList(t0) {
-  const $ = import_compiler_runtime156.c(9);
+  const $ = import_compiler_runtime155.c(9);
   const {
     errors
   } = t0;
@@ -439262,7 +439349,7 @@ function ValidationErrorsList(t0) {
           suggestionPairs.size > 0 && /* @__PURE__ */ jsx_runtime192.jsx(ThemedBox_default, {
             flexDirection: "column",
             marginTop: 1,
-            children: Array.from(suggestionPairs.values()).map(_temp319)
+            children: Array.from(suggestionPairs.values()).map(_temp318)
           })
         ]
       }, file_0);
@@ -439292,7 +439379,7 @@ function ValidationErrorsList(t0) {
   }
   return t3;
 }
-function _temp319(pair, index) {
+function _temp318(pair, index) {
   return /* @__PURE__ */ jsx_runtime192.jsxs(ThemedBox_default, {
     flexDirection: "column",
     marginBottom: 1,
@@ -439330,23 +439417,23 @@ function _temp75(acc, error) {
   acc[file].push(error);
   return acc;
 }
-var import_compiler_runtime156, jsx_runtime192;
+var import_compiler_runtime155, jsx_runtime192;
 var init_ValidationErrorsList = __esm(() => {
   init_setWith();
   init_ink2();
   init_treeify();
-  import_compiler_runtime156 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime155 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime192 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/notifs/useSettingsErrors.tsx
 function useSettingsErrors() {
-  const $ = import_compiler_runtime157.c(6);
+  const $ = import_compiler_runtime156.c(6);
   const {
     addNotification,
     removeNotification
   } = useNotifications();
-  const [errors_0, setErrors] = import_react112.useState(_temp76);
+  const [errors_0, setErrors] = import_react113.useState(_temp76);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = () => {
@@ -439391,7 +439478,7 @@ function useSettingsErrors() {
     t1 = $[4];
     t2 = $[5];
   }
-  import_react112.useEffect(t1, t2);
+  import_react113.useEffect(t1, t2);
   return errors_0;
 }
 function _temp76() {
@@ -439400,14 +439487,14 @@ function _temp76() {
   } = getSettingsWithAllErrors();
   return errors;
 }
-var import_compiler_runtime157, import_react112, SETTINGS_ERRORS_NOTIFICATION_KEY = "settings-errors";
+var import_compiler_runtime156, import_react113, SETTINGS_ERRORS_NOTIFICATION_KEY = "settings-errors";
 var init_useSettingsErrors = __esm(() => {
   init_notifications();
   init_state();
   init_allErrors();
   init_useSettingsChange();
-  import_compiler_runtime157 = __toESM(require_compiler_runtime(), 1);
-  import_react112 = __toESM(require_react(), 1);
+  import_compiler_runtime156 = __toESM(require_compiler_runtime(), 1);
+  import_react113 = __toESM(require_react(), 1);
 });
 
 // utils/permissions/shadowedRuleDetection.ts
@@ -439652,13 +439739,13 @@ var init_doctorContextWarnings = __esm(() => {
 });
 
 // screens/Doctor.tsx
-import { join as join106 } from "path";
+import { join as join107 } from "path";
 function DistTagsDisplay(t0) {
-  const $ = import_compiler_runtime158.c(8);
+  const $ = import_compiler_runtime157.c(8);
   const {
     promise
   } = t0;
-  const distTags = import_react113.use(promise);
+  const distTags = import_react114.use(promise);
   if (!distTags.latest) {
     let t1;
     if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
@@ -439715,13 +439802,13 @@ function DistTagsDisplay(t0) {
   return t3;
 }
 function Doctor(t0) {
-  const $ = import_compiler_runtime158.c(84);
+  const $ = import_compiler_runtime157.c(84);
   const {
     onDone
   } = t0;
   const agentDefinitions = useAppState(_temp78);
   const mcpTools = useAppState(_temp228);
-  const toolPermissionContext = useAppState(_temp320);
+  const toolPermissionContext = useAppState(_temp319);
   const pluginsErrors = useAppState(_temp417);
   useExitOnCtrlCDWithKeybindings();
   let t1;
@@ -439733,10 +439820,10 @@ function Doctor(t0) {
     t1 = $[1];
   }
   const tools = t1;
-  const [diagnostic, setDiagnostic] = import_react113.useState(null);
-  const [agentInfo, setAgentInfo] = import_react113.useState(null);
-  const [contextWarnings, setContextWarnings] = import_react113.useState(null);
-  const [versionLockInfo, setVersionLockInfo] = import_react113.useState(null);
+  const [diagnostic, setDiagnostic] = import_react114.useState(null);
+  const [agentInfo, setAgentInfo] = import_react114.useState(null);
+  const [contextWarnings, setContextWarnings] = import_react114.useState(null);
+  const [versionLockInfo, setVersionLockInfo] = import_react114.useState(null);
   const validationErrors = useSettingsErrors();
   let t2;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
@@ -439782,8 +439869,8 @@ function Doctor(t0) {
     t5 = () => {
       getDoctorDiagnostic().then(setDiagnostic);
       (async () => {
-        const userAgentsDir = join106(getClaudeConfigHomeDir(), "agents");
-        const projectAgentsDir = join106(getOriginalCwd(), ".claude", "agents");
+        const userAgentsDir = join107(getClaudeConfigHomeDir(), "agents");
+        const projectAgentsDir = join107(getOriginalCwd(), ".claude", "agents");
         const {
           activeAgents,
           allAgents,
@@ -439806,7 +439893,7 @@ function Doctor(t0) {
         }, async () => toolPermissionContext);
         setContextWarnings(warnings);
         if (isPidBasedLockingEnabled()) {
-          const locksDir = join106(getXDGStateHome(), "claude", "locks");
+          const locksDir = join107(getXDGStateHome(), "claude", "locks");
           const staleLocksCleaned = cleanupStaleLocks(locksDir);
           const locks = getAllLockInfo(locksDir);
           setVersionLockInfo({
@@ -439835,7 +439922,7 @@ function Doctor(t0) {
     t5 = $[9];
     t6 = $[10];
   }
-  import_react113.useEffect(t5, t6);
+  import_react114.useEffect(t5, t6);
   let t7;
   if ($[11] !== onDone) {
     t7 = () => {
@@ -440144,7 +440231,7 @@ function Doctor(t0) {
   }
   let t29;
   if ($[57] === Symbol.for("react.memo_cache_sentinel")) {
-    t29 = /* @__PURE__ */ jsx_runtime193.jsx(import_react113.Suspense, {
+    t29 = /* @__PURE__ */ jsx_runtime193.jsx(import_react114.Suspense, {
       fallback: null,
       children: /* @__PURE__ */ jsx_runtime193.jsx(DistTagsDisplay, {
         promise: distTagsPromise
@@ -440603,7 +440690,7 @@ function _temp512() {
 function _temp417(s_2) {
   return s_2.plugins.errors;
 }
-function _temp320(s_1) {
+function _temp319(s_1) {
   return s_1.toolPermissionContext;
 }
 function _temp228(s_0) {
@@ -440612,7 +440699,7 @@ function _temp228(s_0) {
 function _temp78(s) {
   return s.agentDefinitions;
 }
-var import_compiler_runtime158, import_react113, jsx_runtime193;
+var import_compiler_runtime157, import_react114, jsx_runtime193;
 var init_Doctor = __esm(() => {
   init_figures();
   init_KeybindingWarnings();
@@ -440639,8 +440726,8 @@ var init_Doctor = __esm(() => {
   init_outputLimits();
   init_outputFormatting();
   init_xdg();
-  import_compiler_runtime158 = __toESM(require_compiler_runtime(), 1);
-  import_react113 = __toESM(require_react(), 1);
+  import_compiler_runtime157 = __toESM(require_compiler_runtime(), 1);
+  import_react114 = __toESM(require_react(), 1);
   jsx_runtime193 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -440683,16 +440770,16 @@ var init_versions3 = __esm(() => {
 
 // components/memory/MemoryFileSelector.tsx
 import { mkdir as mkdir28 } from "fs/promises";
-import { join as join107 } from "path";
+import { join as join108 } from "path";
 function MemoryFileSelector(t0) {
-  const $ = import_compiler_runtime159.c(58);
+  const $ = import_compiler_runtime158.c(58);
   const {
     onSelect,
     onCancel
   } = t0;
-  const existingMemoryFiles = import_react114.use(getMemoryFiles());
-  const userMemoryPath = join107(getClaudeConfigHomeDir(), "CLAUDE.md");
-  const projectMemoryPath = join107(getOriginalCwd(), "CLAUDE.md");
+  const existingMemoryFiles = import_react115.use(getMemoryFiles());
+  const userMemoryPath = join108(getClaudeConfigHomeDir(), "CLAUDE.md");
+  const projectMemoryPath = join108(getOriginalCwd(), "CLAUDE.md");
   const hasUserMemory = existingMemoryFiles.some((f) => f.path === userMemoryPath);
   const hasProjectMemory = existingMemoryFiles.some((f_0) => f_0.path === projectMemoryPath);
   const allMemoryFiles = [...existingMemoryFiles.filter(_temp80).map(_temp229), ...hasUserMemory ? [] : [{
@@ -440753,7 +440840,7 @@ function MemoryFileSelector(t0) {
     };
   });
   const folderOptions = [];
-  const agentDefinitions = useAppState(_temp321);
+  const agentDefinitions = useAppState(_temp320);
   if (isAutoMemoryEnabled()) {
     let t1;
     if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
@@ -440789,11 +440876,11 @@ function MemoryFileSelector(t0) {
     t1 = $[3];
   }
   const initialPath = t1;
-  const [autoMemoryOn, setAutoMemoryOn] = import_react114.useState(isAutoMemoryEnabled);
-  const [autoDreamOn, setAutoDreamOn] = import_react114.useState(isAutoDreamEnabled);
-  const [showDreamRow] = import_react114.useState(isAutoMemoryEnabled);
+  const [autoMemoryOn, setAutoMemoryOn] = import_react115.useState(isAutoMemoryEnabled);
+  const [autoDreamOn, setAutoDreamOn] = import_react115.useState(isAutoDreamEnabled);
+  const [showDreamRow] = import_react115.useState(isAutoMemoryEnabled);
   const isDreamRunning = useAppState(_temp611);
-  const [lastDreamAt, setLastDreamAt] = import_react114.useState(null);
+  const [lastDreamAt, setLastDreamAt] = import_react115.useState(null);
   let t2;
   if ($[4] !== showDreamRow) {
     t2 = () => {
@@ -440816,7 +440903,7 @@ function MemoryFileSelector(t0) {
   } else {
     t3 = $[8];
   }
-  import_react114.useEffect(t2, t3);
+  import_react115.useEffect(t2, t3);
   let t4;
   if ($[9] !== isDreamRunning || $[10] !== lastDreamAt) {
     t4 = isDreamRunning ? "running" : lastDreamAt === null ? "" : lastDreamAt === 0 ? "never" : `last ran ${formatRelativeTimeAgo(new Date(lastDreamAt))}`;
@@ -440827,7 +440914,7 @@ function MemoryFileSelector(t0) {
     t4 = $[11];
   }
   const dreamStatus = t4;
-  const [focusedToggle, setFocusedToggle] = import_react114.useState(null);
+  const [focusedToggle, setFocusedToggle] = import_react115.useState(null);
   const toggleFocused = focusedToggle !== null;
   const lastToggleIndex = showDreamRow ? 1 : 0;
   let t5;
@@ -441103,7 +441190,7 @@ function _temp513(t) {
 function _temp418(opt) {
   return opt.value === lastSelectedPath;
 }
-function _temp321(s) {
+function _temp320(s) {
   return s.agentDefinitions;
 }
 function _temp229(f_2) {
@@ -441115,7 +441202,7 @@ function _temp229(f_2) {
 function _temp80(f_1) {
   return f_1.type !== "AutoMem" && f_1.type !== "TeamMem";
 }
-var import_compiler_runtime159, import_react114, jsx_runtime195, lastSelectedPath, OPEN_FOLDER_PREFIX = "__open_folder__";
+var import_compiler_runtime158, import_react115, jsx_runtime195, lastSelectedPath, OPEN_FOLDER_PREFIX = "__open_folder__";
 var init_MemoryFileSelector = __esm(() => {
   init_source();
   init_state();
@@ -441137,16 +441224,16 @@ var init_MemoryFileSelector = __esm(() => {
   init_settings2();
   init_CustomSelect();
   init_ListItem();
-  import_compiler_runtime159 = __toESM(require_compiler_runtime(), 1);
-  import_react114 = __toESM(require_react(), 1);
+  import_compiler_runtime158 = __toESM(require_compiler_runtime(), 1);
+  import_react115 = __toESM(require_react(), 1);
   jsx_runtime195 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/memory/MemoryUpdateNotification.tsx
-import { homedir as homedir28 } from "os";
+import { homedir as homedir29 } from "os";
 import { relative as relative23 } from "path";
 function getRelativeMemoryPath(path) {
-  const homeDir = homedir28();
+  const homeDir = homedir29();
   const cwd = getCwd();
   const relativeToHome = path.startsWith(homeDir) ? "~" + path.slice(homeDir.length) : null;
   const relativeToCwd = path.startsWith(cwd) ? "./" + relative23(cwd, path) : null;
@@ -441155,11 +441242,11 @@ function getRelativeMemoryPath(path) {
   }
   return relativeToHome || relativeToCwd || path;
 }
-var import_compiler_runtime160;
+var import_compiler_runtime159;
 var init_MemoryUpdateNotification = __esm(() => {
   init_ink2();
   init_cwd2();
-  import_compiler_runtime160 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime159 = __toESM(require_compiler_runtime(), 1);
 });
 
 // utils/editor.ts
@@ -441448,7 +441535,7 @@ ${editorHint}`, {
     children: /* @__PURE__ */ jsx_runtime196.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime196.jsx(React56.Suspense, {
+        /* @__PURE__ */ jsx_runtime196.jsx(React57.Suspense, {
           fallback: null,
           children: /* @__PURE__ */ jsx_runtime196.jsx(MemoryFileSelector, {
             onSelect: handleSelectMemoryFile,
@@ -441471,7 +441558,7 @@ ${editorHint}`, {
     })
   });
 }
-var React56, jsx_runtime196, call20 = async (onDone) => {
+var React57, jsx_runtime196, call20 = async (onDone) => {
   clearMemoryFileCaches();
   await getMemoryFiles();
   return /* @__PURE__ */ jsx_runtime196.jsx(MemoryCommand, {
@@ -441488,7 +441575,7 @@ var init_memory = __esm(() => {
   init_errors();
   init_log3();
   init_promptEditor();
-  React56 = __toESM(require_react(), 1);
+  React57 = __toESM(require_react(), 1);
   jsx_runtime196 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -441506,7 +441593,7 @@ var init_memory2 = __esm(() => {
 
 // components/HelpV2/Commands.tsx
 function Commands(t0) {
-  const $ = import_compiler_runtime161.c(14);
+  const $ = import_compiler_runtime160.c(14);
   const {
     commands,
     maxHeight,
@@ -441596,14 +441683,14 @@ function Commands(t0) {
 function _temp81(a, b) {
   return a.name.localeCompare(b.name);
 }
-var import_compiler_runtime161, jsx_runtime197;
+var import_compiler_runtime160, jsx_runtime197;
 var init_Commands = __esm(() => {
   init_commands2();
   init_ink2();
   init_format();
   init_select();
   init_Tabs();
-  import_compiler_runtime161 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime160 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime197 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -441638,7 +441725,7 @@ function formatShortcut(shortcut) {
   return shortcut.replace(/\+/g, " + ");
 }
 function PromptInputHelpMenu(props) {
-  const $ = import_compiler_runtime162.c(99);
+  const $ = import_compiler_runtime161.c(99);
   const {
     dimColor,
     fixedWidth,
@@ -442133,7 +442220,7 @@ function PromptInputHelpMenu(props) {
   }
   return t45;
 }
-var import_compiler_runtime162, jsx_runtime198;
+var import_compiler_runtime161, jsx_runtime198;
 var init_PromptInputHelpMenu = __esm(() => {
   init_ink2();
   init_platform2();
@@ -442142,13 +442229,13 @@ var init_PromptInputHelpMenu = __esm(() => {
   init_growthbook();
   init_fastMode();
   init_utils13();
-  import_compiler_runtime162 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime161 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime198 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/HelpV2/General.tsx
 function General() {
-  const $ = import_compiler_runtime163.c(2);
+  const $ = import_compiler_runtime162.c(2);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = /* @__PURE__ */ jsx_runtime199.jsx(ThemedBox_default, {
@@ -442191,17 +442278,17 @@ function General() {
   }
   return t1;
 }
-var import_compiler_runtime163, jsx_runtime199;
+var import_compiler_runtime162, jsx_runtime199;
 var init_General = __esm(() => {
   init_ink2();
   init_PromptInputHelpMenu();
-  import_compiler_runtime163 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime162 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime199 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/HelpV2/HelpV2.tsx
 function HelpV2(t0) {
-  const $ = import_compiler_runtime164.c(44);
+  const $ = import_compiler_runtime163.c(44);
   const {
     onClose,
     commands
@@ -442331,7 +442418,7 @@ function HelpV2(t0) {
   let t6;
   if ($[31] !== tabs) {
     t6 = /* @__PURE__ */ jsx_runtime200.jsx(Tabs, {
-      title: `EvilClaude v${"1.0.26"}`,
+      title: `EvilClaude v${"1.0.27"}`,
       color: "professionalBlue",
       defaultTab: "general",
       children: tabs
@@ -442418,7 +442505,7 @@ function HelpV2(t0) {
   }
   return t10;
 }
-var import_compiler_runtime164, jsx_runtime200;
+var import_compiler_runtime163, jsx_runtime200;
 var init_HelpV2 = __esm(() => {
   init_useExitOnCtrlCDWithKeybindings();
   init_useShortcutDisplay();
@@ -442431,7 +442518,7 @@ var init_HelpV2 = __esm(() => {
   init_Tabs();
   init_Commands();
   init_General();
-  import_compiler_runtime164 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime163 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime200 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -442469,7 +442556,7 @@ var init_help2 = __esm(() => {
 
 // components/IdeAutoConnectDialog.tsx
 function IdeAutoConnectDialog(t0) {
-  const $ = import_compiler_runtime165.c(9);
+  const $ = import_compiler_runtime164.c(9);
   const {
     onComplete
   } = t0;
@@ -442550,7 +442637,7 @@ function shouldShowAutoConnectDialog() {
   return !isSupportedTerminal() && config.autoConnectIde !== true && config.hasIdeAutoConnectDialogBeenShown !== true;
 }
 function IdeDisableAutoConnectDialog(t0) {
-  const $ = import_compiler_runtime165.c(10);
+  const $ = import_compiler_runtime164.c(10);
   const {
     onComplete
   } = t0;
@@ -442633,14 +442720,14 @@ function shouldShowDisableAutoConnectDialog() {
   const config = getGlobalConfig();
   return !isSupportedTerminal() && config.autoConnectIde === true;
 }
-var import_compiler_runtime165, jsx_runtime202;
+var import_compiler_runtime164, jsx_runtime202;
 var init_IdeAutoConnectDialog = __esm(() => {
   init_ink2();
   init_config2();
   init_ide();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime165 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime164 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime202 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -442650,9 +442737,9 @@ __export(exports_ide, {
   call: () => call22,
   formatWorkspaceFolders: () => formatWorkspaceFolders
 });
-import * as path21 from "path";
+import * as path22 from "path";
 function IDEScreen(t0) {
-  const $ = import_compiler_runtime166.c(39);
+  const $ = import_compiler_runtime165.c(39);
   const {
     availableIDEs,
     unavailableIDEs,
@@ -442668,9 +442755,9 @@ function IDEScreen(t0) {
   } else {
     t1 = $[1];
   }
-  const [selectedValue, setSelectedValue] = import_react115.useState(t1);
-  const [showAutoConnectDialog, setShowAutoConnectDialog] = import_react115.useState(false);
-  const [showDisableAutoConnectDialog, setShowDisableAutoConnectDialog] = import_react115.useState(false);
+  const [selectedValue, setSelectedValue] = import_react116.useState(t1);
+  const [showAutoConnectDialog, setShowAutoConnectDialog] = import_react116.useState(false);
+  const [showDisableAutoConnectDialog, setShowDisableAutoConnectDialog] = import_react116.useState(false);
   let t2;
   if ($[2] !== availableIDEs || $[3] !== onSelect) {
     t2 = (value) => {
@@ -442835,7 +442922,7 @@ https://docs.claude.com/s/claude-code-jetbrains` : "No available IDEs detected. 
         /* @__PURE__ */ jsx_runtime203.jsx(ThemedBox_default, {
           marginTop: 1,
           flexDirection: "column",
-          children: unavailableIDEs.map(_temp322)
+          children: unavailableIDEs.map(_temp321)
         })
       ]
     });
@@ -442882,7 +442969,7 @@ https://docs.claude.com/s/claude-code-jetbrains` : "No available IDEs detected. 
   }
   return t11;
 }
-function _temp322(ide_3, index) {
+function _temp321(ide_3, index) {
   return /* @__PURE__ */ jsx_runtime203.jsx(ThemedBox_default, {
     paddingLeft: 3,
     children: /* @__PURE__ */ jsx_runtime203.jsxs(ThemedText, {
@@ -442916,7 +443003,7 @@ async function findCurrentIDE(availableIDEs, dynamicMcpConfig) {
   return null;
 }
 function IDEOpenSelection(t0) {
-  const $ = import_compiler_runtime166.c(18);
+  const $ = import_compiler_runtime165.c(18);
   const {
     availableIDEs,
     onSelectIDE,
@@ -442930,7 +443017,7 @@ function IDEOpenSelection(t0) {
   } else {
     t1 = $[1];
   }
-  const [selectedValue, setSelectedValue] = import_react115.useState(t1);
+  const [selectedValue, setSelectedValue] = import_react116.useState(t1);
   let t2;
   if ($[2] !== availableIDEs || $[3] !== onSelectIDE) {
     t2 = (value) => {
@@ -443015,13 +443102,13 @@ function _temp419(ide_0) {
   };
 }
 function RunningIDESelector(t0) {
-  const $ = import_compiler_runtime166.c(15);
+  const $ = import_compiler_runtime165.c(15);
   const {
     runningIDEs,
     onSelectIDE,
     onDone
   } = t0;
-  const [selectedValue, setSelectedValue] = import_react115.useState(runningIDEs[0] ?? "");
+  const [selectedValue, setSelectedValue] = import_react116.useState(runningIDEs[0] ?? "");
   let t1;
   if ($[0] !== onSelectIDE) {
     t1 = (value) => {
@@ -443103,7 +443190,7 @@ function _temp514(ide) {
   };
 }
 function InstallOnMount(t0) {
-  const $ = import_compiler_runtime166.c(4);
+  const $ = import_compiler_runtime165.c(4);
   const {
     ide,
     onInstall
@@ -443123,7 +443210,7 @@ function InstallOnMount(t0) {
     t1 = $[2];
     t2 = $[3];
   }
-  import_react115.useEffect(t1, t2);
+  import_react116.useEffect(t1, t2);
   return null;
 }
 async function call22(onDone, context, args) {
@@ -443223,11 +443310,11 @@ function IDECommandFlow({
   onChangeDynamicMcpConfig,
   onDone
 }) {
-  const [connectingIDE, setConnectingIDE] = import_react115.useState(null);
+  const [connectingIDE, setConnectingIDE] = import_react116.useState(null);
   const ideClient = useAppState((s) => s.mcp.clients.find((c) => c.name === "ide"));
   const setAppState = useSetAppState();
-  const isFirstCheckRef = import_react115.useRef(true);
-  import_react115.useEffect(() => {
+  const isFirstCheckRef = import_react116.useRef(true);
+  import_react116.useEffect(() => {
     if (!connectingIDE)
       return;
     if (isFirstCheckRef.current) {
@@ -443242,13 +443329,13 @@ function IDECommandFlow({
       onDone(`Failed to connect to ${connectingIDE.name}.`);
     }
   }, [ideClient, connectingIDE, onDone]);
-  import_react115.useEffect(() => {
+  import_react116.useEffect(() => {
     if (!connectingIDE)
       return;
     const timer = setTimeout(onDone, IDE_CONNECTION_TIMEOUT_MS, `Connection to ${connectingIDE.name} timed out.`);
     return () => clearTimeout(timer);
   }, [connectingIDE, onDone]);
-  const handleSelectIDE = import_react115.useCallback((selectedIDE) => {
+  const handleSelectIDE = import_react116.useCallback((selectedIDE) => {
     if (!onChangeDynamicMcpConfig) {
       onDone("Error connecting to IDE.");
       return;
@@ -443323,7 +443410,7 @@ function formatWorkspaceFolders(folders, maxLength = 100) {
   const cwdNFC = cwd.normalize("NFC");
   const formattedFolders = foldersToShow.map((folder) => {
     const folderNFC = folder.normalize("NFC");
-    if (folderNFC.startsWith(cwdNFC + path21.sep)) {
+    if (folderNFC.startsWith(cwdNFC + path22.sep)) {
       folder = folderNFC.slice(cwdNFC.length + 1);
     }
     if (folder.length <= maxLengthPerPath) {
@@ -443337,7 +443424,7 @@ function formatWorkspaceFolders(folders, maxLength = 100) {
   }
   return result;
 }
-var import_compiler_runtime166, import_react115, jsx_runtime203, IDE_CONNECTION_TIMEOUT_MS = 35000;
+var import_compiler_runtime165, import_react116, jsx_runtime203, IDE_CONNECTION_TIMEOUT_MS = 35000;
 var init_ide2 = __esm(() => {
   init_source();
   init_analytics();
@@ -443351,8 +443438,8 @@ var init_ide2 = __esm(() => {
   init_execFileNoThrow();
   init_ide();
   init_worktree();
-  import_compiler_runtime166 = __toESM(require_compiler_runtime(), 1);
-  import_react115 = __toESM(require_react(), 1);
+  import_compiler_runtime165 = __toESM(require_compiler_runtime(), 1);
+  import_react116 = __toESM(require_react(), 1);
   jsx_runtime203 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -443832,12 +443919,12 @@ function renderInputGuide(exitState) {
   });
 }
 function WorkflowMultiselectDialog(t0) {
-  const $ = import_compiler_runtime167.c(14);
+  const $ = import_compiler_runtime166.c(14);
   const {
     onSubmit,
     defaultSelections
   } = t0;
-  const [showError, setShowError] = import_react116.useState(false);
+  const [showError, setShowError] = import_react117.useState(false);
   let t1;
   if ($[0] !== onSubmit) {
     t1 = (selectedValues) => {
@@ -443956,7 +444043,7 @@ function _temp88(workflow) {
     value: workflow.value
   };
 }
-var import_compiler_runtime167, import_react116, jsx_runtime204, WORKFLOWS;
+var import_compiler_runtime166, import_react117, jsx_runtime204, WORKFLOWS;
 var init_WorkflowMultiselectDialog = __esm(() => {
   init_ink2();
   init_ConfigurableShortcutHint();
@@ -443964,8 +444051,8 @@ var init_WorkflowMultiselectDialog = __esm(() => {
   init_Byline();
   init_Dialog();
   init_KeyboardShortcutHint();
-  import_compiler_runtime167 = __toESM(require_compiler_runtime(), 1);
-  import_react116 = __toESM(require_react(), 1);
+  import_compiler_runtime166 = __toESM(require_compiler_runtime(), 1);
+  import_react117 = __toESM(require_react(), 1);
   jsx_runtime204 = __toESM(require_jsx_runtime(), 1);
   WORKFLOWS = [{
     value: "claude",
@@ -444115,7 +444202,7 @@ jobs:
 
 // commands/install-github-app/ApiKeyStep.tsx
 function ApiKeyStep(t0) {
-  const $ = import_compiler_runtime168.c(55);
+  const $ = import_compiler_runtime167.c(55);
   const {
     existingApiKey,
     apiKeyOrOAuthToken,
@@ -444127,7 +444214,7 @@ function ApiKeyStep(t0) {
     onSelectOption
   } = t0;
   const selectedOption = t1 === undefined ? existingApiKey ? "existing" : onCreateOAuthToken ? "oauth" : "new" : t1;
-  const [cursorOffset, setCursorOffset] = import_react117.useState(0);
+  const [cursorOffset, setCursorOffset] = import_react118.useState(0);
   const terminalSize = useTerminalSize();
   const [theme] = useTheme();
   let t2;
@@ -444398,20 +444485,20 @@ function ApiKeyStep(t0) {
   }
   return t18;
 }
-var import_compiler_runtime168, import_react117, jsx_runtime205;
+var import_compiler_runtime167, import_react118, jsx_runtime205;
 var init_ApiKeyStep = __esm(() => {
   init_TextInput();
   init_useTerminalSize();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime168 = __toESM(require_compiler_runtime(), 1);
-  import_react117 = __toESM(require_react(), 1);
+  import_compiler_runtime167 = __toESM(require_compiler_runtime(), 1);
+  import_react118 = __toESM(require_react(), 1);
   jsx_runtime205 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/CheckExistingSecretStep.tsx
 function CheckExistingSecretStep(t0) {
-  const $ = import_compiler_runtime169.c(42);
+  const $ = import_compiler_runtime168.c(42);
   const {
     useExistingSecret,
     secretName,
@@ -444419,7 +444506,7 @@ function CheckExistingSecretStep(t0) {
     onSecretNameChange,
     onSubmit
   } = t0;
-  const [cursorOffset, setCursorOffset] = import_react118.useState(0);
+  const [cursorOffset, setCursorOffset] = import_react119.useState(0);
   const terminalSize = useTerminalSize();
   const [theme] = useTheme();
   let t1;
@@ -444669,20 +444756,20 @@ function CheckExistingSecretStep(t0) {
   }
   return t18;
 }
-var import_compiler_runtime169, import_react118, jsx_runtime206;
+var import_compiler_runtime168, import_react119, jsx_runtime206;
 var init_CheckExistingSecretStep = __esm(() => {
   init_TextInput();
   init_useTerminalSize();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime169 = __toESM(require_compiler_runtime(), 1);
-  import_react118 = __toESM(require_react(), 1);
+  import_compiler_runtime168 = __toESM(require_compiler_runtime(), 1);
+  import_react119 = __toESM(require_react(), 1);
   jsx_runtime206 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/CheckGitHubStep.tsx
 function CheckGitHubStep() {
-  const $ = import_compiler_runtime170.c(1);
+  const $ = import_compiler_runtime169.c(1);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = /* @__PURE__ */ jsx_runtime207.jsx(ThemedText, {
@@ -444694,16 +444781,16 @@ function CheckGitHubStep() {
   }
   return t0;
 }
-var import_compiler_runtime170, jsx_runtime207;
+var import_compiler_runtime169, jsx_runtime207;
 var init_CheckGitHubStep = __esm(() => {
   init_ink2();
-  import_compiler_runtime170 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime169 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime207 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/ChooseRepoStep.tsx
 function ChooseRepoStep(t0) {
-  const $ = import_compiler_runtime171.c(49);
+  const $ = import_compiler_runtime170.c(49);
   const {
     currentRepo,
     useCurrentRepo,
@@ -444712,8 +444799,8 @@ function ChooseRepoStep(t0) {
     onSubmit,
     onToggleUseCurrentRepo
   } = t0;
-  const [cursorOffset, setCursorOffset] = import_react119.useState(0);
-  const [showEmptyError, setShowEmptyError] = import_react119.useState(false);
+  const [cursorOffset, setCursorOffset] = import_react120.useState(0);
+  const [showEmptyError, setShowEmptyError] = import_react120.useState(false);
   const terminalSize = useTerminalSize();
   const textInputColumns = terminalSize.columns;
   let t1;
@@ -444978,20 +445065,20 @@ function ChooseRepoStep(t0) {
   }
   return t21;
 }
-var import_compiler_runtime171, import_react119, jsx_runtime208;
+var import_compiler_runtime170, import_react120, jsx_runtime208;
 var init_ChooseRepoStep = __esm(() => {
   init_TextInput();
   init_useTerminalSize();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime171 = __toESM(require_compiler_runtime(), 1);
-  import_react119 = __toESM(require_react(), 1);
+  import_compiler_runtime170 = __toESM(require_compiler_runtime(), 1);
+  import_react120 = __toESM(require_react(), 1);
   jsx_runtime208 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/CreatingStep.tsx
 function CreatingStep(t0) {
-  const $ = import_compiler_runtime172.c(10);
+  const $ = import_compiler_runtime171.c(10);
   const {
     currentWorkflowInstallStep,
     secretExists,
@@ -445074,16 +445161,16 @@ function CreatingStep(t0) {
   }
   return t4;
 }
-var import_compiler_runtime172, jsx_runtime209;
+var import_compiler_runtime171, jsx_runtime209;
 var init_CreatingStep = __esm(() => {
   init_ink2();
-  import_compiler_runtime172 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime171 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime209 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/ErrorStep.tsx
 function ErrorStep(t0) {
-  const $ = import_compiler_runtime173.c(15);
+  const $ = import_compiler_runtime172.c(15);
   const {
     error,
     errorReason,
@@ -445235,16 +445322,16 @@ function _temp89(instruction, index) {
     ]
   }, index);
 }
-var import_compiler_runtime173, jsx_runtime210;
+var import_compiler_runtime172, jsx_runtime210;
 var init_ErrorStep = __esm(() => {
   init_ink2();
-  import_compiler_runtime173 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime172 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime210 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/ExistingWorkflowStep.tsx
 function ExistingWorkflowStep(t0) {
-  const $ = import_compiler_runtime174.c(16);
+  const $ = import_compiler_runtime173.c(16);
   const {
     repoName,
     onSelectAction
@@ -445403,17 +445490,17 @@ function ExistingWorkflowStep(t0) {
   }
   return t9;
 }
-var import_compiler_runtime174, jsx_runtime211;
+var import_compiler_runtime173, jsx_runtime211;
 var init_ExistingWorkflowStep = __esm(() => {
   init_CustomSelect();
   init_ink2();
-  import_compiler_runtime174 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime173 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime211 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/InstallAppStep.tsx
 function InstallAppStep(t0) {
-  const $ = import_compiler_runtime175.c(12);
+  const $ = import_compiler_runtime174.c(12);
   const {
     repoUrl,
     onSubmit
@@ -445572,12 +445659,12 @@ function InstallAppStep(t0) {
   }
   return t10;
 }
-var import_compiler_runtime175, jsx_runtime212;
+var import_compiler_runtime174, jsx_runtime212;
 var init_InstallAppStep = __esm(() => {
   init_figures();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime175 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime174 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime212 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -445586,16 +445673,16 @@ function OAuthFlowStep({
   onSuccess,
   onCancel
 }) {
-  const [oauthStatus, setOAuthStatus] = import_react120.useState({
+  const [oauthStatus, setOAuthStatus] = import_react121.useState({
     state: "starting"
   });
-  const [oauthService] = import_react120.useState(() => new OAuthService);
-  const [pastedCode, setPastedCode] = import_react120.useState("");
-  const [cursorOffset, setCursorOffset] = import_react120.useState(0);
-  const [showPastePrompt, setShowPastePrompt] = import_react120.useState(false);
-  const [urlCopied, setUrlCopied] = import_react120.useState(false);
-  const timersRef = import_react120.useRef(new Set);
-  const urlCopiedTimerRef = import_react120.useRef(undefined);
+  const [oauthService] = import_react121.useState(() => new OAuthService);
+  const [pastedCode, setPastedCode] = import_react121.useState("");
+  const [cursorOffset, setCursorOffset] = import_react121.useState(0);
+  const [showPastePrompt, setShowPastePrompt] = import_react121.useState(false);
+  const [urlCopied, setUrlCopied] = import_react121.useState(false);
+  const timersRef = import_react121.useRef(new Set);
+  const urlCopiedTimerRef = import_react121.useRef(undefined);
   const terminalSize = useTerminalSize();
   const textInputColumns = Math.max(50, terminalSize.columns - PASTE_HERE_MSG2.length - 4);
   function handleKeyDown(e) {
@@ -445644,7 +445731,7 @@ function OAuthFlowStep({
       });
     }
   }
-  const startOAuth = import_react120.useCallback(async () => {
+  const startOAuth = import_react121.useCallback(async () => {
     timersRef.current.forEach((timer) => clearTimeout(timer));
     timersRef.current.clear();
     try {
@@ -445688,12 +445775,12 @@ function OAuthFlowStep({
       });
     }
   }, [oauthService, onSuccess]);
-  import_react120.useEffect(() => {
+  import_react121.useEffect(() => {
     if (oauthStatus.state === "starting") {
       startOAuth();
     }
   }, [oauthStatus.state, startOAuth]);
-  import_react120.useEffect(() => {
+  import_react121.useEffect(() => {
     if (oauthStatus.state === "about_to_retry") {
       const timer_1 = setTimeout((nextState, setShowPastePrompt_0, setOAuthStatus_1) => {
         setShowPastePrompt_0(nextState.state === "waiting_for_login");
@@ -445702,7 +445789,7 @@ function OAuthFlowStep({
       timersRef.current.add(timer_1);
     }
   }, [oauthStatus]);
-  import_react120.useEffect(() => {
+  import_react121.useEffect(() => {
     if (pastedCode === "c" && oauthStatus.state === "waiting_for_login" && showPastePrompt && !urlCopied) {
       setClipboard(oauthStatus.url).then((raw) => {
         if (raw)
@@ -445714,7 +445801,7 @@ function OAuthFlowStep({
       setPastedCode("");
     }
   }, [pastedCode, oauthStatus, showPastePrompt, urlCopied]);
-  import_react120.useEffect(() => {
+  import_react121.useEffect(() => {
     const timers = timersRef.current;
     return () => {
       oauthService.cleanup();
@@ -445905,7 +445992,7 @@ function OAuthFlowStep({
     ]
   });
 }
-var import_react120, jsx_runtime213, PASTE_HERE_MSG2 = "Paste code here if prompted > ";
+var import_react121, jsx_runtime213, PASTE_HERE_MSG2 = "Paste code here if prompted > ";
 var init_OAuthFlowStep = __esm(() => {
   init_analytics();
   init_KeyboardShortcutHint();
@@ -445917,13 +446004,13 @@ var init_OAuthFlowStep = __esm(() => {
   init_oauth2();
   init_auth2();
   init_log3();
-  import_react120 = __toESM(require_react(), 1);
+  import_react121 = __toESM(require_react(), 1);
   jsx_runtime213 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/SuccessStep.tsx
 function SuccessStep(t0) {
-  const $ = import_compiler_runtime176.c(21);
+  const $ = import_compiler_runtime175.c(21);
   const {
     secretExists,
     useExistingSecret,
@@ -446092,10 +446179,10 @@ function SuccessStep(t0) {
   }
   return t10;
 }
-var import_compiler_runtime176, jsx_runtime214;
+var import_compiler_runtime175, jsx_runtime214;
 var init_SuccessStep = __esm(() => {
   init_ink2();
-  import_compiler_runtime176 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime175 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime214 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -446320,7 +446407,7 @@ var init_setupGitHubActions = __esm(() => {
 
 // commands/install-github-app/WarningsStep.tsx
 function WarningsStep(t0) {
-  const $ = import_compiler_runtime177.c(8);
+  const $ = import_compiler_runtime176.c(8);
   const {
     warnings,
     onContinue
@@ -446453,12 +446540,12 @@ function _temp90(instruction, i) {
     ]
   }, i);
 }
-var import_compiler_runtime177, jsx_runtime215;
+var import_compiler_runtime176, jsx_runtime215;
 var init_WarningsStep = __esm(() => {
   init_figures();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime177 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime176 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime215 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -446468,17 +446555,17 @@ __export(exports_install_github_app, {
   call: () => call24
 });
 function InstallGitHubApp(props) {
-  const [existingApiKey] = import_react121.useState(() => getAnthropicApiKey());
-  const [state, setState] = import_react121.useState({
+  const [existingApiKey] = import_react122.useState(() => getAnthropicApiKey());
+  const [state, setState] = import_react122.useState({
     ...INITIAL_STATE2,
     useExistingKey: !!existingApiKey,
     selectedApiKeyOption: existingApiKey ? "existing" : isAnthropicAuthEnabled() ? "oauth" : "new"
   });
   useExitOnCtrlCDWithKeybindings();
-  import_react121.default.useEffect(() => {
+  import_react122.default.useEffect(() => {
     logEvent("tengu_install_github_app_started", {});
   }, []);
-  const checkGitHubCLI = import_react121.useCallback(async () => {
+  const checkGitHubCLI = import_react122.useCallback(async () => {
     const warnings = [];
     const ghVersionResult = await execa("gh --version", {
       shell: true,
@@ -446537,12 +446624,12 @@ function InstallGitHubApp(props) {
       step: warnings.length > 0 ? "warnings" : "choose-repo"
     }));
   }, []);
-  import_react121.default.useEffect(() => {
+  import_react122.default.useEffect(() => {
     if (state.step === "check-gh") {
       checkGitHubCLI();
     }
   }, [state.step, checkGitHubCLI]);
-  const runSetupGitHubActions = import_react121.useCallback(async (apiKeyOrOAuthToken, secretName) => {
+  const runSetupGitHubActions = import_react122.useCallback(async (apiKeyOrOAuthToken, secretName) => {
     setState((prev_1) => ({
       ...prev_1,
       step: "creating",
@@ -446838,7 +446925,7 @@ function InstallGitHubApp(props) {
       selectedApiKeyOption: option
     }));
   };
-  const handleCreateOAuthToken = import_react121.useCallback(() => {
+  const handleCreateOAuthToken = import_react122.useCallback(() => {
     logEvent("tengu_install_github_app_step_completed", {
       step: "api-key"
     });
@@ -446847,7 +446934,7 @@ function InstallGitHubApp(props) {
       step: "oauth-flow"
     }));
   }, []);
-  const handleOAuthSuccess = import_react121.useCallback((token) => {
+  const handleOAuthSuccess = import_react122.useCallback((token) => {
     logEvent("tengu_install_github_app_step_completed", {
       step: "oauth-flow"
     });
@@ -446860,7 +446947,7 @@ function InstallGitHubApp(props) {
     }));
     runSetupGitHubActions(token, "CLAUDE_CODE_OAUTH_TOKEN");
   }, [runSetupGitHubActions]);
-  const handleOAuthCancel = import_react121.useCallback(() => {
+  const handleOAuthCancel = import_react122.useCallback(() => {
     setState((prev_24) => ({
       ...prev_24,
       step: "api-key"
@@ -447038,7 +447125,7 @@ async function call24(onDone) {
     onDone
   });
 }
-var import_react121, jsx_runtime216, INITIAL_STATE2;
+var import_react122, jsx_runtime216, INITIAL_STATE2;
 var init_install_github_app = __esm(() => {
   init_execa();
   init_analytics();
@@ -447062,7 +447149,7 @@ var init_install_github_app = __esm(() => {
   init_SuccessStep();
   init_setupGitHubActions();
   init_WarningsStep();
-  import_react121 = __toESM(require_react(), 1);
+  import_react122 = __toESM(require_react(), 1);
   jsx_runtime216 = __toESM(require_jsx_runtime(), 1);
   INITIAL_STATE2 = {
     step: "check-gh",
@@ -447156,12 +447243,12 @@ function MCPAgentServerMenu({
   onComplete
 }) {
   const [theme] = useTheme();
-  const [isAuthenticating, setIsAuthenticating] = import_react122.useState(false);
-  const [error, setError] = import_react122.useState(null);
-  const [authorizationUrl, setAuthorizationUrl] = import_react122.useState(null);
-  const authAbortControllerRef = import_react122.useRef(null);
-  import_react122.useEffect(() => () => authAbortControllerRef.current?.abort(), []);
-  const handleEscCancel = import_react122.useCallback(() => {
+  const [isAuthenticating, setIsAuthenticating] = import_react123.useState(false);
+  const [error, setError] = import_react123.useState(null);
+  const [authorizationUrl, setAuthorizationUrl] = import_react123.useState(null);
+  const authAbortControllerRef = import_react123.useRef(null);
+  import_react123.useEffect(() => () => authAbortControllerRef.current?.abort(), []);
+  const handleEscCancel = import_react123.useCallback(() => {
     if (isAuthenticating) {
       authAbortControllerRef.current?.abort();
       authAbortControllerRef.current = null;
@@ -447173,7 +447260,7 @@ function MCPAgentServerMenu({
     context: "Confirmation",
     isActive: isAuthenticating
   });
-  const handleAuthenticate = import_react122.useCallback(async () => {
+  const handleAuthenticate = import_react123.useCallback(async () => {
     if (!agentServer.needsAuth || !agentServer.url) {
       return;
     }
@@ -447413,7 +447500,7 @@ function MCPAgentServerMenu({
     ]
   });
 }
-var import_react122, jsx_runtime217;
+var import_react123, jsx_runtime217;
 var init_MCPAgentServerMenu = __esm(() => {
   init_figures();
   init_ink2();
@@ -447426,7 +447513,7 @@ var init_MCPAgentServerMenu = __esm(() => {
   init_Dialog();
   init_KeyboardShortcutHint();
   init_Spinner2();
-  import_react122 = __toESM(require_react(), 1);
+  import_react123 = __toESM(require_react(), 1);
   jsx_runtime217 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -447478,7 +447565,7 @@ function groupServersByScope(serverList) {
   return groups;
 }
 function MCPListPanel(t0) {
-  const $ = import_compiler_runtime178.c(78);
+  const $ = import_compiler_runtime177.c(78);
   const {
     servers,
     agentServers: t1,
@@ -447496,7 +447583,7 @@ function MCPListPanel(t0) {
   }
   const agentServers = t2;
   const [theme] = useTheme();
-  const [selectedIndex, setSelectedIndex] = import_react123.useState(0);
+  const [selectedIndex, setSelectedIndex] = import_react124.useState(0);
   let t3;
   if ($[2] !== servers) {
     const regularServers = servers.filter(_temp91);
@@ -447509,7 +447596,7 @@ function MCPListPanel(t0) {
   const serversByScope = t3;
   let t4;
   if ($[4] !== servers) {
-    t4 = servers.filter(_temp233).sort(_temp323);
+    t4 = servers.filter(_temp233).sort(_temp322);
     $[4] = servers;
     $[5] = t4;
   } else {
@@ -448079,7 +448166,7 @@ function _temp515(s_1) {
 function _temp420(a_0, b_0) {
   return a_0.name.localeCompare(b_0.name);
 }
-function _temp323(a, b) {
+function _temp322(a, b) {
   return a.name.localeCompare(b.name);
 }
 function _temp233(s_0) {
@@ -448088,7 +448175,7 @@ function _temp233(s_0) {
 function _temp91(s) {
   return s.client.config.type !== "claudeai-proxy";
 }
-var import_compiler_runtime178, import_react123, jsx_runtime218, SCOPE_ORDER;
+var import_compiler_runtime177, import_react124, jsx_runtime218, SCOPE_ORDER;
 var init_MCPListPanel = __esm(() => {
   init_figures();
   init_ink2();
@@ -448101,8 +448188,8 @@ var init_MCPListPanel = __esm(() => {
   init_Dialog();
   init_KeyboardShortcutHint();
   init_McpParsingWarnings();
-  import_compiler_runtime178 = __toESM(require_compiler_runtime(), 1);
-  import_react123 = __toESM(require_react(), 1);
+  import_compiler_runtime177 = __toESM(require_compiler_runtime(), 1);
+  import_react124 = __toESM(require_react(), 1);
   jsx_runtime218 = __toESM(require_jsx_runtime(), 1);
   SCOPE_ORDER = ["project", "local", "user", "enterprise"];
 });
@@ -448423,18 +448510,18 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
   const _authVersion = useAppState((s) => s.authVersion);
   const _pluginReconnectKey = useAppState((s) => s.mcp.pluginReconnectKey);
   const setAppState = useSetAppState();
-  const reconnectTimersRef = import_react124.useRef(new Map);
-  const channelWarnedKindsRef = import_react124.useRef(new Set);
-  const channelPermCallbacksRef = import_react124.useRef(null);
+  const reconnectTimersRef = import_react125.useRef(new Map);
+  const channelWarnedKindsRef = import_react125.useRef(new Set);
+  const channelPermCallbacksRef = import_react125.useRef(null);
   if (false) {}
-  import_react124.useEffect(() => {
+  import_react125.useEffect(() => {
     if (false) {}
   }, [setAppState]);
   const { addNotification } = useNotifications();
   const MCP_BATCH_FLUSH_MS = 16;
-  const pendingUpdatesRef = import_react124.useRef([]);
-  const flushTimerRef = import_react124.useRef(null);
-  const flushPendingUpdates = import_react124.useCallback(() => {
+  const pendingUpdatesRef = import_react125.useRef([]);
+  const flushTimerRef = import_react125.useRef(null);
+  const flushPendingUpdates = import_react125.useCallback(() => {
     flushTimerRef.current = null;
     const updates = pendingUpdatesRef.current;
     if (updates.length === 0)
@@ -448475,13 +448562,13 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
       return { ...prevState, mcp };
     });
   }, [setAppState]);
-  const updateServer = import_react124.useCallback((update) => {
+  const updateServer = import_react125.useCallback((update) => {
     pendingUpdatesRef.current.push(update);
     if (flushTimerRef.current === null) {
       flushTimerRef.current = setTimeout(flushPendingUpdates, MCP_BATCH_FLUSH_MS);
     }
   }, [flushPendingUpdates]);
-  const onConnectionAttempt = import_react124.useCallback(({
+  const onConnectionAttempt = import_react125.useCallback(({
     client,
     tools,
     commands,
@@ -448649,7 +448736,7 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
     }
   }, [updateServer]);
   const sessionId = getSessionId();
-  import_react124.useEffect(() => {
+  import_react125.useEffect(() => {
     async function initializeServersAsPending() {
       const { servers: existingConfigs, errors: mcpErrors } = isStrictMcpConfig ? { servers: {}, errors: [] } : await getClaudeCodeMcpConfigs(dynamicMcpConfig);
       const configs = { ...existingConfigs, ...dynamicMcpConfig };
@@ -448696,7 +448783,7 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
     sessionId,
     _pluginReconnectKey
   ]);
-  import_react124.useEffect(() => {
+  import_react125.useEffect(() => {
     let cancelled = false;
     async function loadAndConnectMcpConfigs() {
       let claudeaiPromise;
@@ -448795,7 +448882,7 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
     sessionId,
     _pluginReconnectKey
   ]);
-  import_react124.useEffect(() => {
+  import_react125.useEffect(() => {
     const timers = reconnectTimersRef.current;
     return () => {
       for (const timer of timers.values()) {
@@ -448809,7 +448896,7 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
       }
     };
   }, [flushPendingUpdates]);
-  const reconnectMcpServer = import_react124.useCallback(async (serverName) => {
+  const reconnectMcpServer = import_react125.useCallback(async (serverName) => {
     const client = store.getState().mcp.clients.find((c) => c.name === serverName);
     if (!client) {
       throw new Error(`MCP server ${serverName} not found`);
@@ -448823,7 +448910,7 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
     onConnectionAttempt(result);
     return result;
   }, [store, onConnectionAttempt]);
-  const toggleMcpServer = import_react124.useCallback(async (serverName) => {
+  const toggleMcpServer = import_react125.useCallback(async (serverName) => {
     const client = store.getState().mcp.clients.find((c) => c.name === serverName);
     if (!client) {
       throw new Error(`MCP server ${serverName} not found`);
@@ -448868,7 +448955,7 @@ function getTransportDisplayName(type) {
       return "SSE";
   }
 }
-var import_react124, clearSkillIndexCache = null, MAX_RECONNECT_ATTEMPTS = 5, INITIAL_BACKOFF_MS = 1000, MAX_BACKOFF_MS = 30000;
+var import_react125, clearSkillIndexCache = null, MAX_RECONNECT_ATTEMPTS = 5, INITIAL_BACKOFF_MS = 1000, MAX_BACKOFF_MS = 30000;
 var init_useManageMCPConnections = __esm(() => {
   init_state();
   init_client9();
@@ -448890,26 +448977,26 @@ var init_useManageMCPConnections = __esm(() => {
   init_elicitationHandler();
   init_mcpStringUtils();
   init_utils6();
-  import_react124 = __toESM(require_react(), 1);
+  import_react125 = __toESM(require_react(), 1);
 });
 
 // services/mcp/MCPConnectionManager.tsx
 function useMcpReconnect() {
-  const context = import_react125.useContext(MCPConnectionContext);
+  const context = import_react126.useContext(MCPConnectionContext);
   if (!context) {
     throw new Error("useMcpReconnect must be used within MCPConnectionManager");
   }
   return context.reconnectMcpServer;
 }
 function useMcpToggleEnabled() {
-  const context = import_react125.useContext(MCPConnectionContext);
+  const context = import_react126.useContext(MCPConnectionContext);
   if (!context) {
     throw new Error("useMcpToggleEnabled must be used within MCPConnectionManager");
   }
   return context.toggleMcpServer;
 }
 function MCPConnectionManager(t0) {
-  const $ = import_compiler_runtime179.c(6);
+  const $ = import_compiler_runtime178.c(6);
   const {
     children,
     dynamicMcpConfig,
@@ -448946,18 +449033,18 @@ function MCPConnectionManager(t0) {
   }
   return t2;
 }
-var import_compiler_runtime179, import_react125, jsx_runtime219, MCPConnectionContext;
+var import_compiler_runtime178, import_react126, jsx_runtime219, MCPConnectionContext;
 var init_MCPConnectionManager = __esm(() => {
   init_useManageMCPConnections();
-  import_compiler_runtime179 = __toESM(require_compiler_runtime(), 1);
-  import_react125 = __toESM(require_react(), 1);
+  import_compiler_runtime178 = __toESM(require_compiler_runtime(), 1);
+  import_react126 = __toESM(require_react(), 1);
   jsx_runtime219 = __toESM(require_jsx_runtime(), 1);
-  MCPConnectionContext = import_react125.createContext(null);
+  MCPConnectionContext = import_react126.createContext(null);
 });
 
 // components/mcp/MCPReconnect.tsx
 function MCPReconnect(t0) {
-  const $ = import_compiler_runtime180.c(25);
+  const $ = import_compiler_runtime179.c(25);
   const {
     serverName,
     onComplete
@@ -448965,8 +449052,8 @@ function MCPReconnect(t0) {
   const [theme] = useTheme();
   const store = useAppStateStore();
   const reconnectMcpServer = useMcpReconnect();
-  const [isReconnecting, setIsReconnecting] = import_react126.useState(true);
-  const [error, setError] = import_react126.useState(null);
+  const [isReconnecting, setIsReconnecting] = import_react127.useState(true);
+  const [error, setError] = import_react127.useState(null);
   let t1;
   let t2;
   if ($[0] !== onComplete || $[1] !== reconnectMcpServer || $[2] !== serverName || $[3] !== store) {
@@ -449023,7 +449110,7 @@ function MCPReconnect(t0) {
     t1 = $[4];
     t2 = $[5];
   }
-  import_react126.useEffect(t1, t2);
+  import_react127.useEffect(t1, t2);
   if (isReconnecting) {
     let t3;
     if ($[6] !== serverName) {
@@ -449159,21 +449246,21 @@ function MCPReconnect(t0) {
   }
   return null;
 }
-var import_compiler_runtime180, import_react126, jsx_runtime220;
+var import_compiler_runtime179, import_react127, jsx_runtime220;
 var init_MCPReconnect = __esm(() => {
   init_figures();
   init_ink2();
   init_MCPConnectionManager();
   init_AppState();
   init_Spinner2();
-  import_compiler_runtime180 = __toESM(require_compiler_runtime(), 1);
-  import_react126 = __toESM(require_react(), 1);
+  import_compiler_runtime179 = __toESM(require_compiler_runtime(), 1);
+  import_react127 = __toESM(require_react(), 1);
   jsx_runtime220 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/CapabilitiesSection.tsx
 function CapabilitiesSection(t0) {
-  const $ = import_compiler_runtime181.c(9);
+  const $ = import_compiler_runtime180.c(9);
   const {
     serverToolsCount,
     serverPromptsCount,
@@ -449236,11 +449323,11 @@ function CapabilitiesSection(t0) {
   }
   return t3;
 }
-var import_compiler_runtime181, jsx_runtime221;
+var import_compiler_runtime180, jsx_runtime221;
 var init_CapabilitiesSection = __esm(() => {
   init_ink2();
   init_Byline();
-  import_compiler_runtime181 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime180 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime221 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -449288,25 +449375,25 @@ function MCPRemoteServerMenu({
   const {
     columns: terminalColumns
   } = useTerminalSize();
-  const [isAuthenticating, setIsAuthenticating] = import_react127.default.useState(false);
-  const [error, setError] = import_react127.default.useState(null);
+  const [isAuthenticating, setIsAuthenticating] = import_react128.default.useState(false);
+  const [error, setError] = import_react128.default.useState(null);
   const mcp = useAppState((s) => s.mcp);
   const setAppState = useSetAppState();
-  const [authorizationUrl, setAuthorizationUrl] = import_react127.default.useState(null);
-  const [isReconnecting, setIsReconnecting] = import_react127.useState(false);
-  const authAbortControllerRef = import_react127.useRef(null);
-  const [isClaudeAIAuthenticating, setIsClaudeAIAuthenticating] = import_react127.useState(false);
-  const [claudeAIAuthUrl, setClaudeAIAuthUrl] = import_react127.useState(null);
-  const [isClaudeAIClearingAuth, setIsClaudeAIClearingAuth] = import_react127.useState(false);
-  const [claudeAIClearAuthUrl, setClaudeAIClearAuthUrl] = import_react127.useState(null);
-  const [claudeAIClearAuthBrowserOpened, setClaudeAIClearAuthBrowserOpened] = import_react127.useState(false);
-  const [urlCopied, setUrlCopied] = import_react127.useState(false);
-  const copyTimeoutRef = import_react127.useRef(undefined);
-  const unmountedRef = import_react127.useRef(false);
-  const [callbackUrlInput, setCallbackUrlInput] = import_react127.useState("");
-  const [callbackUrlCursorOffset, setCallbackUrlCursorOffset] = import_react127.useState(0);
-  const [manualCallbackSubmit, setManualCallbackSubmit] = import_react127.useState(null);
-  import_react127.useEffect(() => () => {
+  const [authorizationUrl, setAuthorizationUrl] = import_react128.default.useState(null);
+  const [isReconnecting, setIsReconnecting] = import_react128.useState(false);
+  const authAbortControllerRef = import_react128.useRef(null);
+  const [isClaudeAIAuthenticating, setIsClaudeAIAuthenticating] = import_react128.useState(false);
+  const [claudeAIAuthUrl, setClaudeAIAuthUrl] = import_react128.useState(null);
+  const [isClaudeAIClearingAuth, setIsClaudeAIClearingAuth] = import_react128.useState(false);
+  const [claudeAIClearAuthUrl, setClaudeAIClearAuthUrl] = import_react128.useState(null);
+  const [claudeAIClearAuthBrowserOpened, setClaudeAIClearAuthBrowserOpened] = import_react128.useState(false);
+  const [urlCopied, setUrlCopied] = import_react128.useState(false);
+  const copyTimeoutRef = import_react128.useRef(undefined);
+  const unmountedRef = import_react128.useRef(false);
+  const [callbackUrlInput, setCallbackUrlInput] = import_react128.useState("");
+  const [callbackUrlCursorOffset, setCallbackUrlCursorOffset] = import_react128.useState(0);
+  const [manualCallbackSubmit, setManualCallbackSubmit] = import_react128.useState(null);
+  import_react128.useEffect(() => () => {
     unmountedRef.current = true;
     authAbortControllerRef.current?.abort();
     if (copyTimeoutRef.current !== undefined) {
@@ -449315,7 +449402,7 @@ function MCPRemoteServerMenu({
   }, []);
   const isEffectivelyAuthenticated = server.isAuthenticated || server.client.type === "connected" && serverToolsCount > 0;
   const reconnectMcpServer = useMcpReconnect();
-  const handleClaudeAIAuthComplete = import_react127.default.useCallback(async () => {
+  const handleClaudeAIAuthComplete = import_react128.default.useCallback(async () => {
     setIsClaudeAIAuthenticating(false);
     setClaudeAIAuthUrl(null);
     setIsReconnecting(true);
@@ -449341,7 +449428,7 @@ function MCPRemoteServerMenu({
       setIsReconnecting(false);
     }
   }, [reconnectMcpServer, server.name, onComplete]);
-  const handleClaudeAIClearAuthComplete = import_react127.default.useCallback(async () => {
+  const handleClaudeAIClearAuthComplete = import_react128.default.useCallback(async () => {
     await clearServerCache(server.name, {
       ...server.config,
       scope: server.scope
@@ -449429,7 +449516,7 @@ function MCPRemoteServerMenu({
   const capitalizedServerName = capitalize(String(server.name));
   const serverCommandsCount = filterMcpPromptsByServer(mcp.commands, server.name).length;
   const toggleMcpServer = useMcpToggleEnabled();
-  const handleClaudeAIAuth = import_react127.default.useCallback(async () => {
+  const handleClaudeAIAuth = import_react128.default.useCallback(async () => {
     const claudeAiBaseUrl = getOauthConfig().CLAUDE_AI_ORIGIN;
     const accountInfo = getOauthAccountInfo();
     const orgUuid = accountInfo?.organizationUuid;
@@ -449446,11 +449533,11 @@ function MCPRemoteServerMenu({
     logEvent("tengu_claudeai_mcp_auth_started", {});
     await openBrowser(authUrl);
   }, [server.config]);
-  const handleClaudeAIClearAuth = import_react127.default.useCallback(() => {
+  const handleClaudeAIClearAuth = import_react128.default.useCallback(() => {
     setIsClaudeAIClearingAuth(true);
     logEvent("tengu_claudeai_mcp_clear_auth_started", {});
   }, []);
-  const handleToggleEnabled = import_react127.default.useCallback(async () => {
+  const handleToggleEnabled = import_react128.default.useCallback(async () => {
     const wasEnabled = server.client.type !== "disabled";
     try {
       await toggleMcpServer(server.name);
@@ -449465,7 +449552,7 @@ function MCPRemoteServerMenu({
       onComplete?.(`Failed to ${action} MCP server '${server.name}': ${errorMessage(err_0)}`);
     }
   }, [server.client.type, server.config.type, server.name, toggleMcpServer, onCancel, onComplete]);
-  const handleAuthenticate = import_react127.default.useCallback(async () => {
+  const handleAuthenticate = import_react128.default.useCallback(async () => {
     if (server.config.type === "claudeai-proxy")
       return;
     setIsAuthenticating(true);
@@ -450154,7 +450241,7 @@ function MCPRemoteServerMenu({
     ]
   });
 }
-var import_react127, jsx_runtime222;
+var import_react128, jsx_runtime222;
 var init_MCPRemoteServerMenu = __esm(() => {
   init_figures();
   init_analytics();
@@ -450181,7 +450268,7 @@ var init_MCPRemoteServerMenu = __esm(() => {
   init_Spinner2();
   init_TextInput();
   init_CapabilitiesSection();
-  import_react127 = __toESM(require_react(), 1);
+  import_react128 = __toESM(require_react(), 1);
   jsx_runtime222 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -450199,8 +450286,8 @@ function MCPStdioServerMenu({
   const mcp = useAppState((s) => s.mcp);
   const reconnectMcpServer = useMcpReconnect();
   const toggleMcpServer = useMcpToggleEnabled();
-  const [isReconnecting, setIsReconnecting] = import_react128.useState(false);
-  const handleToggleEnabled = import_react128.default.useCallback(async () => {
+  const [isReconnecting, setIsReconnecting] = import_react129.useState(false);
+  const handleToggleEnabled = import_react129.default.useCallback(async () => {
     const wasEnabled = server.client.type !== "disabled";
     try {
       await toggleMcpServer(server.name);
@@ -450445,7 +450532,7 @@ function MCPStdioServerMenu({
     ]
   });
 }
-var import_react128, jsx_runtime223;
+var import_react129, jsx_runtime223;
 var init_MCPStdioServerMenu = __esm(() => {
   init_figures();
   init_useExitOnCtrlCDWithKeybindings();
@@ -450462,19 +450549,19 @@ var init_MCPStdioServerMenu = __esm(() => {
   init_KeyboardShortcutHint();
   init_Spinner2();
   init_CapabilitiesSection();
-  import_react128 = __toESM(require_react(), 1);
+  import_react129 = __toESM(require_react(), 1);
   jsx_runtime223 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/MCPToolDetailView.tsx
 function MCPToolDetailView(t0) {
-  const $ = import_compiler_runtime182.c(44);
+  const $ = import_compiler_runtime181.c(44);
   const {
     tool,
     server,
     onBack
   } = t0;
-  const [toolDescription, setToolDescription] = import_react129.default.useState("");
+  const [toolDescription, setToolDescription] = import_react130.default.useState("");
   let t1;
   let toolName;
   if ($[0] !== server.name || $[1] !== tool) {
@@ -450550,7 +450637,7 @@ function MCPToolDetailView(t0) {
     t5 = $[11];
     t6 = $[12];
   }
-  import_react129.default.useEffect(t5, t6);
+  import_react130.default.useEffect(t5, t6);
   let t7;
   if ($[13] !== isReadOnly) {
     t7 = isReadOnly && /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
@@ -450777,20 +450864,20 @@ function _temp94(exitState) {
     description: "go back"
   });
 }
-var import_compiler_runtime182, import_react129, jsx_runtime224;
+var import_compiler_runtime181, import_react130, jsx_runtime224;
 var init_MCPToolDetailView = __esm(() => {
   init_ink2();
   init_mcpStringUtils();
   init_ConfigurableShortcutHint();
   init_Dialog();
-  import_compiler_runtime182 = __toESM(require_compiler_runtime(), 1);
-  import_react129 = __toESM(require_react(), 1);
+  import_compiler_runtime181 = __toESM(require_compiler_runtime(), 1);
+  import_react130 = __toESM(require_react(), 1);
   jsx_runtime224 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/MCPToolListView.tsx
 function MCPToolListView(t0) {
-  const $ = import_compiler_runtime183.c(21);
+  const $ = import_compiler_runtime182.c(21);
   const {
     server,
     onSelectTool,
@@ -450946,7 +451033,7 @@ function _temp234(exitState) {
 function _temp95(s) {
   return s.mcp.tools;
 }
-var import_compiler_runtime183, jsx_runtime225;
+var import_compiler_runtime182, jsx_runtime225;
 var init_MCPToolListView = __esm(() => {
   init_ink2();
   init_mcpStringUtils();
@@ -450958,13 +451045,13 @@ var init_MCPToolListView = __esm(() => {
   init_Byline();
   init_Dialog();
   init_KeyboardShortcutHint();
-  import_compiler_runtime183 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime182 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime225 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/MCPSettings.tsx
 function MCPSettings(t0) {
-  const $ = import_compiler_runtime184.c(66);
+  const $ = import_compiler_runtime183.c(66);
   const {
     onComplete
   } = t0;
@@ -450980,7 +451067,7 @@ function MCPSettings(t0) {
   } else {
     t1 = $[0];
   }
-  const [viewState, setViewState] = import_react130.default.useState(t1);
+  const [viewState, setViewState] = import_react131.default.useState(t1);
   let t2;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = [];
@@ -450988,7 +451075,7 @@ function MCPSettings(t0) {
   } else {
     t2 = $[1];
   }
-  const [servers, setServers] = import_react130.default.useState(t2);
+  const [servers, setServers] = import_react131.default.useState(t2);
   let t3;
   if ($[2] !== agentDefinitions.allAgents) {
     t3 = extractAgentMcpServers(agentDefinitions.allAgents);
@@ -451000,7 +451087,7 @@ function MCPSettings(t0) {
   const agentMcpServers = t3;
   let t4;
   if ($[4] !== mcpClients) {
-    t4 = mcpClients.filter(_temp324).sort(_temp421);
+    t4 = mcpClients.filter(_temp323).sort(_temp421);
     $[4] = mcpClients;
     $[5] = t4;
   } else {
@@ -451083,7 +451170,7 @@ function MCPSettings(t0) {
     t5 = $[8];
     t6 = $[9];
   }
-  import_react130.default.useEffect(t5, t6);
+  import_react131.default.useEffect(t5, t6);
   let t7;
   let t8;
   if ($[10] !== agentMcpServers.length || $[11] !== filteredClients.length || $[12] !== onComplete || $[13] !== servers.length) {
@@ -451106,7 +451193,7 @@ function MCPSettings(t0) {
     t7 = $[14];
     t8 = $[15];
   }
-  import_react130.useEffect(t7, t8);
+  import_react131.useEffect(t7, t8);
   switch (viewState.type) {
     case "list": {
       let t10;
@@ -451357,7 +451444,7 @@ function MCPSettings(t0) {
 function _temp421(a, b) {
   return a.name.localeCompare(b.name);
 }
-function _temp324(client) {
+function _temp323(client) {
   return client.name !== "ide";
 }
 function _temp235(s_0) {
@@ -451366,7 +451453,7 @@ function _temp235(s_0) {
 function _temp96(s) {
   return s.mcp;
 }
-var import_compiler_runtime184, import_react130, jsx_runtime226;
+var import_compiler_runtime183, import_react131, jsx_runtime226;
 var init_MCPSettings = __esm(() => {
   init_auth6();
   init_utils6();
@@ -451378,8 +451465,8 @@ var init_MCPSettings = __esm(() => {
   init_MCPStdioServerMenu();
   init_MCPToolDetailView();
   init_MCPToolListView();
-  import_compiler_runtime184 = __toESM(require_compiler_runtime(), 1);
-  import_react130 = __toESM(require_react(), 1);
+  import_compiler_runtime183 = __toESM(require_compiler_runtime(), 1);
+  import_react131 = __toESM(require_react(), 1);
   jsx_runtime226 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -451396,7 +451483,7 @@ var init_mcp = __esm(() => {
 });
 
 // utils/plugins/pluginStartupCheck.ts
-import { join as join108 } from "path";
+import { join as join109 } from "path";
 function getPluginEditableScopes() {
   const result = new Map;
   const addDirPlugins = getAddDirEnabledPlugins();
@@ -451468,7 +451555,7 @@ async function installSelectedPlugins(pluginsToInstall, onProgress, scope = "use
       } else {
         registerPluginInstallation({
           pluginId,
-          installPath: join108(marketplaceInstallLocation, entry.source),
+          installPath: join109(marketplaceInstallLocation, entry.source),
           version: entry.version
         }, scope, projectPath);
       }
@@ -451500,7 +451587,7 @@ var init_pluginStartupCheck = __esm(() => {
 });
 
 // utils/plugins/parseMarketplaceInput.ts
-import { homedir as homedir29 } from "os";
+import { homedir as homedir30 } from "os";
 import { resolve as resolve36 } from "path";
 async function parseMarketplaceInput(input) {
   const trimmed = input.trim();
@@ -451536,7 +451623,7 @@ async function parseMarketplaceInput(input) {
   const isWindows = process.platform === "win32";
   const isWindowsPath = isWindows && (trimmed.startsWith(".\\") || trimmed.startsWith("..\\") || /^[a-zA-Z]:[/\\]/.test(trimmed));
   if (trimmed.startsWith("./") || trimmed.startsWith("../") || trimmed.startsWith("/") || trimmed.startsWith("~") || isWindowsPath) {
-    const resolvedPath = resolve36(trimmed.startsWith("~") ? trimmed.replace(/^~/, homedir29()) : trimmed);
+    const resolvedPath = resolve36(trimmed.startsWith("~") ? trimmed.replace(/^~/, homedir30()) : trimmed);
     let stats;
     try {
       stats = await fs.stat(resolvedPath);
@@ -451592,9 +451679,9 @@ function AddMarketplace({
   onAddComplete,
   cliMode = false
 }) {
-  const hasAttemptedAutoAdd = import_react131.useRef(false);
-  const [isLoading, setLoading] = import_react131.useState(false);
-  const [progressMessage, setProgressMessage] = import_react131.useState("");
+  const hasAttemptedAutoAdd = import_react132.useRef(false);
+  const [isLoading, setLoading] = import_react132.useState(false);
+  const [progressMessage, setProgressMessage] = import_react132.useState("");
   const handleAdd = async () => {
     const input = inputValue.trim();
     if (!input) {
@@ -451657,7 +451744,7 @@ function AddMarketplace({
       }
     }
   };
-  import_react131.useEffect(() => {
+  import_react132.useEffect(() => {
     if (inputValue && !hasAttemptedAutoAdd.current && !error && !result) {
       hasAttemptedAutoAdd.current = true;
       handleAdd();
@@ -451767,7 +451854,7 @@ function AddMarketplace({
     ]
   });
 }
-var import_react131, jsx_runtime227;
+var import_react132, jsx_runtime227;
 var init_AddMarketplace = __esm(() => {
   init_analytics();
   init_ConfigurableShortcutHint();
@@ -451781,16 +451868,16 @@ var init_AddMarketplace = __esm(() => {
   init_cacheUtils();
   init_marketplaceManager();
   init_parseMarketplaceInput();
-  import_react131 = __toESM(require_react(), 1);
+  import_react132 = __toESM(require_react(), 1);
   jsx_runtime227 = __toESM(require_jsx_runtime(), 1);
 });
 
 // utils/plugins/installCounts.ts
 import { randomBytes as randomBytes15 } from "crypto";
 import { readFile as readFile38, rename as rename7, unlink as unlink16, writeFile as writeFile33 } from "fs/promises";
-import { join as join109 } from "path";
+import { join as join110 } from "path";
 function getInstallCountsCachePath() {
-  return join109(getPluginsDirectory(), INSTALL_COUNTS_CACHE_FILENAME);
+  return join110(getPluginsDirectory(), INSTALL_COUNTS_CACHE_FILENAME);
 }
 async function loadInstallCountsCache() {
   const cachePath = getInstallCountsCachePath();
@@ -451954,7 +452041,7 @@ function buildFinalValues(fields, collected, configSchema, initialValues) {
   return finalValues;
 }
 function PluginOptionsDialog(t0) {
-  const $ = import_compiler_runtime185.c(70);
+  const $ = import_compiler_runtime184.c(70);
   const {
     title,
     subtitle,
@@ -451988,7 +452075,7 @@ function PluginOptionsDialog(t0) {
     t2 = $[4];
   }
   const initialFor = t2;
-  const [currentFieldIndex, setCurrentFieldIndex] = import_react132.useState(0);
+  const [currentFieldIndex, setCurrentFieldIndex] = import_react133.useState(0);
   let t3;
   if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
     t3 = {};
@@ -451996,7 +452083,7 @@ function PluginOptionsDialog(t0) {
   } else {
     t3 = $[5];
   }
-  const [values, setValues] = import_react132.useState(t3);
+  const [values, setValues] = import_react133.useState(t3);
   let t4;
   if ($[6] !== fields[0] || $[7] !== initialFor) {
     t4 = () => fields[0] ? initialFor(fields[0]) : "";
@@ -452006,7 +452093,7 @@ function PluginOptionsDialog(t0) {
   } else {
     t4 = $[8];
   }
-  const [currentInput, setCurrentInput] = import_react132.useState(t4);
+  const [currentInput, setCurrentInput] = import_react133.useState(t4);
   const currentField = fields[currentFieldIndex];
   const fieldSchema = currentField ? configSchema[currentField] : null;
   let t5;
@@ -452101,7 +452188,7 @@ function PluginOptionsDialog(t0) {
   if ($[30] === Symbol.for("react.memo_cache_sentinel")) {
     t10 = (char, key_0) => {
       if (key_0.backspace || key_0.delete) {
-        setCurrentInput(_temp325);
+        setCurrentInput(_temp324);
         return;
       }
       if (char && !key_0.ctrl && !key_0.meta && !key_0.tab && !key_0.return) {
@@ -452311,7 +452398,7 @@ function PluginOptionsDialog(t0) {
   }
   return t26;
 }
-function _temp325(prev_2) {
+function _temp324(prev_2) {
   return prev_2.slice(0, -1);
 }
 function _temp236(prev_1) {
@@ -452320,7 +452407,7 @@ function _temp236(prev_1) {
 function _temp97(prev_0) {
   return prev_0 + 1;
 }
-var import_compiler_runtime185, import_react132, jsx_runtime228;
+var import_compiler_runtime184, import_react133, jsx_runtime228;
 var init_PluginOptionsDialog = __esm(() => {
   init_figures();
   init_Dialog();
@@ -452328,8 +452415,8 @@ var init_PluginOptionsDialog = __esm(() => {
   init_ink2();
   init_useKeybinding();
   init_envUtils();
-  import_compiler_runtime185 = __toESM(require_compiler_runtime(), 1);
-  import_react132 = __toESM(require_react(), 1);
+  import_compiler_runtime184 = __toESM(require_compiler_runtime(), 1);
+  import_react133 = __toESM(require_react(), 1);
   jsx_runtime228 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -452346,7 +452433,7 @@ function PluginOptionsFlow({
   pluginId,
   onDone
 }) {
-  const [steps] = React73.useState(() => {
+  const [steps] = React74.useState(() => {
     const result = [];
     const unconfigured = getUnconfiguredOptions(plugin);
     if (Object.keys(unconfigured).length > 0) {
@@ -452372,10 +452459,10 @@ function PluginOptionsFlow({
     }
     return result;
   });
-  const [index, setIndex] = React73.useState(0);
-  const onDoneRef = React73.useRef(onDone);
+  const [index, setIndex] = React74.useState(0);
+  const onDoneRef = React74.useRef(onDone);
   onDoneRef.current = onDone;
-  React73.useEffect(() => {
+  React74.useEffect(() => {
     if (steps.length === 0) {
       onDoneRef.current("skipped");
     }
@@ -452407,7 +452494,7 @@ function PluginOptionsFlow({
     onCancel: () => onDone("skipped")
   }, current.key);
 }
-var React73, jsx_runtime229;
+var React74, jsx_runtime229;
 var init_PluginOptionsFlow = __esm(() => {
   init_errors();
   init_mcpbHandler();
@@ -452415,13 +452502,13 @@ var init_PluginOptionsFlow = __esm(() => {
   init_pluginLoader();
   init_pluginOptionsStorage();
   init_PluginOptionsDialog();
-  React73 = __toESM(require_react(), 1);
+  React74 = __toESM(require_react(), 1);
   jsx_runtime229 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/plugin/PluginTrustWarning.tsx
 function PluginTrustWarning() {
-  const $ = import_compiler_runtime186.c(3);
+  const $ = import_compiler_runtime185.c(3);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = getPluginTrustMessage();
@@ -452465,12 +452552,12 @@ function PluginTrustWarning() {
   }
   return t2;
 }
-var import_compiler_runtime186, jsx_runtime230;
+var import_compiler_runtime185, jsx_runtime230;
 var init_PluginTrustWarning = __esm(() => {
   init_figures();
   init_ink2();
   init_marketplaceHelpers();
-  import_compiler_runtime186 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime185 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime230 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -452512,7 +452599,7 @@ function buildPluginDetailsMenuOptions(hasHomepage, githubRepo) {
   return options;
 }
 function PluginSelectionKeyHint(t0) {
-  const $ = import_compiler_runtime187.c(7);
+  const $ = import_compiler_runtime186.c(7);
   const {
     hasSelection
   } = t0;
@@ -452584,12 +452671,12 @@ function PluginSelectionKeyHint(t0) {
   }
   return t5;
 }
-var import_compiler_runtime187, jsx_runtime231;
+var import_compiler_runtime186, jsx_runtime231;
 var init_pluginDetailsHelpers = __esm(() => {
   init_ConfigurableShortcutHint();
   init_Byline();
   init_ink2();
-  import_compiler_runtime187 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime186 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime231 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -452600,8 +452687,8 @@ function usePagination({
   selectedIndex = 0
 }) {
   const needsPagination = totalItems > maxVisible;
-  const scrollOffsetRef = import_react133.useRef(0);
-  const scrollOffset = import_react133.useMemo(() => {
+  const scrollOffsetRef = import_react134.useRef(0);
+  const scrollOffset = import_react134.useMemo(() => {
     if (!needsPagination)
       return 0;
     const prevOffset = scrollOffsetRef.current;
@@ -452621,25 +452708,25 @@ function usePagination({
   }, [selectedIndex, maxVisible, needsPagination, totalItems]);
   const startIndex = scrollOffset;
   const endIndex = Math.min(scrollOffset + maxVisible, totalItems);
-  const getVisibleItems = import_react133.useCallback((items) => {
+  const getVisibleItems = import_react134.useCallback((items) => {
     if (!needsPagination)
       return items;
     return items.slice(startIndex, endIndex);
   }, [needsPagination, startIndex, endIndex]);
-  const toActualIndex = import_react133.useCallback((visibleIndex) => {
+  const toActualIndex = import_react134.useCallback((visibleIndex) => {
     return startIndex + visibleIndex;
   }, [startIndex]);
-  const isOnCurrentPage = import_react133.useCallback((actualIndex) => {
+  const isOnCurrentPage = import_react134.useCallback((actualIndex) => {
     return actualIndex >= startIndex && actualIndex < endIndex;
   }, [startIndex, endIndex]);
-  const goToPage = import_react133.useCallback((_page) => {}, []);
-  const nextPage = import_react133.useCallback(() => {}, []);
-  const prevPage = import_react133.useCallback(() => {}, []);
-  const handleSelectionChange = import_react133.useCallback((newIndex, setSelectedIndex) => {
+  const goToPage = import_react134.useCallback((_page) => {}, []);
+  const nextPage = import_react134.useCallback(() => {}, []);
+  const prevPage = import_react134.useCallback(() => {}, []);
+  const handleSelectionChange = import_react134.useCallback((newIndex, setSelectedIndex) => {
     const clampedIndex = Math.max(0, Math.min(newIndex, totalItems - 1));
     setSelectedIndex(clampedIndex);
   }, [totalItems]);
-  const handlePageNavigation = import_react133.useCallback((_direction, _setSelectedIndex) => {
+  const handlePageNavigation = import_react134.useCallback((_direction, _setSelectedIndex) => {
     return false;
   }, []);
   const totalPages = Math.max(1, Math.ceil(totalItems / maxVisible));
@@ -452667,9 +452754,9 @@ function usePagination({
     }
   };
 }
-var import_react133, DEFAULT_MAX_VISIBLE = 5;
+var import_react134, DEFAULT_MAX_VISIBLE = 5;
 var init_usePagination = __esm(() => {
-  import_react133 = __toESM(require_react(), 1);
+  import_react134 = __toESM(require_react(), 1);
 });
 
 // commands/plugin/BrowseMarketplace.tsx
@@ -452683,25 +452770,25 @@ function BrowseMarketplace({
   targetMarketplace,
   targetPlugin
 }) {
-  const [viewState, setViewState] = import_react134.useState("marketplace-list");
-  const [selectedMarketplace, setSelectedMarketplace] = import_react134.useState(null);
-  const [selectedPlugin, setSelectedPlugin] = import_react134.useState(null);
-  const [marketplaces, setMarketplaces] = import_react134.useState([]);
-  const [availablePlugins, setAvailablePlugins] = import_react134.useState([]);
-  const [loading, setLoading] = import_react134.useState(true);
-  const [installCounts, setInstallCounts] = import_react134.useState(null);
-  const [selectedIndex, setSelectedIndex] = import_react134.useState(0);
-  const [selectedForInstall, setSelectedForInstall] = import_react134.useState(new Set);
-  const [installingPlugins, setInstallingPlugins] = import_react134.useState(new Set);
+  const [viewState, setViewState] = import_react135.useState("marketplace-list");
+  const [selectedMarketplace, setSelectedMarketplace] = import_react135.useState(null);
+  const [selectedPlugin, setSelectedPlugin] = import_react135.useState(null);
+  const [marketplaces, setMarketplaces] = import_react135.useState([]);
+  const [availablePlugins, setAvailablePlugins] = import_react135.useState([]);
+  const [loading, setLoading] = import_react135.useState(true);
+  const [installCounts, setInstallCounts] = import_react135.useState(null);
+  const [selectedIndex, setSelectedIndex] = import_react135.useState(0);
+  const [selectedForInstall, setSelectedForInstall] = import_react135.useState(new Set);
+  const [installingPlugins, setInstallingPlugins] = import_react135.useState(new Set);
   const pagination = usePagination({
     totalItems: availablePlugins.length,
     selectedIndex
   });
-  const [detailsMenuIndex, setDetailsMenuIndex] = import_react134.useState(0);
-  const [isInstalling, setIsInstalling] = import_react134.useState(false);
-  const [installError, setInstallError] = import_react134.useState(null);
-  const [warning, setWarning] = import_react134.useState(null);
-  const handleBack = React74.useCallback(() => {
+  const [detailsMenuIndex, setDetailsMenuIndex] = import_react135.useState(0);
+  const [isInstalling, setIsInstalling] = import_react135.useState(false);
+  const [installError, setInstallError] = import_react135.useState(null);
+  const [warning, setWarning] = import_react135.useState(null);
+  const handleBack = React75.useCallback(() => {
     if (viewState === "plugin-list") {
       if (targetMarketplace) {
         setParentViewState({
@@ -452729,7 +452816,7 @@ function BrowseMarketplace({
   useKeybinding("confirm:no", handleBack, {
     context: "Confirmation"
   });
-  import_react134.useEffect(() => {
+  import_react135.useEffect(() => {
     async function loadMarketplaceData() {
       try {
         const config = await loadKnownMarketplacesConfig();
@@ -452827,7 +452914,7 @@ function BrowseMarketplace({
     }
     loadMarketplaceData();
   }, [setError, targetMarketplace, targetPlugin]);
-  import_react134.useEffect(() => {
+  import_react135.useEffect(() => {
     if (!selectedMarketplace)
       return;
     let cancelled = false;
@@ -452968,7 +453055,7 @@ function BrowseMarketplace({
       setInstallError(result_0.error);
     }
   };
-  import_react134.useEffect(() => {
+  import_react135.useEffect(() => {
     if (error) {
       setResult(error);
     }
@@ -453055,7 +453142,7 @@ function BrowseMarketplace({
     context: "Plugin",
     isActive: viewState === "plugin-list"
   });
-  const detailsMenuOptions = React74.useMemo(() => {
+  const detailsMenuOptions = React75.useMemo(() => {
     if (!selectedPlugin)
       return [];
     const hasHomepage = selectedPlugin.entry.homepage;
@@ -453566,7 +453653,7 @@ function BrowseMarketplace({
     ]
   });
 }
-var React74, import_react134, jsx_runtime232;
+var React75, import_react135, jsx_runtime232;
 var init_BrowseMarketplace = __esm(() => {
   init_figures();
   init_ConfigurableShortcutHint();
@@ -453590,8 +453677,8 @@ var init_BrowseMarketplace = __esm(() => {
   init_PluginTrustWarning();
   init_pluginDetailsHelpers();
   init_usePagination();
-  React74 = __toESM(require_react(), 1);
-  import_react134 = __toESM(require_react(), 1);
+  React75 = __toESM(require_react(), 1);
+  import_react135 = __toESM(require_react(), 1);
   jsx_runtime232 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -453606,13 +453693,13 @@ function DiscoverPlugins({
   onSearchModeChange,
   targetPlugin
 }) {
-  const [viewState, setViewState] = import_react135.useState("plugin-list");
-  const [selectedPlugin, setSelectedPlugin] = import_react135.useState(null);
-  const [availablePlugins, setAvailablePlugins] = import_react135.useState([]);
-  const [loading, setLoading] = import_react135.useState(true);
-  const [installCounts, setInstallCounts] = import_react135.useState(null);
-  const [isSearchMode, setIsSearchModeRaw] = import_react135.useState(false);
-  const setIsSearchMode = import_react135.useCallback((active) => {
+  const [viewState, setViewState] = import_react136.useState("plugin-list");
+  const [selectedPlugin, setSelectedPlugin] = import_react136.useState(null);
+  const [availablePlugins, setAvailablePlugins] = import_react136.useState([]);
+  const [loading, setLoading] = import_react136.useState(true);
+  const [installCounts, setInstallCounts] = import_react136.useState(null);
+  const [isSearchMode, setIsSearchModeRaw] = import_react136.useState(false);
+  const setIsSearchMode = import_react136.useCallback((active) => {
     setIsSearchModeRaw(active);
     onSearchModeChange?.(active);
   }, [onSearchModeChange]);
@@ -453630,28 +453717,28 @@ function DiscoverPlugins({
   const {
     columns: terminalWidth
   } = useTerminalSize();
-  const filteredPlugins = import_react135.useMemo(() => {
+  const filteredPlugins = import_react136.useMemo(() => {
     if (!searchQuery)
       return availablePlugins;
     const lowerQuery = searchQuery.toLowerCase();
     return availablePlugins.filter((plugin) => plugin.entry.name.toLowerCase().includes(lowerQuery) || plugin.entry.description?.toLowerCase().includes(lowerQuery) || plugin.marketplaceName.toLowerCase().includes(lowerQuery));
   }, [availablePlugins, searchQuery]);
-  const [selectedIndex, setSelectedIndex] = import_react135.useState(0);
-  const [selectedForInstall, setSelectedForInstall] = import_react135.useState(new Set);
-  const [installingPlugins, setInstallingPlugins] = import_react135.useState(new Set);
+  const [selectedIndex, setSelectedIndex] = import_react136.useState(0);
+  const [selectedForInstall, setSelectedForInstall] = import_react136.useState(new Set);
+  const [installingPlugins, setInstallingPlugins] = import_react136.useState(new Set);
   const pagination = usePagination({
     totalItems: filteredPlugins.length,
     selectedIndex
   });
-  import_react135.useEffect(() => {
+  import_react136.useEffect(() => {
     setSelectedIndex(0);
   }, [searchQuery]);
-  const [detailsMenuIndex, setDetailsMenuIndex] = import_react135.useState(0);
-  const [isInstalling, setIsInstalling] = import_react135.useState(false);
-  const [installError, setInstallError] = import_react135.useState(null);
-  const [warning, setWarning] = import_react135.useState(null);
-  const [emptyReason, setEmptyReason] = import_react135.useState(null);
-  import_react135.useEffect(() => {
+  const [detailsMenuIndex, setDetailsMenuIndex] = import_react136.useState(0);
+  const [isInstalling, setIsInstalling] = import_react136.useState(false);
+  const [installError, setInstallError] = import_react136.useState(null);
+  const [warning, setWarning] = import_react136.useState(null);
+  const [emptyReason, setEmptyReason] = import_react136.useState(null);
+  import_react136.useEffect(() => {
     async function loadAllPlugins() {
       try {
         const config = await loadKnownMarketplacesConfig();
@@ -453812,7 +453899,7 @@ function DiscoverPlugins({
       setInstallError(result_0.error);
     }
   };
-  import_react135.useEffect(() => {
+  import_react136.useEffect(() => {
     if (error) {
       setResult(error);
     }
@@ -453908,7 +453995,7 @@ function DiscoverPlugins({
     context: "Plugin",
     isActive: viewState === "plugin-list" && !isSearchMode
   });
-  const detailsMenuOptions = React75.useMemo(() => {
+  const detailsMenuOptions = React76.useMemo(() => {
     if (!selectedPlugin)
       return [];
     const hasHomepage = selectedPlugin.entry.homepage;
@@ -454279,7 +454366,7 @@ function DiscoverPlugins({
   });
 }
 function DiscoverPluginsKeyHint(t0) {
-  const $ = import_compiler_runtime188.c(10);
+  const $ = import_compiler_runtime187.c(10);
   const {
     hasSelection,
     canToggle
@@ -454368,7 +454455,7 @@ function DiscoverPluginsKeyHint(t0) {
   return t6;
 }
 function EmptyStateMessage(t0) {
-  const $ = import_compiler_runtime188.c(6);
+  const $ = import_compiler_runtime187.c(6);
   const {
     reason
   } = t0;
@@ -454502,7 +454589,7 @@ function EmptyStateMessage(t0) {
     }
   }
 }
-var import_compiler_runtime188, React75, import_react135, jsx_runtime233;
+var import_compiler_runtime187, React76, import_react136, jsx_runtime233;
 var init_DiscoverPlugins = __esm(() => {
   init_figures();
   init_ConfigurableShortcutHint();
@@ -454529,14 +454616,14 @@ var init_DiscoverPlugins = __esm(() => {
   init_PluginTrustWarning();
   init_pluginDetailsHelpers();
   init_usePagination();
-  import_compiler_runtime188 = __toESM(require_compiler_runtime(), 1);
-  React75 = __toESM(require_react(), 1);
-  import_react135 = __toESM(require_react(), 1);
+  import_compiler_runtime187 = __toESM(require_compiler_runtime(), 1);
+  React76 = __toESM(require_react(), 1);
+  import_react136 = __toESM(require_react(), 1);
   jsx_runtime233 = __toESM(require_jsx_runtime(), 1);
 });
 
 // services/plugins/pluginOperations.ts
-import { dirname as dirname48, join as join110 } from "path";
+import { dirname as dirname48, join as join111 } from "path";
 function assertInstallableScope(scope) {
   if (!VALID_INSTALLABLE_SCOPES.includes(scope)) {
     throw new Error(`Invalid scope "${scope}". Must be one of: ${VALID_INSTALLABLE_SCOPES.join(", ")}`);
@@ -455014,7 +455101,7 @@ async function performPluginUpdate({
       throw e;
     }
     const marketplaceDir = marketplaceStats.isDirectory() ? marketplaceInstallLocation : dirname48(marketplaceInstallLocation);
-    sourcePath = join110(marketplaceDir, entry.source);
+    sourcePath = join111(marketplaceDir, entry.source);
     try {
       await fs.stat(sourcePath);
     } catch (e) {
@@ -455029,7 +455116,7 @@ async function performPluginUpdate({
       throw e;
     }
     let pluginManifest;
-    const manifestPath = join110(sourcePath, ".claude-plugin", "plugin.json");
+    const manifestPath = join111(sourcePath, ".claude-plugin", "plugin.json");
     try {
       pluginManifest = await loadPluginManifest(manifestPath, entry.name, entry.source);
     } catch {}
@@ -455235,18 +455322,18 @@ function ManageMarketplaces({
   targetMarketplace,
   action
 }) {
-  const [marketplaceStates, setMarketplaceStates] = import_react136.useState([]);
-  const [loading, setLoading] = import_react136.useState(true);
-  const [selectedIndex, setSelectedIndex] = import_react136.useState(0);
-  const [isProcessing, setIsProcessing] = import_react136.useState(false);
-  const [processError, setProcessError] = import_react136.useState(null);
-  const [successMessage, setSuccessMessage] = import_react136.useState(null);
-  const [progressMessage, setProgressMessage] = import_react136.useState(null);
-  const [internalView, setInternalView] = import_react136.useState("list");
-  const [selectedMarketplace, setSelectedMarketplace] = import_react136.useState(null);
-  const [detailsMenuIndex, setDetailsMenuIndex] = import_react136.useState(0);
-  const hasAttemptedAutoAction = import_react136.useRef(false);
-  import_react136.useEffect(() => {
+  const [marketplaceStates, setMarketplaceStates] = import_react137.useState([]);
+  const [loading, setLoading] = import_react137.useState(true);
+  const [selectedIndex, setSelectedIndex] = import_react137.useState(0);
+  const [isProcessing, setIsProcessing] = import_react137.useState(false);
+  const [processError, setProcessError] = import_react137.useState(null);
+  const [successMessage, setSuccessMessage] = import_react137.useState(null);
+  const [progressMessage, setProgressMessage] = import_react137.useState(null);
+  const [internalView, setInternalView] = import_react137.useState("list");
+  const [selectedMarketplace, setSelectedMarketplace] = import_react137.useState(null);
+  const [detailsMenuIndex, setDetailsMenuIndex] = import_react137.useState(0);
+  const hasAttemptedAutoAction = import_react137.useRef(false);
+  import_react137.useEffect(() => {
     async function loadMarketplaces() {
       try {
         const config = await loadKnownMarketplacesConfig();
@@ -456104,7 +456191,7 @@ function ManageMarketplaces({
   });
 }
 function ManageMarketplacesKeyHints(t0) {
-  const $ = import_compiler_runtime189.c(18);
+  const $ = import_compiler_runtime188.c(18);
   const {
     exitState,
     hasPendingActions
@@ -456222,7 +456309,7 @@ function ManageMarketplacesKeyHints(t0) {
   }
   return t7;
 }
-var import_compiler_runtime189, import_react136, jsx_runtime234;
+var import_compiler_runtime188, import_react137, jsx_runtime234;
 var init_ManageMarketplaces = __esm(() => {
   init_figures();
   init_analytics();
@@ -456241,17 +456328,17 @@ var init_ManageMarketplaces = __esm(() => {
   init_schemas3();
   init_settings2();
   init_stringUtils();
-  import_compiler_runtime189 = __toESM(require_compiler_runtime(), 1);
-  import_react136 = __toESM(require_react(), 1);
+  import_compiler_runtime188 = __toESM(require_compiler_runtime(), 1);
+  import_react137 = __toESM(require_react(), 1);
   jsx_runtime234 = __toESM(require_jsx_runtime(), 1);
 });
 
 // utils/plugins/pluginFlagging.ts
 import { randomBytes as randomBytes16 } from "crypto";
 import { readFile as readFile39, rename as rename8, unlink as unlink17, writeFile as writeFile34 } from "fs/promises";
-import { join as join111 } from "path";
+import { join as join112 } from "path";
 function getFlaggedPluginsPath() {
-  return join111(getPluginsDirectory(), FLAGGED_PLUGINS_FILENAME);
+  return join112(getPluginsDirectory(), FLAGGED_PLUGINS_FILENAME);
 }
 function parsePluginsData(content) {
   const parsed = jsonParse(content);
@@ -456493,7 +456580,7 @@ var init_PluginErrors = () => {};
 
 // commands/plugin/UnifiedInstalledCell.tsx
 function UnifiedInstalledCell(t0) {
-  const $ = import_compiler_runtime190.c(142);
+  const $ = import_compiler_runtime189.c(142);
   const {
     item,
     isSelected
@@ -457236,25 +457323,25 @@ function UnifiedInstalledCell(t0) {
   }
   return t13;
 }
-var import_compiler_runtime190, jsx_runtime235;
+var import_compiler_runtime189, jsx_runtime235;
 var init_UnifiedInstalledCell = __esm(() => {
   init_figures();
   init_ink2();
   init_stringUtils();
-  import_compiler_runtime190 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime189 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime235 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/plugin/ManagePlugins.tsx
-import * as fs11 from "fs/promises";
-import * as path22 from "path";
+import * as fs12 from "fs/promises";
+import * as path23 from "path";
 async function getBaseFileNames(dirPath) {
   try {
-    const entries = await fs11.readdir(dirPath, {
+    const entries = await fs12.readdir(dirPath, {
       withFileTypes: true
     });
     return entries.filter((entry) => entry.isFile() && entry.name.endsWith(".md")).map((entry) => {
-      const baseName = path22.basename(entry.name, ".md");
+      const baseName = path23.basename(entry.name, ".md");
       return baseName;
     });
   } catch (error) {
@@ -457268,15 +457355,15 @@ async function getBaseFileNames(dirPath) {
 }
 async function getSkillDirNames(dirPath) {
   try {
-    const entries = await fs11.readdir(dirPath, {
+    const entries = await fs12.readdir(dirPath, {
       withFileTypes: true
     });
     const skillNames = [];
     for (const entry of entries) {
       if (entry.isDirectory() || entry.isSymbolicLink()) {
-        const skillFilePath = path22.join(dirPath, entry.name, "SKILL.md");
+        const skillFilePath = path23.join(dirPath, entry.name, "SKILL.md");
         try {
-          const st = await fs11.stat(skillFilePath);
+          const st = await fs12.stat(skillFilePath);
           if (st.isFile()) {
             skillNames.push(entry.name);
           }
@@ -457297,10 +457384,10 @@ function PluginComponentsDisplay({
   plugin,
   marketplace
 }) {
-  const [components, setComponents] = import_react137.useState(null);
-  const [loading, setLoading] = import_react137.useState(true);
-  const [error, setError] = import_react137.useState(null);
-  import_react137.useEffect(() => {
+  const [components, setComponents] = import_react138.useState(null);
+  const [loading, setLoading] = import_react138.useState(true);
+  const [error, setError] = import_react138.useState(null);
+  import_react138.useEffect(() => {
     async function loadComponents() {
       try {
         if (marketplace === "builtin") {
@@ -457506,8 +457593,8 @@ function ManagePlugins({
   const mcpTools = useAppState((s_0) => s_0.mcp.tools);
   const pluginErrors = useAppState((s_1) => s_1.plugins.errors);
   const flaggedPlugins = getFlaggedPlugins();
-  const [isSearchMode, setIsSearchModeRaw] = import_react137.useState(false);
-  const setIsSearchMode = import_react137.useCallback((active) => {
+  const [isSearchMode, setIsSearchModeRaw] = import_react138.useState(false);
+  const setIsSearchMode = import_react138.useCallback((active) => {
     setIsSearchModeRaw(active);
     onSearchModeChange?.(active);
   }, [onSearchModeChange]);
@@ -457515,7 +457602,7 @@ function ManagePlugins({
   const {
     columns: terminalWidth
   } = useTerminalSize();
-  const [viewState, setViewState] = import_react137.useState("plugin-list");
+  const [viewState, setViewState] = import_react138.useState("plugin-list");
   const {
     query: searchQuery,
     setQuery: setSearchQuery,
@@ -457526,15 +457613,15 @@ function ManagePlugins({
       setIsSearchMode(false);
     }
   });
-  const [selectedPlugin, setSelectedPlugin] = import_react137.useState(null);
-  const [marketplaces, setMarketplaces] = import_react137.useState([]);
-  const [pluginStates, setPluginStates] = import_react137.useState([]);
-  const [loading, setLoading] = import_react137.useState(true);
-  const [pendingToggles, setPendingToggles] = import_react137.useState(new Map);
-  const hasAutoNavigated = import_react137.useRef(false);
-  const pendingAutoActionRef = import_react137.useRef(undefined);
+  const [selectedPlugin, setSelectedPlugin] = import_react138.useState(null);
+  const [marketplaces, setMarketplaces] = import_react138.useState([]);
+  const [pluginStates, setPluginStates] = import_react138.useState([]);
+  const [loading, setLoading] = import_react138.useState(true);
+  const [pendingToggles, setPendingToggles] = import_react138.useState(new Map);
+  const hasAutoNavigated = import_react138.useRef(false);
+  const pendingAutoActionRef = import_react138.useRef(undefined);
   const toggleMcpServer = useMcpToggleEnabled();
-  const handleBack = React76.useCallback(() => {
+  const handleBack = React77.useCallback(() => {
     if (viewState === "plugin-details") {
       setViewState("plugin-list");
       setSelectedPlugin(null);
@@ -457593,7 +457680,7 @@ function ManagePlugins({
       return "needs-auth";
     return "failed";
   };
-  const unifiedItems = import_react137.useMemo(() => {
+  const unifiedItems = import_react138.useMemo(() => {
     const mergedSettings = getSettings_DEPRECATED();
     const pluginMcpMap = new Map;
     for (const client_0 of mcpClients) {
@@ -457796,31 +457883,31 @@ function ManagePlugins({
     }
     return unified;
   }, [pluginStates, mcpClients, pluginErrors, pendingToggles, flaggedPlugins]);
-  const flaggedIds = import_react137.useMemo(() => unifiedItems.filter((item_3) => item_3.type === "flagged-plugin").map((item_4) => item_4.id), [unifiedItems]);
-  import_react137.useEffect(() => {
+  const flaggedIds = import_react138.useMemo(() => unifiedItems.filter((item_3) => item_3.type === "flagged-plugin").map((item_4) => item_4.id), [unifiedItems]);
+  import_react138.useEffect(() => {
     if (flaggedIds.length > 0) {
       markFlaggedPluginsSeen(flaggedIds);
     }
   }, [flaggedIds]);
-  const filteredItems = import_react137.useMemo(() => {
+  const filteredItems = import_react138.useMemo(() => {
     if (!searchQuery)
       return unifiedItems;
     const lowerQuery = searchQuery.toLowerCase();
     return unifiedItems.filter((item_5) => item_5.name.toLowerCase().includes(lowerQuery) || ("description" in item_5) && item_5.description?.toLowerCase().includes(lowerQuery));
   }, [unifiedItems, searchQuery]);
-  const [selectedIndex, setSelectedIndex] = import_react137.useState(0);
+  const [selectedIndex, setSelectedIndex] = import_react138.useState(0);
   const pagination = usePagination({
     totalItems: filteredItems.length,
     selectedIndex,
     maxVisible: 8
   });
-  const [detailsMenuIndex, setDetailsMenuIndex] = import_react137.useState(0);
-  const [isProcessing, setIsProcessing] = import_react137.useState(false);
-  const [processError, setProcessError] = import_react137.useState(null);
-  const [configNeeded, setConfigNeeded] = import_react137.useState(null);
-  const [_isLoadingConfig, setIsLoadingConfig] = import_react137.useState(false);
-  const [selectedPluginHasMcpb, setSelectedPluginHasMcpb] = import_react137.useState(false);
-  import_react137.useEffect(() => {
+  const [detailsMenuIndex, setDetailsMenuIndex] = import_react138.useState(0);
+  const [isProcessing, setIsProcessing] = import_react138.useState(false);
+  const [processError, setProcessError] = import_react138.useState(null);
+  const [configNeeded, setConfigNeeded] = import_react138.useState(null);
+  const [_isLoadingConfig, setIsLoadingConfig] = import_react138.useState(false);
+  const [selectedPluginHasMcpb, setSelectedPluginHasMcpb] = import_react138.useState(false);
+  import_react138.useEffect(() => {
     if (!selectedPlugin) {
       setSelectedPluginHasMcpb(false);
       return;
@@ -457833,9 +457920,9 @@ function ManagePlugins({
       }
       if (!hasMcpb) {
         try {
-          const marketplaceDir = path22.join(selectedPlugin.plugin.path, "..");
-          const marketplaceJsonPath = path22.join(marketplaceDir, ".claude-plugin", "marketplace.json");
-          const content = await fs11.readFile(marketplaceJsonPath, "utf-8");
+          const marketplaceDir = path23.join(selectedPlugin.plugin.path, "..");
+          const marketplaceJsonPath = path23.join(marketplaceDir, ".claude-plugin", "marketplace.json");
+          const content = await fs12.readFile(marketplaceJsonPath, "utf-8");
           const marketplace_1 = jsonParse(content);
           const entry_0 = marketplace_1.plugins?.find((p) => p.name === selectedPlugin.plugin.name);
           if (entry_0?.mcpServers) {
@@ -457850,7 +457937,7 @@ function ManagePlugins({
     }
     detectMcpb();
   }, [selectedPlugin]);
-  import_react137.useEffect(() => {
+  import_react138.useEffect(() => {
     async function loadInstalledPlugins() {
       setLoading(true);
       try {
@@ -457912,7 +457999,7 @@ function ManagePlugins({
     }
     loadInstalledPlugins();
   }, []);
-  import_react137.useEffect(() => {
+  import_react138.useEffect(() => {
     if (hasAutoNavigated.current)
       return;
     if (targetPlugin && marketplaces.length > 0 && !loading) {
@@ -458073,16 +458160,16 @@ function ManagePlugins({
       logError2(toError(error_0));
     }
   };
-  const handleSingleOperationRef = import_react137.useRef(handleSingleOperation);
+  const handleSingleOperationRef = import_react138.useRef(handleSingleOperation);
   handleSingleOperationRef.current = handleSingleOperation;
-  import_react137.useEffect(() => {
+  import_react138.useEffect(() => {
     if (viewState === "plugin-details" && selectedPlugin && pendingAutoActionRef.current) {
       const pending = pendingAutoActionRef.current;
       pendingAutoActionRef.current = undefined;
       handleSingleOperationRef.current(pending);
     }
   }, [viewState, selectedPlugin]);
-  const handleToggle = React76.useCallback(() => {
+  const handleToggle = React77.useCallback(() => {
     if (selectedIndex >= filteredItems.length)
       return;
     const item_7 = filteredItems[selectedIndex];
@@ -458132,7 +458219,7 @@ function ManagePlugins({
       toggleMcpServer(item_7.client.name);
     }
   }, [selectedIndex, filteredItems, pendingToggles, pluginStates, toggleMcpServer]);
-  const handleAccept = React76.useCallback(() => {
+  const handleAccept = React77.useCallback(() => {
     if (selectedIndex >= filteredItems.length)
       return;
     const item_8 = filteredItems[selectedIndex];
@@ -458202,7 +458289,7 @@ function ManagePlugins({
     context: "Plugin",
     isActive: viewState === "plugin-list" && !isSearchMode
   });
-  const handleFlaggedDismiss = React76.useCallback(() => {
+  const handleFlaggedDismiss = React77.useCallback(() => {
     if (typeof viewState !== "object" || viewState.type !== "flagged-detail")
       return;
     removeFlaggedPlugin(viewState.plugin.id);
@@ -458214,7 +458301,7 @@ function ManagePlugins({
     context: "Select",
     isActive: typeof viewState === "object" && viewState.type === "flagged-detail"
   });
-  const detailsMenuItems = React76.useMemo(() => {
+  const detailsMenuItems = React77.useMemo(() => {
     if (viewState !== "plugin-details" || !selectedPlugin)
       return [];
     const mergedSettings_1 = getSettings_DEPRECATED();
@@ -458470,7 +458557,7 @@ function ManagePlugins({
   }, {
     isActive: typeof viewState === "object" && viewState.type === "confirm-data-cleanup" && !!selectedPlugin && !isProcessing
   });
-  React76.useEffect(() => {
+  React77.useEffect(() => {
     setSelectedIndex(0);
   }, [searchQuery]);
   use_input_default((input_0, key_0) => {
@@ -459360,7 +459447,7 @@ function ManagePlugins({
               return scope_8;
           }
         };
-        return /* @__PURE__ */ jsx_runtime236.jsxs(React76.Fragment, {
+        return /* @__PURE__ */ jsx_runtime236.jsxs(React77.Fragment, {
           children: [
             showScopeHeader && /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
               marginTop: visibleIndex > 0 ? 1 : 0,
@@ -459433,7 +459520,7 @@ function ManagePlugins({
     ]
   });
 }
-var React76, import_react137, jsx_runtime236;
+var React77, import_react138, jsx_runtime236;
 var init_ManagePlugins = __esm(() => {
   init_figures();
   init_ConfigurableShortcutHint();
@@ -459475,8 +459562,8 @@ var init_ManagePlugins = __esm(() => {
   init_PluginOptionsFlow();
   init_UnifiedInstalledCell();
   init_usePagination();
-  React76 = __toESM(require_react(), 1);
-  import_react137 = __toESM(require_react(), 1);
+  React77 = __toESM(require_react(), 1);
+  import_react138 = __toESM(require_react(), 1);
   jsx_runtime236 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -459545,10 +459632,10 @@ function parsePluginArgs(args) {
 
 // utils/plugins/validatePlugin.ts
 import { readdir as readdir24, readFile as readFile41, stat as stat39 } from "fs/promises";
-import * as path23 from "path";
+import * as path24 from "path";
 function detectManifestType(filePath) {
-  const fileName = path23.basename(filePath);
-  const dirName = path23.basename(path23.dirname(filePath));
+  const fileName = path24.basename(filePath);
+  const dirName = path24.basename(path24.dirname(filePath));
   if (fileName === "plugin.json")
     return "plugin";
   if (fileName === "marketplace.json")
@@ -459581,7 +459668,7 @@ function marketplaceSourceHint(p) {
 async function validatePluginManifest(filePath) {
   const errors = [];
   const warnings = [];
-  const absolutePath = path23.resolve(filePath);
+  const absolutePath = path24.resolve(filePath);
   let content;
   try {
     content = await readFile41(absolutePath, { encoding: "utf-8" });
@@ -459705,7 +459792,7 @@ async function validatePluginManifest(filePath) {
 async function validateMarketplaceManifest(filePath) {
   const errors = [];
   const warnings = [];
-  const absolutePath = path23.resolve(filePath);
+  const absolutePath = path24.resolve(filePath);
   let content;
   try {
     content = await readFile41(absolutePath, { encoding: "utf-8" });
@@ -459785,13 +459872,13 @@ async function validateMarketplaceManifest(filePath) {
           });
         }
       });
-      const manifestDir = path23.dirname(absolutePath);
-      const marketplaceRoot = path23.basename(manifestDir) === ".claude-plugin" ? path23.dirname(manifestDir) : manifestDir;
+      const manifestDir = path24.dirname(absolutePath);
+      const marketplaceRoot = path24.basename(manifestDir) === ".claude-plugin" ? path24.dirname(manifestDir) : manifestDir;
       for (const [i, entry] of marketplace.plugins.entries()) {
         if (!entry.version || typeof entry.source !== "string" || !entry.source.startsWith("./")) {
           continue;
         }
-        const pluginJsonPath = path23.join(marketplaceRoot, entry.source, ".claude-plugin", "plugin.json");
+        const pluginJsonPath = path24.join(marketplaceRoot, entry.source, ".claude-plugin", "plugin.json");
         let manifestVersion;
         try {
           const raw = await readFile41(pluginJsonPath, { encoding: "utf-8" });
@@ -459979,11 +460066,11 @@ async function collectMarkdown(dir, isSkillsDir) {
     throw e;
   }
   if (isSkillsDir) {
-    return entries.filter((e) => e.isDirectory()).map((e) => path23.join(dir, e.name, "SKILL.md"));
+    return entries.filter((e) => e.isDirectory()).map((e) => path24.join(dir, e.name, "SKILL.md"));
   }
   const out = [];
   for (const entry of entries) {
-    const full = path23.join(dir, entry.name);
+    const full = path24.join(dir, entry.name);
     if (entry.isDirectory()) {
       out.push(...await collectMarkdown(full, false));
     } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
@@ -459995,9 +460082,9 @@ async function collectMarkdown(dir, isSkillsDir) {
 async function validatePluginContents(pluginDir) {
   const results = [];
   const dirs = [
-    ["skill", path23.join(pluginDir, "skills")],
-    ["agent", path23.join(pluginDir, "agents")],
-    ["command", path23.join(pluginDir, "commands")]
+    ["skill", path24.join(pluginDir, "skills")],
+    ["agent", path24.join(pluginDir, "agents")],
+    ["command", path24.join(pluginDir, "commands")]
   ];
   for (const [fileType, dir] of dirs) {
     const files = await collectMarkdown(dir, fileType === "skill");
@@ -460025,14 +460112,14 @@ async function validatePluginContents(pluginDir) {
       }
     }
   }
-  const hooksResult = await validateHooksJson(path23.join(pluginDir, "hooks", "hooks.json"));
+  const hooksResult = await validateHooksJson(path24.join(pluginDir, "hooks", "hooks.json"));
   if (hooksResult.errors.length > 0 || hooksResult.warnings.length > 0) {
     results.push(hooksResult);
   }
   return results;
 }
 async function validateManifest2(filePath) {
-  const absolutePath = path23.resolve(filePath);
+  const absolutePath = path24.resolve(filePath);
   let stats = null;
   try {
     stats = await stat39(absolutePath);
@@ -460042,12 +460129,12 @@ async function validateManifest2(filePath) {
     }
   }
   if (stats?.isDirectory()) {
-    const marketplacePath = path23.join(absolutePath, ".claude-plugin", "marketplace.json");
+    const marketplacePath = path24.join(absolutePath, ".claude-plugin", "marketplace.json");
     const marketplaceResult = await validateMarketplaceManifest(marketplacePath);
     if (marketplaceResult.errors[0]?.code !== "ENOENT") {
       return marketplaceResult;
     }
-    const pluginPath = path23.join(absolutePath, ".claude-plugin", "plugin.json");
+    const pluginPath = path24.join(absolutePath, ".claude-plugin", "plugin.json");
     const pluginResult = await validatePluginManifest(pluginPath);
     if (pluginResult.errors[0]?.code !== "ENOENT") {
       return pluginResult;
@@ -460117,7 +460204,7 @@ var init_validatePlugin = __esm(() => {
 
 // commands/plugin/ValidatePlugin.tsx
 function ValidatePlugin(t0) {
-  const $ = import_compiler_runtime191.c(5);
+  const $ = import_compiler_runtime190.c(5);
   const {
     onComplete,
     path
@@ -460205,7 +460292,7 @@ Or from the command line:
     t1 = $[2];
     t2 = $[3];
   }
-  import_react138.useEffect(t1, t2);
+  import_react139.useEffect(t1, t2);
   let t3;
   if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
     t3 = /* @__PURE__ */ jsx_runtime237.jsx(ThemedBox_default, {
@@ -460220,7 +460307,7 @@ Or from the command line:
   }
   return t3;
 }
-var import_compiler_runtime191, import_react138, jsx_runtime237;
+var import_compiler_runtime190, import_react139, jsx_runtime237;
 var init_ValidatePlugin = __esm(() => {
   init_figures();
   init_ink2();
@@ -460228,14 +460315,14 @@ var init_ValidatePlugin = __esm(() => {
   init_log3();
   init_validatePlugin();
   init_stringUtils();
-  import_compiler_runtime191 = __toESM(require_compiler_runtime(), 1);
-  import_react138 = __toESM(require_react(), 1);
+  import_compiler_runtime190 = __toESM(require_compiler_runtime(), 1);
+  import_react139 = __toESM(require_react(), 1);
   jsx_runtime237 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/plugin/PluginSettings.tsx
 function MarketplaceList(t0) {
-  const $ = import_compiler_runtime192.c(4);
+  const $ = import_compiler_runtime191.c(4);
   const {
     onComplete
   } = t0;
@@ -460269,7 +460356,7 @@ ${names.map(_temp98).join(`
     t1 = $[1];
     t2 = $[2];
   }
-  import_react139.useEffect(t1, t2);
+  import_react140.useEffect(t1, t2);
   let t3;
   if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
     t3 = /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
@@ -460492,17 +460579,17 @@ function removeExtraMarketplace(name, sources) {
   }
 }
 function ErrorsTabContent(t0) {
-  const $ = import_compiler_runtime192.c(26);
+  const $ = import_compiler_runtime191.c(26);
   const {
     setViewState,
     setActiveTab,
     markPluginsChanged
   } = t0;
   const errors = useAppState(_temp237);
-  const installationStatus = useAppState(_temp326);
+  const installationStatus = useAppState(_temp325);
   const setAppState = useSetAppState();
-  const [selectedIndex, setSelectedIndex] = import_react139.useState(0);
-  const [actionMessage, setActionMessage] = import_react139.useState(null);
+  const [selectedIndex, setSelectedIndex] = import_react140.useState(0);
+  const [actionMessage, setActionMessage] = import_react140.useState(null);
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = [];
@@ -460510,7 +460597,7 @@ function ErrorsTabContent(t0) {
   } else {
     t1 = $[0];
   }
-  const [marketplaceLoadFailures, setMarketplaceLoadFailures] = import_react139.useState(t1);
+  const [marketplaceLoadFailures, setMarketplaceLoadFailures] = import_react140.useState(t1);
   let t2;
   let t3;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
@@ -460532,7 +460619,7 @@ function ErrorsTabContent(t0) {
     t2 = $[1];
     t3 = $[2];
   }
-  import_react139.useEffect(t2, t3);
+  import_react140.useEffect(t2, t3);
   const failedMarketplaces = installationStatus.marketplaces.filter(_temp422);
   const failedMarketplaceNames = new Set(failedMarketplaces.map(_temp516));
   const transientErrors = errors.filter(isTransientError);
@@ -460870,7 +460957,7 @@ function _temp516(m_0) {
 function _temp422(m) {
   return m.status === "failed";
 }
-function _temp326(s_0) {
+function _temp325(s_0) {
   return s_0.plugins.installationStatus;
 }
 function _temp237(s) {
@@ -460970,7 +461057,7 @@ function getInitialTab(viewState) {
   return "discover";
 }
 function PluginSettings(t0) {
-  const $ = import_compiler_runtime192.c(75);
+  const $ = import_compiler_runtime191.c(75);
   const {
     onComplete,
     args,
@@ -460989,7 +461076,7 @@ function PluginSettings(t0) {
     t1 = $[2];
   }
   const initialViewState = t1;
-  const [viewState, setViewState] = import_react139.useState(initialViewState);
+  const [viewState, setViewState] = import_react140.useState(initialViewState);
   let t2;
   if ($[3] !== initialViewState) {
     t2 = getInitialTab(initialViewState);
@@ -460998,12 +461085,12 @@ function PluginSettings(t0) {
   } else {
     t2 = $[4];
   }
-  const [activeTab, setActiveTab] = import_react139.useState(t2);
-  const [inputValue, setInputValue] = import_react139.useState(viewState.type === "add-marketplace" ? viewState.initialValue || "" : "");
-  const [cursorOffset, setCursorOffset] = import_react139.useState(0);
-  const [error, setError] = import_react139.useState(null);
-  const [result, setResult] = import_react139.useState(null);
-  const [childSearchActive, setChildSearchActive] = import_react139.useState(false);
+  const [activeTab, setActiveTab] = import_react140.useState(t2);
+  const [inputValue, setInputValue] = import_react140.useState(viewState.type === "add-marketplace" ? viewState.initialValue || "" : "");
+  const [cursorOffset, setCursorOffset] = import_react140.useState(0);
+  const [error, setError] = import_react140.useState(null);
+  const [result, setResult] = import_react140.useState(null);
+  const [childSearchActive, setChildSearchActive] = import_react140.useState(false);
   const setAppState = useSetAppState();
   const pluginErrorCount = useAppState(_temp03);
   const errorsTabTitle = pluginErrorCount > 0 ? `Errors (${pluginErrorCount})` : "Errors";
@@ -461072,7 +461159,7 @@ function PluginSettings(t0) {
     t5 = $[11];
     t6 = $[12];
   }
-  import_react139.useEffect(t5, t6);
+  import_react140.useEffect(t5, t6);
   let t7;
   let t8;
   if ($[13] !== activeTab || $[14] !== viewState.type) {
@@ -461090,7 +461177,7 @@ function PluginSettings(t0) {
     t7 = $[15];
     t8 = $[16];
   }
-  import_react139.useEffect(t7, t8);
+  import_react140.useEffect(t7, t8);
   let t9;
   if ($[17] === Symbol.for("react.memo_cache_sentinel")) {
     t9 = () => {
@@ -461136,7 +461223,7 @@ function PluginSettings(t0) {
     t12 = $[22];
     t13 = $[23];
   }
-  import_react139.useEffect(t12, t13);
+  import_react140.useEffect(t12, t13);
   let t14;
   let t15;
   if ($[24] !== onComplete || $[25] !== viewState.type) {
@@ -461154,7 +461241,7 @@ function PluginSettings(t0) {
     t14 = $[26];
     t15 = $[27];
   }
-  import_react139.useEffect(t14, t15);
+  import_react140.useEffect(t14, t15);
   if (viewState.type === "help") {
     let t16;
     if ($[28] === Symbol.for("react.memo_cache_sentinel")) {
@@ -461520,7 +461607,7 @@ function _temp03(s) {
   }
   return count;
 }
-var import_compiler_runtime192, import_react139, jsx_runtime238, TRANSIENT_ERROR_TYPES;
+var import_compiler_runtime191, import_react140, jsx_runtime238, TRANSIENT_ERROR_TYPES;
 var init_PluginSettings = __esm(() => {
   init_figures();
   init_ConfigurableShortcutHint();
@@ -461544,8 +461631,8 @@ var init_PluginSettings = __esm(() => {
   init_ManagePlugins();
   init_PluginErrors();
   init_ValidatePlugin();
-  import_compiler_runtime192 = __toESM(require_compiler_runtime(), 1);
-  import_react139 = __toESM(require_react(), 1);
+  import_compiler_runtime191 = __toESM(require_compiler_runtime(), 1);
+  import_react140 = __toESM(require_react(), 1);
   jsx_runtime238 = __toESM(require_jsx_runtime(), 1);
   TRANSIENT_ERROR_TYPES = new Set(["git-auth-failed", "git-timeout", "network-error"]);
 });
@@ -461556,7 +461643,7 @@ __export(exports_mcp, {
   call: () => call26
 });
 function MCPToggle(t0) {
-  const $ = import_compiler_runtime193.c(7);
+  const $ = import_compiler_runtime192.c(7);
   const {
     action,
     target,
@@ -461564,7 +461651,7 @@ function MCPToggle(t0) {
   } = t0;
   const mcpClients = useAppState(_temp100);
   const toggleMcpServer = useMcpToggleEnabled();
-  const didRun = import_react140.useRef(false);
+  const didRun = import_react141.useRef(false);
   let t1;
   let t2;
   if ($[0] !== action || $[1] !== mcpClients || $[2] !== onComplete || $[3] !== target || $[4] !== toggleMcpServer) {
@@ -461597,7 +461684,7 @@ function MCPToggle(t0) {
     t1 = $[5];
     t2 = $[6];
   }
-  import_react140.useEffect(t1, t2);
+  import_react141.useEffect(t1, t2);
   return null;
 }
 function _temp238(c) {
@@ -461633,15 +461720,15 @@ async function call26(onDone, _context, args) {
     onComplete: onDone
   });
 }
-var import_compiler_runtime193, import_react140, jsx_runtime239;
+var import_compiler_runtime192, import_react141, jsx_runtime239;
 var init_mcp2 = __esm(() => {
   init_mcp();
   init_MCPReconnect();
   init_MCPConnectionManager();
   init_AppState();
   init_PluginSettings();
-  import_compiler_runtime193 = __toESM(require_compiler_runtime(), 1);
-  import_react140 = __toESM(require_react(), 1);
+  import_compiler_runtime192 = __toESM(require_compiler_runtime(), 1);
+  import_react141 = __toESM(require_react(), 1);
   jsx_runtime239 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -465905,11 +465992,11 @@ __export(exports_mobile, {
   call: () => call27
 });
 function MobileQRCode(t0) {
-  const $ = import_compiler_runtime194.c(52);
+  const $ = import_compiler_runtime193.c(52);
   const {
     onDone
   } = t0;
-  const [platform, setPlatform] = import_react141.useState("ios");
+  const [platform, setPlatform] = import_react142.useState("ios");
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = {
@@ -465920,7 +466007,7 @@ function MobileQRCode(t0) {
   } else {
     t1 = $[0];
   }
-  const [qrCodes, setQrCodes] = import_react141.useState(t1);
+  const [qrCodes, setQrCodes] = import_react142.useState(t1);
   const {
     url
   } = PLATFORMS[platform];
@@ -465951,7 +466038,7 @@ function MobileQRCode(t0) {
     t2 = $[1];
     t3 = $[2];
   }
-  import_react141.useEffect(t2, t3);
+  import_react142.useEffect(t2, t3);
   let t4;
   if ($[3] !== onDone) {
     t4 = () => {
@@ -466003,7 +466090,7 @@ function MobileQRCode(t0) {
   let t9;
   if ($[8] !== handleKeyDown || $[9] !== qrCode) {
     const lines = qrCode.split(`
-`).filter(_temp327);
+`).filter(_temp326);
     T1 = Pane;
     T0 = ThemedBox_default;
     t7 = "column";
@@ -466201,7 +466288,7 @@ function _temp423(line_0, i) {
     children: line_0
   }, i);
 }
-function _temp327(line) {
+function _temp326(line) {
   return line.length > 0;
 }
 function _temp239(prev) {
@@ -466213,14 +466300,14 @@ async function call27(onDone) {
     onDone
   });
 }
-var import_compiler_runtime194, import_react141, jsx_runtime240, PLATFORMS;
+var import_compiler_runtime193, import_react142, jsx_runtime240, PLATFORMS;
 var init_mobile = __esm(() => {
   init_server();
   init_Pane();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime194 = __toESM(require_compiler_runtime(), 1);
-  import_react141 = __toESM(require_react(), 1);
+  import_compiler_runtime193 = __toESM(require_compiler_runtime(), 1);
+  import_react142 = __toESM(require_react(), 1);
   jsx_runtime240 = __toESM(require_jsx_runtime(), 1);
   PLATFORMS = {
     ios: {
@@ -466348,9 +466435,9 @@ ${args ? "Additional user input: " + args : ""}
 
 // utils/releaseNotes.ts
 import { mkdir as mkdir31, readFile as readFile42, writeFile as writeFile35 } from "fs/promises";
-import { dirname as dirname50, join as join114 } from "path";
+import { dirname as dirname50, join as join115 } from "path";
 function getChangelogCachePath() {
-  return join114(getClaudeConfigHomeDir(), "cache", "changelog.md");
+  return join115(getClaudeConfigHomeDir(), "cache", "changelog.md");
 }
 async function migrateChangelogFromConfig() {
   const config = getGlobalConfig();
@@ -466468,7 +466555,7 @@ function getAllReleaseNotes(changelogContent = getStoredChangelogFromMemory()) {
     return [];
   }
 }
-function checkForReleaseNotesSync(lastSeenVersion, currentVersion = "1.0.26") {
+function checkForReleaseNotesSync(lastSeenVersion, currentVersion = "1.0.27") {
   if (process.env.USER_TYPE === "ant") {
     const changelog = undefined;
     if (changelog) {
@@ -467594,7 +467681,7 @@ function getRecentActivitySync() {
   return cachedActivity;
 }
 function getLogoDisplayData() {
-  const version = process.env.DEMO_VERSION ?? "1.0.26";
+  const version = process.env.DEMO_VERSION ?? "1.0.27";
   const serverUrl = getDirectConnectServerUrl();
   const displayPath = process.env.DEMO_VERSION ? "/code/claude" : getDisplayPath(getCwd());
   const cwd = serverUrl ? `${displayPath} in ${serverUrl.replace(/^https?:\/\//, "")}` : displayPath;
@@ -467653,7 +467740,7 @@ var init_logoV2Utils = __esm(() => {
 
 // components/LogoV2/Clawd.tsx
 function Clawd(t0) {
-  const $ = import_compiler_runtime195.c(26);
+  const $ = import_compiler_runtime194.c(26);
   let t1;
   if ($[0] !== t0) {
     t1 = t0 === undefined ? {} : t0;
@@ -467811,7 +467898,7 @@ function Clawd(t0) {
   return t12;
 }
 function AppleTerminalClawd(t0) {
-  const $ = import_compiler_runtime195.c(10);
+  const $ = import_compiler_runtime194.c(10);
   const {
     pose
   } = t0;
@@ -467897,11 +467984,11 @@ function AppleTerminalClawd(t0) {
   }
   return t8;
 }
-var import_compiler_runtime195, jsx_runtime241, POSES, APPLE_EYES;
+var import_compiler_runtime194, jsx_runtime241, POSES, APPLE_EYES;
 var init_Clawd = __esm(() => {
   init_ink2();
   init_env();
-  import_compiler_runtime195 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime194 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime241 = __toESM(require_jsx_runtime(), 1);
   POSES = {
     default: {
@@ -467970,7 +468057,7 @@ function calculateFeedWidth(config) {
   return maxWidth;
 }
 function Feed(t0) {
-  const $ = import_compiler_runtime196.c(15);
+  const $ = import_compiler_runtime195.c(15);
   const {
     config,
     actualWidth
@@ -468077,18 +468164,18 @@ function Feed(t0) {
 function _temp104(line) {
   return line.timestamp ? stringWidth(line.timestamp) : 0;
 }
-var import_compiler_runtime196, jsx_runtime242;
+var import_compiler_runtime195, jsx_runtime242;
 var init_Feed = __esm(() => {
   init_stringWidth();
   init_ink2();
   init_format();
-  import_compiler_runtime196 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime195 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime242 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/LogoV2/FeedColumn.tsx
 function FeedColumn(t0) {
-  const $ = import_compiler_runtime197.c(10);
+  const $ = import_compiler_runtime196.c(10);
   const {
     feeds,
     maxWidth
@@ -468108,7 +468195,7 @@ function FeedColumn(t0) {
   if ($[2] !== actualWidth || $[3] !== feeds) {
     let t3;
     if ($[5] !== actualWidth || $[6] !== feeds.length) {
-      t3 = (feed_0, index) => /* @__PURE__ */ jsx_runtime243.jsxs(React78.Fragment, {
+      t3 = (feed_0, index) => /* @__PURE__ */ jsx_runtime243.jsxs(React79.Fragment, {
         children: [
           /* @__PURE__ */ jsx_runtime243.jsx(Feed, {
             config: feed_0,
@@ -468149,13 +468236,13 @@ function FeedColumn(t0) {
 function _temp105(feed) {
   return calculateFeedWidth(feed);
 }
-var import_compiler_runtime197, React78, jsx_runtime243;
+var import_compiler_runtime196, React79, jsx_runtime243;
 var init_FeedColumn = __esm(() => {
   init_ink2();
   init_Divider();
   init_Feed();
-  import_compiler_runtime197 = __toESM(require_compiler_runtime(), 1);
-  React78 = __toESM(require_react(), 1);
+  import_compiler_runtime196 = __toESM(require_compiler_runtime(), 1);
+  React79 = __toESM(require_react(), 1);
   jsx_runtime243 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -468337,7 +468424,7 @@ var init_referral = __esm(() => {
 });
 
 // components/LogoV2/feedConfigs.tsx
-import { homedir as homedir30 } from "os";
+import { homedir as homedir31 } from "os";
 function createRecentActivityFeed(activities) {
   const lines = activities.map((log) => {
     const time = formatRelativeTimeAgo(log.modified);
@@ -468382,7 +468469,7 @@ function createProjectOnboardingFeed(steps) {
       text: `${checkmark}${text}`
     };
   });
-  const warningText = getCwd() === homedir30() ? "Note: You have launched evilclaude in your home directory. For the best experience, launch it in a project directory instead." : undefined;
+  const warningText = getCwd() === homedir31() ? "Note: You have launched evilclaude in your home directory. For the best experience, launch it in a project directory instead." : undefined;
   if (warningText) {
     lines.push({
       text: warningText
@@ -468430,23 +468517,6 @@ var init_feedConfigs = __esm(() => {
   jsx_runtime244 = __toESM(require_jsx_runtime(), 1);
 });
 
-// hooks/useMainLoopModel.ts
-function useMainLoopModel2() {
-  const mainLoopModel = useAppState((s) => s.mainLoopModel);
-  const mainLoopModelForSession = useAppState((s) => s.mainLoopModelForSession);
-  const [, forceRerender] = import_react142.useReducer((x) => x + 1, 0);
-  import_react142.useEffect(() => onGrowthBookRefresh(forceRerender), []);
-  const model = parseUserSpecifiedModel(mainLoopModelForSession ?? mainLoopModel ?? getDefaultMainLoopModelSetting());
-  return model;
-}
-var import_react142;
-var init_useMainLoopModel = __esm(() => {
-  init_growthbook();
-  init_AppState();
-  init_model();
-  import_react142 = __toESM(require_react(), 1);
-});
-
 // components/LogoV2/AnimatedClawd.tsx
 function hold(pose, offset, frames) {
   return Array.from({
@@ -468456,12 +468526,12 @@ function hold(pose, offset, frames) {
     offset
   }));
 }
-var import_compiler_runtime198, import_react143, JUMP_WAVE, LOOK_AROUND;
+var import_compiler_runtime197, import_react143, JUMP_WAVE, LOOK_AROUND;
 var init_AnimatedClawd = __esm(() => {
   init_ink2();
   init_settings2();
   init_Clawd();
-  import_compiler_runtime198 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime197 = __toESM(require_compiler_runtime(), 1);
   import_react143 = __toESM(require_react(), 1);
   JUMP_WAVE = [
     ...hold("default", 1, 2),
@@ -468525,18 +468595,18 @@ function incrementGuestPassesSeenCount() {
     seen_count: newCount
   });
 }
-var import_compiler_runtime199, import_react144;
+var import_compiler_runtime198, import_react144;
 var init_GuestPassesUpsell = __esm(() => {
   init_ink2();
   init_analytics();
   init_referral();
   init_config2();
-  import_compiler_runtime199 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime198 = __toESM(require_compiler_runtime(), 1);
   import_react144 = __toESM(require_react(), 1);
 });
 
 // components/LogoV2/CondensedLogo.tsx
-var import_compiler_runtime200, import_react145;
+var import_compiler_runtime199, import_react145;
 var init_CondensedLogo = __esm(() => {
   init_useMainLoopModel();
   init_useTerminalSize();
@@ -468553,7 +468623,7 @@ var init_CondensedLogo = __esm(() => {
   init_Clawd();
   init_GuestPassesUpsell();
   init_OverageCreditUpsell();
-  import_compiler_runtime200 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime199 = __toESM(require_compiler_runtime(), 1);
   import_react145 = __toESM(require_react(), 1);
 });
 
@@ -468665,7 +468735,7 @@ function shouldShowOpus1mMergeNotice() {
   return false;
 }
 function Opus1mMergeNotice() {
-  const $ = import_compiler_runtime201.c(4);
+  const $ = import_compiler_runtime200.c(4);
   const [show] = import_react148.useState(shouldShowOpus1mMergeNotice);
   let t0;
   let t1;
@@ -468720,20 +468790,20 @@ function Opus1mMergeNotice() {
   }
   return t2;
 }
-var import_compiler_runtime201, import_react148, jsx_runtime247;
+var import_compiler_runtime200, import_react148, jsx_runtime247;
 var init_Opus1mMergeNotice = __esm(() => {
   init_figures2();
   init_ink2();
   init_config2();
   init_AnimatedAsterisk();
-  import_compiler_runtime201 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime200 = __toESM(require_compiler_runtime(), 1);
   import_react148 = __toESM(require_react(), 1);
   jsx_runtime247 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/LogoV2/VoiceModeNotice.tsx
 function VoiceModeNotice() {
-  const $ = import_compiler_runtime202.c(1);
+  const $ = import_compiler_runtime201.c(1);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = null;
@@ -468743,7 +468813,7 @@ function VoiceModeNotice() {
   }
   return t0;
 }
-var import_compiler_runtime202, import_react149;
+var import_compiler_runtime201, import_react149;
 var init_VoiceModeNotice = __esm(() => {
   init_ink2();
   init_config2();
@@ -468751,13 +468821,13 @@ var init_VoiceModeNotice = __esm(() => {
   init_voiceModeEnabled();
   init_AnimatedAsterisk();
   init_Opus1mMergeNotice();
-  import_compiler_runtime202 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime201 = __toESM(require_compiler_runtime(), 1);
   import_react149 = __toESM(require_react(), 1);
 });
 
 // components/LogoV2/LogoV2.tsx
 function LogoV2() {
-  const $ = import_compiler_runtime203.c(94);
+  const $ = import_compiler_runtime202.c(94);
   const activities = getRecentActivitySync();
   const username = getGlobalConfig().oauthAccount?.displayName ?? "";
   const {
@@ -468804,10 +468874,10 @@ function LogoV2() {
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = () => {
       const currentConfig = getGlobalConfig();
-      if (currentConfig.lastReleaseNotesSeen === "1.0.26") {
+      if (currentConfig.lastReleaseNotesSeen === "1.0.27") {
         return;
       }
-      saveGlobalConfig(_temp328);
+      saveGlobalConfig(_temp327);
       if (showOnboarding) {
         incrementProjectOnboardingSeenCount();
       }
@@ -468868,7 +468938,7 @@ function LogoV2() {
     t8 = $[12];
   }
   import_react150.useEffect(t7, t8);
-  const model = useMainLoopModel2();
+  const model = useMainLoopModel();
   const fullModelDisplayName = renderModelSetting(model);
   const {
     version,
@@ -469347,13 +469417,13 @@ function LogoV2() {
   }
   return t41;
 }
-function _temp328(current) {
-  if (current.lastReleaseNotesSeen === "1.0.26") {
+function _temp327(current) {
+  if (current.lastReleaseNotesSeen === "1.0.27") {
     return current;
   }
   return {
     ...current,
-    lastReleaseNotesSeen: "1.0.26"
+    lastReleaseNotesSeen: "1.0.27"
   };
 }
 function _temp240(s_0) {
@@ -469362,7 +469432,7 @@ function _temp240(s_0) {
 function _temp107(s) {
   return s.agent;
 }
-var import_compiler_runtime203, import_react150, jsx_runtime248, ChannelsNoticeModule = null, LEFT_PANEL_MAX_WIDTH = 50;
+var import_compiler_runtime202, import_react150, jsx_runtime248, ChannelsNoticeModule = null, LEFT_PANEL_MAX_WIDTH = 50;
 var init_LogoV2 = __esm(() => {
   init_ink2();
   init_useTerminalSize();
@@ -469393,14 +469463,14 @@ var init_LogoV2 = __esm(() => {
   init_effort();
   init_useMainLoopModel();
   init_model();
-  import_compiler_runtime203 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime202 = __toESM(require_compiler_runtime(), 1);
   import_react150 = __toESM(require_react(), 1);
   jsx_runtime248 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/MessageModel.tsx
 function MessageModel(t0) {
-  const $ = import_compiler_runtime204.c(5);
+  const $ = import_compiler_runtime203.c(5);
   const {
     message,
     isTranscriptMode
@@ -469438,17 +469508,17 @@ function MessageModel(t0) {
 function _temp108(c) {
   return c.type === "text";
 }
-var import_compiler_runtime204, jsx_runtime249;
+var import_compiler_runtime203, jsx_runtime249;
 var init_MessageModel = __esm(() => {
   init_stringWidth();
   init_ink2();
-  import_compiler_runtime204 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime203 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime249 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/MessageTimestamp.tsx
 function MessageTimestamp(t0) {
-  const $ = import_compiler_runtime205.c(10);
+  const $ = import_compiler_runtime204.c(10);
   const {
     message,
     isTranscriptMode
@@ -469506,11 +469576,11 @@ function MessageTimestamp(t0) {
 function _temp109(c) {
   return c.type === "text";
 }
-var import_compiler_runtime205, jsx_runtime250;
+var import_compiler_runtime204, jsx_runtime250;
 var init_MessageTimestamp = __esm(() => {
   init_stringWidth();
   init_ink2();
-  import_compiler_runtime205 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime204 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime250 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -469553,7 +469623,7 @@ function hasContentAfterIndex(messages, index, tools, streamingToolUseIDs) {
   return false;
 }
 function MessageRowImpl(t0) {
-  const $ = import_compiler_runtime206.c(64);
+  const $ = import_compiler_runtime205.c(64);
   const {
     message: msg,
     isUserContinuation,
@@ -469854,7 +469924,7 @@ function areMessageRowPropsEqual(prev, next) {
     return false;
   return true;
 }
-var import_compiler_runtime206, React79, jsx_runtime251, MessageRow;
+var import_compiler_runtime205, React80, jsx_runtime251, MessageRow;
 var init_MessageRow = __esm(() => {
   init_ink2();
   init_collapseReadSearch();
@@ -469864,10 +469934,10 @@ var init_MessageRow = __esm(() => {
   init_Messages();
   init_MessageTimestamp();
   init_OffscreenFreeze();
-  import_compiler_runtime206 = __toESM(require_compiler_runtime(), 1);
-  React79 = __toESM(require_react(), 1);
+  import_compiler_runtime205 = __toESM(require_compiler_runtime(), 1);
+  React80 = __toESM(require_react(), 1);
   jsx_runtime251 = __toESM(require_jsx_runtime(), 1);
-  MessageRow = React79.memo(MessageRowImpl, areMessageRowPropsEqual);
+  MessageRow = React80.memo(MessageRowImpl, areMessageRowPropsEqual);
 });
 
 // components/messages/nullRenderingAttachments.ts
@@ -470202,7 +470272,7 @@ var init_statusNoticeDefinitions = __esm(() => {
 
 // components/StatusNotices.tsx
 function StatusNotices(t0) {
-  const $ = import_compiler_runtime207.c(4);
+  const $ = import_compiler_runtime206.c(4);
   const {
     agentDefinitions
   } = t0 === undefined ? {} : t0;
@@ -470226,7 +470296,7 @@ function StatusNotices(t0) {
   const T0 = ThemedBox_default;
   const t3 = "column";
   const t4 = 1;
-  const t5 = activeNotices.map((notice) => /* @__PURE__ */ jsx_runtime253.jsx(React80.Fragment, {
+  const t5 = activeNotices.map((notice) => /* @__PURE__ */ jsx_runtime253.jsx(React81.Fragment, {
     children: notice.render(context)
   }, notice.id));
   let t6;
@@ -470244,14 +470314,14 @@ function StatusNotices(t0) {
   }
   return t6;
 }
-var import_compiler_runtime207, React80, import_react151, jsx_runtime253;
+var import_compiler_runtime206, React81, import_react151, jsx_runtime253;
 var init_StatusNotices = __esm(() => {
   init_ink2();
   init_claudemd();
   init_config2();
   init_statusNoticeDefinitions();
-  import_compiler_runtime207 = __toESM(require_compiler_runtime(), 1);
-  React80 = __toESM(require_react(), 1);
+  import_compiler_runtime206 = __toESM(require_compiler_runtime(), 1);
+  React81 = __toESM(require_react(), 1);
   import_react151 = __toESM(require_react(), 1);
   jsx_runtime253 = __toESM(require_jsx_runtime(), 1);
 });
@@ -470531,7 +470601,7 @@ var init_useVirtualScroll = __esm(() => {
 
 // context/promptOverlayContext.tsx
 function PromptOverlayProvider(t0) {
-  const $ = import_compiler_runtime208.c(6);
+  const $ = import_compiler_runtime207.c(6);
   const {
     children
   } = t0;
@@ -470576,7 +470646,7 @@ function usePromptOverlayDialog() {
   return import_react153.useContext(DialogContext);
 }
 function useSetPromptOverlay(data) {
-  const $ = import_compiler_runtime208.c(4);
+  const $ = import_compiler_runtime207.c(4);
   const set = import_react153.useContext(SetContext);
   let t0;
   let t1;
@@ -470600,7 +470670,7 @@ function useSetPromptOverlay(data) {
   import_react153.useEffect(t0, t1);
 }
 function useSetPromptOverlayDialog(node) {
-  const $ = import_compiler_runtime208.c(4);
+  const $ = import_compiler_runtime207.c(4);
   const set = import_react153.useContext(SetDialogContext);
   let t0;
   let t1;
@@ -470623,9 +470693,9 @@ function useSetPromptOverlayDialog(node) {
   }
   import_react153.useEffect(t0, t1);
 }
-var import_compiler_runtime208, import_react153, jsx_runtime254, DataContext, SetContext, DialogContext, SetDialogContext;
+var import_compiler_runtime207, import_react153, jsx_runtime254, DataContext, SetContext, DialogContext, SetDialogContext;
 var init_promptOverlayContext = __esm(() => {
-  import_compiler_runtime208 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime207 = __toESM(require_compiler_runtime(), 1);
   import_react153 = __toESM(require_react(), 1);
   jsx_runtime254 = __toESM(require_jsx_runtime(), 1);
   DataContext = import_react153.createContext(null);
@@ -470723,7 +470793,7 @@ function computeUnseenDivider(messages, dividerIndex) {
   };
 }
 function FullscreenLayout(t0) {
-  const $ = import_compiler_runtime209.c(47);
+  const $ = import_compiler_runtime208.c(47);
   const {
     scrollable,
     bottom,
@@ -470789,7 +470859,7 @@ function FullscreenLayout(t0) {
   } else {
     t7 = $[6];
   }
-  import_react154.useLayoutEffect(_temp329, t7);
+  import_react154.useLayoutEffect(_temp328, t7);
   if (isFullscreenEnvEnabled()) {
     const sticky = hideSticky ? null : stickyPrompt;
     const headerPrompt = sticky != null && sticky !== "clicked" && overlay == null ? sticky : null;
@@ -471004,7 +471074,7 @@ function FullscreenLayout(t0) {
   }
   return t8;
 }
-function _temp329() {
+function _temp328() {
   if (!isFullscreenEnvEnabled()) {
     return;
   }
@@ -471028,7 +471098,7 @@ function _temp241(url) {
 }
 function _temp115() {}
 function NewMessagesPill(t0) {
-  const $ = import_compiler_runtime209.c(10);
+  const $ = import_compiler_runtime208.c(10);
   const {
     count,
     onClick
@@ -471097,7 +471167,7 @@ function NewMessagesPill(t0) {
   return t6;
 }
 function StickyPromptHeader(t0) {
-  const $ = import_compiler_runtime209.c(8);
+  const $ = import_compiler_runtime208.c(8);
   const {
     text,
     onClick
@@ -471154,7 +471224,7 @@ function StickyPromptHeader(t0) {
   return t5;
 }
 function SuggestionsOverlay() {
-  const $ = import_compiler_runtime209.c(4);
+  const $ = import_compiler_runtime208.c(4);
   const data = usePromptOverlay();
   if (!data || data.suggestions.length === 0) {
     return null;
@@ -471187,7 +471257,7 @@ function SuggestionsOverlay() {
   return t0;
 }
 function DialogOverlay() {
-  const $ = import_compiler_runtime209.c(2);
+  const $ = import_compiler_runtime208.c(2);
   const node = usePromptOverlayDialog();
   if (!node) {
     return null;
@@ -471209,7 +471279,7 @@ function DialogOverlay() {
   }
   return t0;
 }
-var import_compiler_runtime209, import_react154, jsx_runtime255, MODAL_TRANSCRIPT_PEEK = 2, ScrollChromeContext;
+var import_compiler_runtime208, import_react154, jsx_runtime255, MODAL_TRANSCRIPT_PEEK = 2, ScrollChromeContext;
 var init_FullscreenLayout = __esm(() => {
   init_figures();
   init_modalContext();
@@ -471223,7 +471293,7 @@ var init_FullscreenLayout = __esm(() => {
   init_stringUtils();
   init_nullRenderingAttachments();
   init_PromptInputFooterSuggestions();
-  import_compiler_runtime209 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime208 = __toESM(require_compiler_runtime(), 1);
   import_react154 = __toESM(require_react(), 1);
   jsx_runtime255 = __toESM(require_jsx_runtime(), 1);
   ScrollChromeContext = import_react154.createContext({
@@ -471270,7 +471340,7 @@ function computeStickyPromptText(msg) {
   return t;
 }
 function VirtualItem(t0) {
-  const $ = import_compiler_runtime210.c(30);
+  const $ = import_compiler_runtime209.c(30);
   const {
     itemKey: k,
     msg,
@@ -471961,7 +472031,7 @@ function StickyTracker({
   });
   return null;
 }
-var import_compiler_runtime210, import_react155, jsx_runtime256, HEADROOM = 3, fallbackLowerCache, STICKY_TEXT_CAP = 500, promptTextCache, NOOP_UNSUB2 = () => {};
+var import_compiler_runtime209, import_react155, jsx_runtime256, HEADROOM = 3, fallbackLowerCache, STICKY_TEXT_CAP = 500, promptTextCache, NOOP_UNSUB2 = () => {};
 var init_VirtualMessageList = __esm(() => {
   init_useVirtualScroll();
   init_ink2();
@@ -471970,7 +472040,7 @@ var init_VirtualMessageList = __esm(() => {
   init_debug();
   init_transcriptSearch();
   init_messageActions();
-  import_compiler_runtime210 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime209 = __toESM(require_compiler_runtime(), 1);
   import_react155 = __toESM(require_react(), 1);
   jsx_runtime256 = __toESM(require_jsx_runtime(), 1);
   fallbackLowerCache = new WeakMap;
@@ -472110,7 +472180,7 @@ function shouldRenderStatically(message, streamingToolUseIDs, inProgressToolUseI
     }
   }
 }
-var import_compiler_runtime211, React83, import_react156, jsx_runtime257, LogoHeader, proactiveModule2 = null, BRIEF_TOOL_NAME4 = null, SEND_USER_FILE_TOOL_NAME2 = null, MAX_MESSAGES_TO_SHOW_IN_TRANSCRIPT_MODE = 30, MAX_MESSAGES_WITHOUT_VIRTUALIZATION = 200, MESSAGE_CAP_STEP = 50, MessagesImpl = ({
+var import_compiler_runtime210, React84, import_react156, jsx_runtime257, LogoHeader, proactiveModule2 = null, BRIEF_TOOL_NAME4 = null, SEND_USER_FILE_TOOL_NAME2 = null, MAX_MESSAGES_TO_SHOW_IN_TRANSCRIPT_MODE = 30, MAX_MESSAGES_WITHOUT_VIRTUALIZATION = 200, MESSAGE_CAP_STEP = 50, MessagesImpl = ({
   messages,
   tools,
   commands,
@@ -472470,12 +472540,12 @@ var init_Messages = __esm(() => {
   init_OffscreenFreeze();
   init_StatusNotices();
   init_VirtualMessageList();
-  import_compiler_runtime211 = __toESM(require_compiler_runtime(), 1);
-  React83 = __toESM(require_react(), 1);
+  import_compiler_runtime210 = __toESM(require_compiler_runtime(), 1);
+  React84 = __toESM(require_react(), 1);
   import_react156 = __toESM(require_react(), 1);
   jsx_runtime257 = __toESM(require_jsx_runtime(), 1);
-  LogoHeader = React83.memo(function LogoHeader(t0) {
-    const $ = import_compiler_runtime211.c(3);
+  LogoHeader = React84.memo(function LogoHeader(t0) {
+    const $ = import_compiler_runtime210.c(3);
     const {
       agentDefinitions
     } = t0;
@@ -472494,7 +472564,7 @@ var init_Messages = __esm(() => {
           gap: 1,
           children: [
             t1,
-            /* @__PURE__ */ jsx_runtime257.jsx(React83.Suspense, {
+            /* @__PURE__ */ jsx_runtime257.jsx(React84.Suspense, {
               fallback: null,
               children: /* @__PURE__ */ jsx_runtime257.jsx(StatusNotices, {
                 agentDefinitions
@@ -472510,7 +472580,7 @@ var init_Messages = __esm(() => {
     }
     return t2;
   });
-  Messages3 = React83.memo(MessagesImpl, (prev, next) => {
+  Messages3 = React84.memo(MessagesImpl, (prev, next) => {
     const keys = Object.keys(prev);
     for (const key of keys) {
       if (key === "onOpenRateLimitOptions" || key === "scrollRef" || key === "trackStickyPrompt" || key === "setCursor" || key === "cursorNavRef" || key === "jumpRef" || key === "onSearchMatchesChange" || key === "scanElement" || key === "setPositions")
@@ -472551,7 +472621,7 @@ var init_Messages = __esm(() => {
 
 // components/SessionPreview.tsx
 function SessionPreview(t0) {
-  const $ = import_compiler_runtime212.c(33);
+  const $ = import_compiler_runtime211.c(33);
   const {
     log,
     onExit,
@@ -472801,7 +472871,7 @@ function SessionPreview(t0) {
   }
   return t18;
 }
-var import_compiler_runtime212, import_react157, jsx_runtime258;
+var import_compiler_runtime211, import_react157, jsx_runtime258;
 var init_SessionPreview = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -472813,7 +472883,7 @@ var init_SessionPreview = __esm(() => {
   init_KeyboardShortcutHint();
   init_LoadingState();
   init_Messages();
-  import_compiler_runtime212 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime211 = __toESM(require_compiler_runtime(), 1);
   import_react157 = __toESM(require_react(), 1);
   jsx_runtime258 = __toESM(require_jsx_runtime(), 1);
 });
@@ -472941,7 +473011,7 @@ var init_TagTabs = __esm(() => {
 
 // components/ui/TreeSelect.tsx
 function TreeSelect(t0) {
-  const $ = import_compiler_runtime213.c(48);
+  const $ = import_compiler_runtime212.c(48);
   const {
     nodes,
     onSelect,
@@ -473243,11 +473313,11 @@ function _temp243(_depth) {
 function _temp116(isExpanded_0) {
   return isExpanded_0 ? "▼ " : "▶ ";
 }
-var import_compiler_runtime213, import_react158, jsx_runtime260;
+var import_compiler_runtime212, import_react158, jsx_runtime260;
 var init_TreeSelect = __esm(() => {
   init_ink2();
   init_select();
-  import_compiler_runtime213 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime212 = __toESM(require_compiler_runtime(), 1);
   import_react158 = __toESM(require_react(), 1);
   jsx_runtime260 = __toESM(require_jsx_runtime(), 1);
 });
@@ -473304,7 +473374,7 @@ function buildLogMetadata(log, options) {
   return childPadding + baseMetadata + projectSuffix;
 }
 function LogSelector(t0) {
-  const $ = import_compiler_runtime214.c(247);
+  const $ = import_compiler_runtime213.c(247);
   const {
     logs,
     maxHeight: t1,
@@ -474892,7 +474962,7 @@ function _temp614(log_6) {
 }
 function _temp517(fuseIndex_0, debouncedDeepSearchQuery_0, setDeepSearchResults_0, setIsSearching_0) {
   const results = fuseIndex_0.search(debouncedDeepSearchQuery_0);
-  results.sort(_temp330);
+  results.sort(_temp329);
   setDeepSearchResults_0({
     results: results.map(_temp424),
     query: debouncedDeepSearchQuery_0
@@ -474906,7 +474976,7 @@ function _temp424(r) {
     searchableText: r.item.searchableText
   };
 }
-function _temp330(a, b) {
+function _temp329(a, b) {
   const aTime = new Date(a.item.log.modified).getTime();
   const bTime = new Date(b.item.log.modified).getTime();
   const timeDiff = bTime - aTime;
@@ -474990,7 +475060,7 @@ function getUniqueTags(logs) {
   }
   return Array.from(tags).sort((a, b) => a.localeCompare(b));
 }
-var import_compiler_runtime214, import_react159, jsx_runtime261, PARENT_PREFIX_WIDTH = 2, CHILD_PREFIX_WIDTH = 4, DEEP_SEARCH_MAX_MESSAGES = 2000, DEEP_SEARCH_CROP_SIZE = 1000, DEEP_SEARCH_MAX_TEXT_LENGTH = 50000, DATE_TIE_THRESHOLD_MS, SNIPPET_CONTEXT_CHARS = 50;
+var import_compiler_runtime213, import_react159, jsx_runtime261, PARENT_PREFIX_WIDTH = 2, CHILD_PREFIX_WIDTH = 4, DEEP_SEARCH_MAX_MESSAGES = 2000, DEEP_SEARCH_CROP_SIZE = 1000, DEEP_SEARCH_MAX_TEXT_LENGTH = 50000, DATE_TIE_THRESHOLD_MS, SNIPPET_CONTEXT_CHARS = 50;
 var init_LogSelector = __esm(() => {
   init_source();
   init_state();
@@ -475018,7 +475088,7 @@ var init_LogSelector = __esm(() => {
   init_TagTabs();
   init_TextInput();
   init_TreeSelect();
-  import_compiler_runtime214 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime213 = __toESM(require_compiler_runtime(), 1);
   import_react159 = __toESM(require_react(), 1);
   jsx_runtime261 = __toESM(require_jsx_runtime(), 1);
   DATE_TIE_THRESHOLD_MS = 60 * 1000;
@@ -475273,7 +475343,7 @@ function resumeHelpMessage(result) {
   }
 }
 function ResumeError(t0) {
-  const $ = import_compiler_runtime215.c(10);
+  const $ = import_compiler_runtime214.c(10);
   const {
     message,
     args,
@@ -475294,7 +475364,7 @@ function ResumeError(t0) {
     t1 = $[1];
     t2 = $[2];
   }
-  React87.useEffect(t1, t2);
+  React88.useEffect(t1, t2);
   let t3;
   if ($[3] !== args) {
     t3 = /* @__PURE__ */ jsx_runtime262.jsxs(ThemedText, {
@@ -475343,16 +475413,16 @@ function ResumeCommand({
   onDone,
   onResume
 }) {
-  const [logs, setLogs] = React87.useState([]);
-  const [worktreePaths, setWorktreePaths] = React87.useState([]);
-  const [loading, setLoading] = React87.useState(true);
-  const [resuming, setResuming] = React87.useState(false);
-  const [showAllProjects, setShowAllProjects] = React87.useState(false);
+  const [logs, setLogs] = React88.useState([]);
+  const [worktreePaths, setWorktreePaths] = React88.useState([]);
+  const [loading, setLoading] = React88.useState(true);
+  const [resuming, setResuming] = React88.useState(false);
+  const [showAllProjects, setShowAllProjects] = React88.useState(false);
   const {
     rows
   } = useTerminalSize();
   const insideModal = useIsInsideModal();
-  const loadLogs = React87.useCallback(async (allProjects, paths) => {
+  const loadLogs = React88.useCallback(async (allProjects, paths) => {
     setLoading(true);
     try {
       const allLogs = allProjects ? await loadAllProjectsMessageLogs() : await loadSameRepoMessageLogs(paths);
@@ -475368,7 +475438,7 @@ function ResumeCommand({
       setLoading(false);
     }
   }, [onDone]);
-  React87.useEffect(() => {
+  React88.useEffect(() => {
     async function init() {
       const paths_0 = await getWorktreePaths(getOriginalCwd());
       setWorktreePaths(paths_0);
@@ -475376,7 +475446,7 @@ function ResumeCommand({
     }
     init();
   }, [loadLogs]);
-  const handleToggleAllProjects = React87.useCallback(() => {
+  const handleToggleAllProjects = React88.useCallback(() => {
     const newValue = !showAllProjects;
     setShowAllProjects(newValue);
     loadLogs(newValue, worktreePaths);
@@ -475447,7 +475517,7 @@ function ResumeCommand({
 function filterResumableSessions(logs, currentSessionId) {
   return logs.filter((l) => !l.isSidechain && getSessionIdFromLog(l) !== currentSessionId);
 }
-var import_compiler_runtime215, React87, jsx_runtime262, call30 = async (onDone, context, args) => {
+var import_compiler_runtime214, React88, jsx_runtime262, call30 = async (onDone, context, args) => {
   const onResume = async (sessionId, log, entrypoint) => {
     try {
       await context.resume?.(sessionId, log, entrypoint);
@@ -475544,8 +475614,8 @@ var init_resume = __esm(() => {
   init_log3();
   init_sessionStorage();
   init_uuid();
-  import_compiler_runtime215 = __toESM(require_compiler_runtime(), 1);
-  React87 = __toESM(require_react(), 1);
+  import_compiler_runtime214 = __toESM(require_compiler_runtime(), 1);
+  React88 = __toESM(require_react(), 1);
   jsx_runtime262 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -475791,7 +475861,7 @@ var init_reviewRemote = __esm(() => {
 
 // commands/review/UltrareviewOverageDialog.tsx
 function UltrareviewOverageDialog(t0) {
-  const $ = import_compiler_runtime216.c(15);
+  const $ = import_compiler_runtime215.c(15);
   const {
     onProceed,
     onCancel
@@ -475897,12 +475967,12 @@ function UltrareviewOverageDialog(t0) {
   }
   return t7;
 }
-var import_compiler_runtime216, import_react160, jsx_runtime263;
+var import_compiler_runtime215, import_react160, jsx_runtime263;
 var init_UltrareviewOverageDialog = __esm(() => {
   init_select();
   init_Dialog();
   init_ink2();
-  import_compiler_runtime216 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime215 = __toESM(require_compiler_runtime(), 1);
   import_react160 = __toESM(require_react(), 1);
   jsx_runtime263 = __toESM(require_jsx_runtime(), 1);
 });
@@ -476018,7 +476088,7 @@ __export(exports_session, {
   call: () => call32
 });
 function SessionInfo(t0) {
-  const $ = import_compiler_runtime217.c(19);
+  const $ = import_compiler_runtime216.c(19);
   const {
     onDone
   } = t0;
@@ -476086,7 +476156,7 @@ function SessionInfo(t0) {
   let t5;
   if ($[5] !== qrCode) {
     const lines = qrCode.split(`
-`).filter(_temp331);
+`).filter(_temp330);
     const isLoading = lines.length === 0;
     T0 = Pane;
     if ($[9] === Symbol.for("react.memo_cache_sentinel")) {
@@ -476179,7 +476249,7 @@ function _temp425(line_0, i) {
     children: line_0
   }, i);
 }
-function _temp331(line) {
+function _temp330(line) {
   return line.length > 0;
 }
 function _temp245(e) {
@@ -476188,7 +476258,7 @@ function _temp245(e) {
 function _temp118(s) {
   return s.remoteSessionUrl;
 }
-var import_compiler_runtime217, import_react161, jsx_runtime265, call32 = async (onDone) => {
+var import_compiler_runtime216, import_react161, jsx_runtime265, call32 = async (onDone) => {
   return /* @__PURE__ */ jsx_runtime265.jsx(SessionInfo, {
     onDone
   });
@@ -476200,7 +476270,7 @@ var init_session = __esm(() => {
   init_useKeybinding();
   init_AppState();
   init_debug();
-  import_compiler_runtime217 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime216 = __toESM(require_compiler_runtime(), 1);
   import_react161 = __toESM(require_react(), 1);
   jsx_runtime265 = __toESM(require_jsx_runtime(), 1);
 });
@@ -476252,7 +476322,7 @@ function getSourceSubtitle(source, skills) {
   return hasCommandsSkills ? `${skillsPath}, ${getDisplayPath(getSkillsPath(source, "commands"))}` : skillsPath;
 }
 function SkillsMenu(t0) {
-  const $ = import_compiler_runtime218.c(35);
+  const $ = import_compiler_runtime217.c(35);
   const {
     onExit,
     commands
@@ -476351,7 +476421,7 @@ function SkillsMenu(t0) {
     }
     return t5;
   }
-  const renderSkill = _temp332;
+  const renderSkill = _temp331;
   let t3;
   if ($[10] !== skillsBySource) {
     t3 = (source_0) => {
@@ -476500,7 +476570,7 @@ function SkillsMenu(t0) {
   }
   return t14;
 }
-function _temp332(skill_0) {
+function _temp331(skill_0) {
   const estimatedTokens = estimateSkillFrontmatterTokens(skill_0);
   const tokenDisplay = `~${formatTokens(estimatedTokens)}`;
   const pluginName = skill_0.source === "plugin" ? skill_0.pluginInfo?.pluginManifest.name : undefined;
@@ -476527,7 +476597,7 @@ function _temp246(a, b) {
 function _temp119(cmd) {
   return cmd.type === "prompt" && (cmd.loadedFrom === "skills" || cmd.loadedFrom === "commands_DEPRECATED" || cmd.loadedFrom === "plugin" || cmd.loadedFrom === "mcp");
 }
-var import_compiler_runtime218, jsx_runtime266;
+var import_compiler_runtime217, jsx_runtime266;
 var init_SkillsMenu = __esm(() => {
   init_capitalize();
   init_commands2();
@@ -476539,7 +476609,7 @@ var init_SkillsMenu = __esm(() => {
   init_stringUtils();
   init_ConfigurableShortcutHint();
   init_Dialog();
-  import_compiler_runtime218 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime217 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime266 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -477374,7 +477444,7 @@ var init_taskStatusUtils = __esm(() => {
 
 // components/tasks/AsyncAgentDetailDialog.tsx
 function AsyncAgentDetailDialog(t0) {
-  const $ = import_compiler_runtime219.c(54);
+  const $ = import_compiler_runtime218.c(54);
   const {
     agent,
     onDone,
@@ -477711,7 +477781,7 @@ function AsyncAgentDetailDialog(t0) {
   }
   return t20;
 }
-var import_compiler_runtime219, jsx_runtime270;
+var import_compiler_runtime218, jsx_runtime270;
 var init_AsyncAgentDetailDialog = __esm(() => {
   init_useElapsedTime();
   init_ink2();
@@ -477726,7 +477796,7 @@ var init_AsyncAgentDetailDialog = __esm(() => {
   init_UserPlanMessage();
   init_renderToolActivity();
   init_taskStatusUtils();
-  import_compiler_runtime219 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime218 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime270 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -477750,7 +477820,7 @@ function formatReviewStageCounts(stage, found, verified, refuted) {
   return found > 0 ? `${found} found` : "finding";
 }
 function RainbowText(t0) {
-  const $ = import_compiler_runtime220.c(5);
+  const $ = import_compiler_runtime219.c(5);
   const {
     text,
     phase: t1
@@ -477792,7 +477862,7 @@ function useSmoothCount(target, time, snap) {
   return displayed.current;
 }
 function ReviewRainbowLine(t0) {
-  const $ = import_compiler_runtime220.c(15);
+  const $ = import_compiler_runtime219.c(15);
   const {
     session
   } = t0;
@@ -477938,7 +478008,7 @@ function ReviewRainbowLine(t0) {
   return t6;
 }
 function RemoteSessionProgress(t0) {
-  const $ = import_compiler_runtime220.c(11);
+  const $ = import_compiler_runtime219.c(11);
   const {
     session
   } = t0;
@@ -478033,20 +478103,20 @@ function RemoteSessionProgress(t0) {
 function _temp120(_) {
   return _.status === "completed";
 }
-var import_compiler_runtime220, import_react162, jsx_runtime271, TICK_MS = 80;
+var import_compiler_runtime219, import_react162, jsx_runtime271, TICK_MS = 80;
 var init_RemoteSessionProgress = __esm(() => {
   init_figures2();
   init_useSettings();
   init_ink2();
   init_thinking();
-  import_compiler_runtime220 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime219 = __toESM(require_compiler_runtime(), 1);
   import_react162 = __toESM(require_react(), 1);
   jsx_runtime271 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/tasks/ShellProgress.tsx
 function TaskStatusText(t0) {
-  const $ = import_compiler_runtime221.c(4);
+  const $ = import_compiler_runtime220.c(4);
   const {
     status,
     label,
@@ -478076,7 +478146,7 @@ function TaskStatusText(t0) {
   return t1;
 }
 function ShellProgress(t0) {
-  const $ = import_compiler_runtime221.c(4);
+  const $ = import_compiler_runtime220.c(4);
   const {
     shell
   } = t0;
@@ -478135,16 +478205,16 @@ function ShellProgress(t0) {
     }
   }
 }
-var import_compiler_runtime221, jsx_runtime272;
+var import_compiler_runtime220, jsx_runtime272;
 var init_ShellProgress = __esm(() => {
   init_ink2();
-  import_compiler_runtime221 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime220 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime272 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/tasks/BackgroundTask.tsx
 function BackgroundTask(t0) {
-  const $ = import_compiler_runtime222.c(92);
+  const $ = import_compiler_runtime221.c(92);
   const {
     task,
     maxActivityWidth
@@ -478561,7 +478631,7 @@ function BackgroundTask(t0) {
     }
   }
 }
-var import_compiler_runtime222, jsx_runtime273;
+var import_compiler_runtime221, jsx_runtime273;
 var init_BackgroundTask = __esm(() => {
   init_ink2();
   init_format();
@@ -478571,13 +478641,13 @@ var init_BackgroundTask = __esm(() => {
   init_RemoteSessionProgress();
   init_ShellProgress();
   init_taskStatusUtils();
-  import_compiler_runtime222 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime221 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime273 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/tasks/DreamDetailDialog.tsx
 function DreamDetailDialog(t0) {
-  const $ = import_compiler_runtime223.c(70);
+  const $ = import_compiler_runtime222.c(70);
   const {
     task,
     onDone,
@@ -478919,7 +478989,7 @@ function _temp247(turn, i) {
 function _temp121(t) {
   return t.text !== "";
 }
-var import_compiler_runtime223, jsx_runtime274, VISIBLE_TURNS = 6;
+var import_compiler_runtime222, jsx_runtime274, VISIBLE_TURNS = 6;
 var init_DreamDetailDialog = __esm(() => {
   init_useElapsedTime();
   init_ink2();
@@ -478928,13 +478998,13 @@ var init_DreamDetailDialog = __esm(() => {
   init_Byline();
   init_Dialog();
   init_KeyboardShortcutHint();
-  import_compiler_runtime223 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime222 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime274 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/tasks/InProcessTeammateDetailDialog.tsx
 function InProcessTeammateDetailDialog(t0) {
-  const $ = import_compiler_runtime224.c(63);
+  const $ = import_compiler_runtime223.c(63);
   const {
     teammate,
     onDone,
@@ -479312,7 +479382,7 @@ function InProcessTeammateDetailDialog(t0) {
   }
   return t22;
 }
-var import_compiler_runtime224, jsx_runtime275;
+var import_compiler_runtime223, jsx_runtime275;
 var init_InProcessTeammateDetailDialog = __esm(() => {
   init_useElapsedTime();
   init_ink2();
@@ -479326,7 +479396,7 @@ var init_InProcessTeammateDetailDialog = __esm(() => {
   init_KeyboardShortcutHint();
   init_renderToolActivity();
   init_taskStatusUtils();
-  import_compiler_runtime224 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime223 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime275 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -479554,7 +479624,7 @@ function formatToolUseSummary(name, input) {
   return name;
 }
 function UltraplanSessionDetail(t0) {
-  const $ = import_compiler_runtime225.c(70);
+  const $ = import_compiler_runtime224.c(70);
   const {
     session,
     onDone,
@@ -479969,7 +480039,7 @@ function UltraplanSessionDetail(t0) {
   return t26;
 }
 function StagePipeline(t0) {
-  const $ = import_compiler_runtime225.c(15);
+  const $ = import_compiler_runtime224.c(15);
   const {
     stage,
     completed,
@@ -480081,7 +480151,7 @@ function reviewCountsLine(session) {
   return formatReviewStageCounts(p.stage, p.bugsFound, verified, refuted);
 }
 function ReviewSessionDetail(t0) {
-  const $ = import_compiler_runtime225.c(56);
+  const $ = import_compiler_runtime224.c(56);
   const {
     session,
     onDone,
@@ -480680,7 +480750,7 @@ function RemoteSessionDetailDialog({
     })
   });
 }
-var import_compiler_runtime225, import_react163, jsx_runtime276, PHASE_LABEL, AGENT_VERB, STAGES, STAGE_LABELS;
+var import_compiler_runtime224, import_react163, jsx_runtime276, PHASE_LABEL, AGENT_VERB, STAGES, STAGE_LABELS;
 var init_RemoteSessionDetailDialog = __esm(() => {
   init_figures();
   init_figures2();
@@ -480702,7 +480772,7 @@ var init_RemoteSessionDetailDialog = __esm(() => {
   init_KeyboardShortcutHint();
   init_Message();
   init_RemoteSessionProgress();
-  import_compiler_runtime225 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime224 = __toESM(require_compiler_runtime(), 1);
   import_react163 = __toESM(require_react(), 1);
   jsx_runtime276 = __toESM(require_jsx_runtime(), 1);
   PHASE_LABEL = {
@@ -480738,7 +480808,7 @@ async function getTaskOutput2(shell) {
   }
 }
 function ShellDetailDialog(t0) {
-  const $ = import_compiler_runtime226.c(57);
+  const $ = import_compiler_runtime225.c(57);
   const {
     shell,
     onDone,
@@ -481096,7 +481166,7 @@ function _temp125(setOutputPromise_0, shell_0) {
   return setOutputPromise_0(getTaskOutput2(shell_0));
 }
 function ShellOutputContent(t0) {
-  const $ = import_compiler_runtime226.c(19);
+  const $ = import_compiler_runtime225.c(19);
   const {
     outputPromise,
     columns
@@ -481221,7 +481291,7 @@ function _temp248(line_0, i_1) {
     children: line_0
   }, i_1);
 }
-var import_compiler_runtime226, import_react164, jsx_runtime277, SHELL_DETAIL_TAIL_BYTES = 8192;
+var import_compiler_runtime225, import_react164, jsx_runtime277, SHELL_DETAIL_TAIL_BYTES = 8192;
 var init_ShellDetailDialog = __esm(() => {
   init_useTerminalSize();
   init_ink2();
@@ -481232,7 +481302,7 @@ var init_ShellDetailDialog = __esm(() => {
   init_Byline();
   init_Dialog();
   init_KeyboardShortcutHint();
-  import_compiler_runtime226 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime225 = __toESM(require_compiler_runtime(), 1);
   import_react164 = __toESM(require_react(), 1);
   jsx_runtime277 = __toESM(require_jsx_runtime(), 1);
 });
@@ -481840,7 +481910,7 @@ function toListItem(task) {
   }
 }
 function Item(t0) {
-  const $ = import_compiler_runtime227.c(14);
+  const $ = import_compiler_runtime226.c(14);
   const {
     item,
     isSelected
@@ -481920,7 +481990,7 @@ function Item(t0) {
   return t8;
 }
 function TeammateTaskGroups(t0) {
-  const $ = import_compiler_runtime227.c(3);
+  const $ = import_compiler_runtime226.c(3);
   const {
     teammateTasks,
     currentSelectionId
@@ -481984,7 +482054,7 @@ function _temp249(i_0) {
 function _temp126(i) {
   return i.type === "leader";
 }
-var import_compiler_runtime227, import_react165, jsx_runtime278, WorkflowDetailDialog = null, workflowTaskModule = null, killWorkflowTask, skipWorkflowAgent, retryWorkflowAgent, monitorMcpModule = null, killMonitorMcp, MonitorMcpDetailDialog = null;
+var import_compiler_runtime226, import_react165, jsx_runtime278, WorkflowDetailDialog = null, workflowTaskModule = null, killWorkflowTask, skipWorkflowAgent, retryWorkflowAgent, monitorMcpModule = null, killMonitorMcp, MonitorMcpDetailDialog = null;
 var init_BackgroundTasksDialog = __esm(() => {
   init_figures();
   init_coordinatorMode();
@@ -482010,7 +482080,7 @@ var init_BackgroundTasksDialog = __esm(() => {
   init_InProcessTeammateDetailDialog();
   init_RemoteSessionDetailDialog();
   init_ShellDetailDialog();
-  import_compiler_runtime227 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime226 = __toESM(require_compiler_runtime(), 1);
   import_react165 = __toESM(require_react(), 1);
   jsx_runtime278 = __toESM(require_jsx_runtime(), 1);
   killWorkflowTask = workflowTaskModule?.killWorkflowTask ?? null;
@@ -482347,7 +482417,7 @@ __export(exports_theme, {
   call: () => call38
 });
 function ThemePickerCommand(t0) {
-  const $ = import_compiler_runtime228.c(8);
+  const $ = import_compiler_runtime227.c(8);
   const {
     onDone
   } = t0;
@@ -482394,7 +482464,7 @@ function ThemePickerCommand(t0) {
   }
   return t3;
 }
-var import_compiler_runtime228, jsx_runtime281, call38 = async (onDone, _context) => {
+var import_compiler_runtime227, jsx_runtime281, call38 = async (onDone, _context) => {
   return /* @__PURE__ */ jsx_runtime281.jsx(ThemePickerCommand, {
     onDone
   });
@@ -482403,7 +482473,7 @@ var init_theme2 = __esm(() => {
   init_Pane();
   init_ThemePicker();
   init_ink2();
-  import_compiler_runtime228 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime227 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime281 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -482469,7 +482539,7 @@ __export(exports_thinkback, {
   playAnimation: () => playAnimation
 });
 import { readFile as readFile43 } from "fs/promises";
-import { join as join115 } from "path";
+import { join as join116 } from "path";
 function getMarketplaceName() {
   return OFFICIAL_MARKETPLACE_NAME;
 }
@@ -482487,15 +482557,15 @@ async function getThinkbackSkillDir() {
   if (!thinkbackPlugin) {
     return null;
   }
-  const skillDir = join115(thinkbackPlugin.path, "skills", SKILL_NAME);
+  const skillDir = join116(thinkbackPlugin.path, "skills", SKILL_NAME);
   if (await pathExists(skillDir)) {
     return skillDir;
   }
   return null;
 }
 async function playAnimation(skillDir) {
-  const dataPath = join115(skillDir, "year_in_review.js");
-  const playerPath = join115(skillDir, "player.js");
+  const dataPath = join116(skillDir, "year_in_review.js");
+  const playerPath = join116(skillDir, "player.js");
   try {
     await readFile43(dataPath);
   } catch (e) {
@@ -482543,7 +482613,7 @@ async function playAnimation(skillDir) {
   } catch {} finally {
     inkInstance.exitAlternateScreen();
   }
-  const htmlPath = join115(skillDir, "year_in_review.html");
+  const htmlPath = join116(skillDir, "year_in_review.html");
   if (await pathExists(htmlPath)) {
     const platform = getPlatform();
     const openCmd = platform === "macos" ? "open" : platform === "windows" ? "start" : "xdg-open";
@@ -482672,7 +482742,7 @@ function ThinkbackInstaller({
   });
 }
 function ThinkbackMenu(t0) {
-  const $ = import_compiler_runtime229.c(19);
+  const $ = import_compiler_runtime228.c(19);
   const {
     onDone,
     onAction,
@@ -482813,7 +482883,7 @@ function ThinkbackMenu(t0) {
   return t7;
 }
 function ThinkbackFlow(t0) {
-  const $ = import_compiler_runtime229.c(27);
+  const $ = import_compiler_runtime228.c(27);
   const {
     onDone
   } = t0;
@@ -482879,7 +482949,7 @@ function ThinkbackFlow(t0) {
       if (!skillDir) {
         return;
       }
-      const dataPath = join115(skillDir, "year_in_review.js");
+      const dataPath = join116(skillDir, "year_in_review.js");
       pathExists(dataPath).then((exists) => {
         logForDebugging(`Checking for ${dataPath}: ${exists ? "found" : "not found"}`);
         setHasGenerated(exists);
@@ -483008,7 +483078,7 @@ async function call40(onDone) {
     onDone
   });
 }
-var import_compiler_runtime229, import_react166, jsx_runtime282, OFFICIAL_MARKETPLACE_REPO = "anthropics/claude-plugins-official", SKILL_NAME = "thinkback", EDIT_PROMPT = 'Use the Skill tool to invoke the "thinkback" skill with mode=edit to modify my existing EvilClaude year in review animation. Ask me what I want to change. When the animation is ready, tell the user to run /think-back again to play it.', FIX_PROMPT = 'Use the Skill tool to invoke the "thinkback" skill with mode=fix to fix validation or rendering errors in my existing EvilClaude year in review animation. Run the validator, identify errors, and fix them. When the animation is ready, tell the user to run /think-back again to play it.', REGENERATE_PROMPT = 'Use the Skill tool to invoke the "thinkback" skill with mode=regenerate to create a completely new EvilClaude year in review animation from scratch. Delete the existing animation and start fresh. When the animation is ready, tell the user to run /think-back again to play it.';
+var import_compiler_runtime228, import_react166, jsx_runtime282, OFFICIAL_MARKETPLACE_REPO = "anthropics/claude-plugins-official", SKILL_NAME = "thinkback", EDIT_PROMPT = 'Use the Skill tool to invoke the "thinkback" skill with mode=edit to modify my existing EvilClaude year in review animation. Ask me what I want to change. When the animation is ready, tell the user to run /think-back again to play it.', FIX_PROMPT = 'Use the Skill tool to invoke the "thinkback" skill with mode=fix to fix validation or rendering errors in my existing EvilClaude year in review animation. Run the validator, identify errors, and fix them. When the animation is ready, tell the user to run /think-back again to play it.', REGENERATE_PROMPT = 'Use the Skill tool to invoke the "thinkback" skill with mode=regenerate to create a completely new EvilClaude year in review animation from scratch. Delete the existing animation and start fresh. When the animation is ready, tell the user to run /think-back again to play it.';
 var init_thinkback = __esm(() => {
   init_execa();
   init_select();
@@ -483029,7 +483099,7 @@ var init_thinkback = __esm(() => {
   init_officialMarketplace();
   init_pluginLoader();
   init_pluginStartupCheck();
-  import_compiler_runtime229 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime228 = __toESM(require_compiler_runtime(), 1);
   import_react166 = __toESM(require_react(), 1);
   jsx_runtime282 = __toESM(require_jsx_runtime(), 1);
 });
@@ -483053,7 +483123,7 @@ var exports_thinkback_play = {};
 __export(exports_thinkback_play, {
   call: () => call41
 });
-import { join as join116 } from "path";
+import { join as join117 } from "path";
 function getPluginId2() {
   const marketplaceName = process.env.USER_TYPE === "ant" ? INTERNAL_MARKETPLACE_NAME : OFFICIAL_MARKETPLACE_NAME;
   return `thinkback@${marketplaceName}`;
@@ -483075,7 +483145,7 @@ async function call41() {
       value: "Thinkback plugin installation path not found."
     };
   }
-  const skillDir = join116(firstInstall.installPath, "skills", SKILL_NAME2);
+  const skillDir = join117(firstInstall.installPath, "skills", SKILL_NAME2);
   const result = await playAnimation(skillDir);
   return { type: "text", value: result.message };
 }
@@ -483113,7 +483183,7 @@ var init_autoModeDenials = __esm(() => {
 
 // components/permissions/rules/PermissionRuleDescription.tsx
 function PermissionRuleDescription(t0) {
-  const $ = import_compiler_runtime230.c(9);
+  const $ = import_compiler_runtime229.c(9);
   const {
     ruleValue
   } = t0;
@@ -483209,11 +483279,11 @@ function PermissionRuleDescription(t0) {
     }
   }
 }
-var import_compiler_runtime230, jsx_runtime283;
+var import_compiler_runtime229, jsx_runtime283;
 var init_PermissionRuleDescription = __esm(() => {
   init_ink2();
   init_BashTool();
-  import_compiler_runtime230 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime229 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime283 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -483241,7 +483311,7 @@ function optionForPermissionSaveDestination(saveDestination) {
   }
 }
 function AddPermissionRules(t0) {
-  const $ = import_compiler_runtime231.c(26);
+  const $ = import_compiler_runtime230.c(26);
   const {
     onAddRules,
     onCancel,
@@ -483407,7 +483477,7 @@ function _temp127(ruleValue_0) {
     ]
   }, permissionRuleValueToString(ruleValue_0));
 }
-var import_compiler_runtime231, jsx_runtime284;
+var import_compiler_runtime230, jsx_runtime284;
 var init_AddPermissionRules = __esm(() => {
   init_select();
   init_ink2();
@@ -483420,13 +483490,13 @@ var init_AddPermissionRules = __esm(() => {
   init_stringUtils();
   init_Dialog();
   init_PermissionRuleDescription();
-  import_compiler_runtime231 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime230 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime284 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/rules/PermissionRuleInput.tsx
 function PermissionRuleInput(t0) {
-  const $ = import_compiler_runtime232.c(24);
+  const $ = import_compiler_runtime231.c(24);
   const {
     onCancel,
     onSubmit,
@@ -483621,7 +483691,7 @@ function PermissionRuleInput(t0) {
   }
   return t11;
 }
-var import_compiler_runtime232, import_react167, jsx_runtime285;
+var import_compiler_runtime231, import_react167, jsx_runtime285;
 var init_PermissionRuleInput = __esm(() => {
   init_figures();
   init_TextInput();
@@ -483632,14 +483702,14 @@ var init_PermissionRuleInput = __esm(() => {
   init_BashTool();
   init_WebFetchTool();
   init_permissionRuleParser();
-  import_compiler_runtime232 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime231 = __toESM(require_compiler_runtime(), 1);
   import_react167 = __toESM(require_react(), 1);
   jsx_runtime285 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/rules/RecentDenialsTab.tsx
 function RecentDenialsTab(t0) {
-  const $ = import_compiler_runtime233.c(30);
+  const $ = import_compiler_runtime232.c(30);
   const {
     onHeaderFocusChange,
     onStateChange
@@ -483666,7 +483736,7 @@ function RecentDenialsTab(t0) {
   import_react168.useEffect(t1, t2);
   const [denials] = import_react168.useState(_temp128);
   const [approved, setApproved] = import_react168.useState(_temp250);
-  const [retry, setRetry] = import_react168.useState(_temp333);
+  const [retry, setRetry] = import_react168.useState(_temp332);
   const [focusedIdx, setFocusedIdx] = import_react168.useState(0);
   let t3;
   let t4;
@@ -483850,7 +483920,7 @@ function RecentDenialsTab(t0) {
   }
   return t13;
 }
-function _temp333() {
+function _temp332() {
   return new Set;
 }
 function _temp250() {
@@ -483859,21 +483929,21 @@ function _temp250() {
 function _temp128() {
   return getAutoModeDenials();
 }
-var import_compiler_runtime233, import_react168, jsx_runtime286;
+var import_compiler_runtime232, import_react168, jsx_runtime286;
 var init_RecentDenialsTab = __esm(() => {
   init_ink2();
   init_autoModeDenials();
   init_select();
   init_StatusIcon();
   init_Tabs();
-  import_compiler_runtime233 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime232 = __toESM(require_compiler_runtime(), 1);
   import_react168 = __toESM(require_react(), 1);
   jsx_runtime286 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/rules/RemoveWorkspaceDirectory.tsx
 function RemoveWorkspaceDirectory(t0) {
-  const $ = import_compiler_runtime234.c(19);
+  const $ = import_compiler_runtime233.c(19);
   const {
     directoryPath,
     onRemove,
@@ -483988,19 +484058,19 @@ function RemoveWorkspaceDirectory(t0) {
   }
   return t7;
 }
-var import_compiler_runtime234, jsx_runtime287;
+var import_compiler_runtime233, jsx_runtime287;
 var init_RemoveWorkspaceDirectory = __esm(() => {
   init_select();
   init_ink2();
   init_PermissionUpdate();
   init_Dialog();
-  import_compiler_runtime234 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime233 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime287 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/rules/WorkspaceTab.tsx
 function WorkspaceTab(t0) {
-  const $ = import_compiler_runtime235.c(23);
+  const $ = import_compiler_runtime234.c(23);
   const {
     onExit,
     toolPermissionContext,
@@ -484152,21 +484222,21 @@ function _temp129(path) {
     isDeletable: true
   };
 }
-var import_compiler_runtime235, import_react169, jsx_runtime288;
+var import_compiler_runtime234, import_react169, jsx_runtime288;
 var init_WorkspaceTab = __esm(() => {
   init_figures();
   init_state();
   init_select();
   init_ink2();
   init_Tabs();
-  import_compiler_runtime235 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime234 = __toESM(require_compiler_runtime(), 1);
   import_react169 = __toESM(require_react(), 1);
   jsx_runtime288 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/rules/PermissionRuleList.tsx
 function RuleSourceText(t0) {
-  const $ = import_compiler_runtime236.c(4);
+  const $ = import_compiler_runtime235.c(4);
   const {
     rule
   } = t0;
@@ -484203,7 +484273,7 @@ function getRuleBehaviorLabel(ruleBehavior) {
   }
 }
 function RuleDetails(t0) {
-  const $ = import_compiler_runtime236.c(42);
+  const $ = import_compiler_runtime235.c(42);
   const {
     rule,
     onDelete,
@@ -484472,7 +484542,7 @@ function RuleDetails(t0) {
   return t15;
 }
 function RulesTabContent(props) {
-  const $ = import_compiler_runtime236.c(26);
+  const $ = import_compiler_runtime235.c(26);
   const {
     options,
     searchQuery,
@@ -484590,7 +484660,7 @@ function RulesTabContent(props) {
   return t9;
 }
 function PermissionRulesTab(t0) {
-  const $ = import_compiler_runtime236.c(27);
+  const $ = import_compiler_runtime235.c(27);
   let T0;
   let T1;
   let handleToolSelect;
@@ -484703,7 +484773,7 @@ function PermissionRulesTab(t0) {
   return t7;
 }
 function PermissionRuleList(t0) {
-  const $ = import_compiler_runtime236.c(113);
+  const $ = import_compiler_runtime235.c(113);
   const {
     onExit,
     initialTab,
@@ -485026,7 +485096,7 @@ function PermissionRuleList(t0) {
       const denialsFor = (set) => Array.from(set).map((idx) => s_1.denials[idx]).filter(_temp253);
       const retryDenials = denialsFor(s_1.retry);
       if (retryDenials.length > 0) {
-        const commands = retryDenials.map(_temp334);
+        const commands = retryDenials.map(_temp333);
         onRetryDenials?.(commands);
         onExit(undefined, {
           shouldQuery: true,
@@ -485512,7 +485582,7 @@ function _temp518(opt) {
 function _temp426(d_1) {
   return source_default.bold(d_1.display);
 }
-function _temp334(d_0) {
+function _temp333(d_0) {
   return d_0.display;
 }
 function _temp253(d) {
@@ -485521,7 +485591,7 @@ function _temp253(d) {
 function _temp130(s) {
   return s.toolPermissionContext;
 }
-var import_compiler_runtime236, import_react170, jsx_runtime289;
+var import_compiler_runtime235, import_react170, jsx_runtime289;
 var init_PermissionRuleList = __esm(() => {
   init_source();
   init_figures();
@@ -485546,7 +485616,7 @@ var init_PermissionRuleList = __esm(() => {
   init_RecentDenialsTab();
   init_RemoveWorkspaceDirectory();
   init_WorkspaceTab();
-  import_compiler_runtime236 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime235 = __toESM(require_compiler_runtime(), 1);
   import_react170 = __toESM(require_react(), 1);
   jsx_runtime289 = __toESM(require_jsx_runtime(), 1);
 });
@@ -485589,7 +485659,7 @@ __export(exports_plan, {
   call: () => call43
 });
 function PlanDisplay(t0) {
-  const $ = import_compiler_runtime237.c(11);
+  const $ = import_compiler_runtime236.c(11);
   const {
     planContent,
     planPath,
@@ -485728,7 +485798,7 @@ async function call43(onDone, context, args) {
   onDone(output);
   return null;
 }
-var import_compiler_runtime237, jsx_runtime291;
+var import_compiler_runtime236, jsx_runtime291;
 var init_plan = __esm(() => {
   init_state();
   init_ink2();
@@ -485739,7 +485809,7 @@ var init_plan = __esm(() => {
   init_plans();
   init_promptEditor();
   init_staticRender();
-  import_compiler_runtime237 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime236 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime291 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -485766,7 +485836,7 @@ var init_immediateCommand = __esm(() => {
 
 // components/FastIcon.tsx
 function FastIcon(t0) {
-  const $ = import_compiler_runtime238.c(2);
+  const $ = import_compiler_runtime237.c(2);
   const {
     cooldown
   } = t0;
@@ -485806,14 +485876,14 @@ function getFastIconString(applyColor = true, cooldown = false) {
   }
   return color("fastMode", themeName)(LIGHTNING_BOLT);
 }
-var import_compiler_runtime238, jsx_runtime292;
+var import_compiler_runtime237, jsx_runtime292;
 var init_FastIcon = __esm(() => {
   init_source();
   init_figures2();
   init_ink2();
   init_config2();
   init_color();
-  import_compiler_runtime238 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime237 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime292 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -485848,7 +485918,7 @@ function applyFastMode(enable, setAppState) {
   }
 }
 function FastModePicker(t0) {
-  const $ = import_compiler_runtime239.c(30);
+  const $ = import_compiler_runtime238.c(30);
   const {
     onDone,
     unavailableReason
@@ -485891,7 +485961,7 @@ function FastModePicker(t0) {
         const modelUpdated = !isFastModeSupportedByModel(model) ? ` · model set to ${FAST_MODE_MODEL_DISPLAY}` : "";
         onDone(`${fastIcon} Fast mode ON${modelUpdated} · ${pricing}`);
       } else {
-        setAppState(_temp335);
+        setAppState(_temp334);
         onDone("Fast mode OFF");
       }
     };
@@ -486101,7 +486171,7 @@ function FastModePicker(t0) {
 function _temp427(prev_0) {
   return !prev_0;
 }
-function _temp335(prev) {
+function _temp334(prev) {
   return {
     ...prev,
     fastMode: false
@@ -486155,7 +486225,7 @@ async function call44(onDone, context, args) {
     unavailableReason
   });
 }
-var import_compiler_runtime239, import_react171, jsx_runtime293;
+var import_compiler_runtime238, import_react171, jsx_runtime293;
 var init_fast = __esm(() => {
   init_Dialog();
   init_FastIcon();
@@ -486167,7 +486237,7 @@ var init_fast = __esm(() => {
   init_format();
   init_modelCost();
   init_settings2();
-  import_compiler_runtime239 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime238 = __toESM(require_compiler_runtime(), 1);
   import_react171 = __toESM(require_react(), 1);
   jsx_runtime293 = __toESM(require_jsx_runtime(), 1);
 });
@@ -486499,7 +486569,7 @@ var init_passes2 = __esm(() => {
 
 // components/grove/Grove.tsx
 function GracePeriodContentBody() {
-  const $ = import_compiler_runtime240.c(9);
+  const $ = import_compiler_runtime239.c(9);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = /* @__PURE__ */ jsx_runtime296.jsxs(ThemedText, {
@@ -486642,7 +486712,7 @@ function GracePeriodContentBody() {
   return t8;
 }
 function PostGracePeriodContentBody() {
-  const $ = import_compiler_runtime240.c(7);
+  const $ = import_compiler_runtime239.c(7);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = /* @__PURE__ */ jsx_runtime296.jsx(ThemedText, {
@@ -486754,7 +486824,7 @@ function PostGracePeriodContentBody() {
   return t6;
 }
 function GroveDialog(t0) {
-  const $ = import_compiler_runtime240.c(34);
+  const $ = import_compiler_runtime239.c(34);
   const {
     showIfAlreadyViewed,
     location,
@@ -487024,7 +487094,7 @@ function _temp134(exitState) {
   });
 }
 function PrivacySettingsDialog(t0) {
-  const $ = import_compiler_runtime240.c(17);
+  const $ = import_compiler_runtime239.c(17);
   const {
     settings,
     domainExcluded,
@@ -487188,7 +487258,7 @@ function PrivacySettingsDialog(t0) {
 function _temp255() {
   logEvent("tengu_grove_privacy_settings_viewed", {});
 }
-var import_compiler_runtime240, import_react173, jsx_runtime296, NEW_TERMS_ASCII = ` _____________
+var import_compiler_runtime239, import_react173, jsx_runtime296, NEW_TERMS_ASCII = ` _____________
  |          \\  \\
  | NEW TERMS \\__\\
  |              |
@@ -487207,7 +487277,7 @@ var init_Grove = __esm(() => {
   init_Byline();
   init_Dialog();
   init_KeyboardShortcutHint();
-  import_compiler_runtime240 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime239 = __toESM(require_compiler_runtime(), 1);
   import_react173 = __toESM(require_react(), 1);
   jsx_runtime296 = __toESM(require_jsx_runtime(), 1);
 });
@@ -487684,7 +487754,7 @@ Other exit codes - show stderr to user only`
 
 // components/hooks/SelectEventMode.tsx
 function SelectEventMode(t0) {
-  const $ = import_compiler_runtime241.c(23);
+  const $ = import_compiler_runtime240.c(23);
   const {
     hookEventMetadata,
     hooksByEvent,
@@ -487845,20 +487915,20 @@ function SelectEventMode(t0) {
   }
   return t9;
 }
-var import_compiler_runtime241, jsx_runtime298;
+var import_compiler_runtime240, jsx_runtime298;
 var init_SelectEventMode = __esm(() => {
   init_figures();
   init_ink2();
   init_stringUtils();
   init_select();
   init_Dialog();
-  import_compiler_runtime241 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime240 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime298 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/hooks/SelectHookMode.tsx
 function SelectHookMode(t0) {
-  const $ = import_compiler_runtime242.c(19);
+  const $ = import_compiler_runtime241.c(19);
   const {
     selectedEvent,
     selectedMatcher,
@@ -487978,19 +488048,19 @@ function _temp135() {
     children: "Esc to go back"
   });
 }
-var import_compiler_runtime242, jsx_runtime299;
+var import_compiler_runtime241, jsx_runtime299;
 var init_SelectHookMode = __esm(() => {
   init_ink2();
   init_hooksSettings();
   init_select();
   init_Dialog();
-  import_compiler_runtime242 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime241 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime299 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/hooks/SelectMatcherMode.tsx
 function SelectMatcherMode(t0) {
-  const $ = import_compiler_runtime243.c(25);
+  const $ = import_compiler_runtime242.c(25);
   const {
     selectedEvent,
     matchersForSelectedEvent,
@@ -488070,7 +488140,7 @@ function SelectMatcherMode(t0) {
   const t2 = `${selectedEvent} - Matchers`;
   let t3;
   if ($[12] !== matchersWithSources) {
-    t3 = matchersWithSources.map(_temp336);
+    t3 = matchersWithSources.map(_temp335);
     $[12] = matchersWithSources;
     $[13] = t3;
   } else {
@@ -488121,7 +488191,7 @@ function SelectMatcherMode(t0) {
   }
   return t6;
 }
-function _temp336(item) {
+function _temp335(item) {
   const sourceText = item.sources.map(hookSourceInlineDisplayString).join(", ");
   const matcherLabel = item.matcher || "(all)";
   return {
@@ -488138,20 +488208,20 @@ function _temp257() {
 function _temp136(h) {
   return h.source;
 }
-var import_compiler_runtime243, jsx_runtime300;
+var import_compiler_runtime242, jsx_runtime300;
 var init_SelectMatcherMode = __esm(() => {
   init_ink2();
   init_hooksSettings();
   init_stringUtils();
   init_select();
   init_Dialog();
-  import_compiler_runtime243 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime242 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime300 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/hooks/ViewHookMode.tsx
 function ViewHookMode(t0) {
-  const $ = import_compiler_runtime244.c(40);
+  const $ = import_compiler_runtime243.c(40);
   const {
     selectedHook,
     eventSupportsMatcher,
@@ -488420,18 +488490,18 @@ function getContentFieldValue(config) {
       return config.url;
   }
 }
-var import_compiler_runtime244, jsx_runtime301;
+var import_compiler_runtime243, jsx_runtime301;
 var init_ViewHookMode = __esm(() => {
   init_ink2();
   init_hooksSettings();
   init_Dialog();
-  import_compiler_runtime244 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime243 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime301 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/hooks/HooksConfigMenu.tsx
 function HooksConfigMenu(t0) {
-  const $ = import_compiler_runtime245.c(100);
+  const $ = import_compiler_runtime244.c(100);
   const {
     toolNames,
     onExit
@@ -488466,7 +488536,7 @@ function HooksConfigMenu(t0) {
   const mode = modeState.mode;
   const selectedEvent = "event" in modeState ? modeState.event : "PreToolUse";
   const selectedMatcher = "matcher" in modeState ? modeState.matcher : null;
-  const mcp = useAppState(_temp337);
+  const mcp = useAppState(_temp336);
   const appStateStore = useAppStateStore();
   let t3;
   if ($[2] !== mcp.tools || $[3] !== toolNames) {
@@ -489030,7 +489100,7 @@ function _temp519(sum, hooks) {
 function _temp428(tool) {
   return tool.name;
 }
-function _temp337(s) {
+function _temp336(s) {
   return s.mcp;
 }
 function _temp258() {
@@ -489041,7 +489111,7 @@ function _temp138() {
   const hooksDisabled = settings?.disableAllHooks === true;
   return hooksDisabled && getSettingsForSource("policySettings")?.disableAllHooks === true;
 }
-var import_compiler_runtime245, import_react174, jsx_runtime302;
+var import_compiler_runtime244, import_react174, jsx_runtime302;
 var init_HooksConfigMenu = __esm(() => {
   init_AppState();
   init_useSettingsChange();
@@ -489055,7 +489125,7 @@ var init_HooksConfigMenu = __esm(() => {
   init_SelectHookMode();
   init_SelectMatcherMode();
   init_ViewHookMode();
-  import_compiler_runtime245 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime244 = __toESM(require_compiler_runtime(), 1);
   import_react174 = __toESM(require_react(), 1);
   jsx_runtime302 = __toESM(require_jsx_runtime(), 1);
 });
@@ -489465,7 +489535,7 @@ var init_types11 = __esm(() => {
 
 // components/agents/agentFileUtils.ts
 import { mkdir as mkdir33, open as open12, unlink as unlink18 } from "fs/promises";
-import { join as join117 } from "path";
+import { join as join118 } from "path";
 function formatAgentAsMarkdown(agentType, whenToUse, tools, systemPrompt, color, model, memory, effort) {
   const escapedWhenToUse = whenToUse.replace(/\\/g, "\\\\").replace(/"/g, "\\\"").replace(/\n/g, "\\\\n");
   const isAllTools = tools === undefined || tools.length === 1 && tools[0] === "*";
@@ -489492,26 +489562,26 @@ function getAgentDirectoryPath(location) {
     case "flagSettings":
       throw new Error(`Cannot get directory path for ${location} agents`);
     case "userSettings":
-      return join117(getClaudeConfigHomeDir(), AGENT_PATHS.AGENTS_DIR);
+      return join118(getClaudeConfigHomeDir(), AGENT_PATHS.AGENTS_DIR);
     case "projectSettings":
-      return join117(getCwd(), AGENT_PATHS.FOLDER_NAME, AGENT_PATHS.AGENTS_DIR);
+      return join118(getCwd(), AGENT_PATHS.FOLDER_NAME, AGENT_PATHS.AGENTS_DIR);
     case "policySettings":
-      return join117(getManagedFilePath(), AGENT_PATHS.FOLDER_NAME, AGENT_PATHS.AGENTS_DIR);
+      return join118(getManagedFilePath(), AGENT_PATHS.FOLDER_NAME, AGENT_PATHS.AGENTS_DIR);
     case "localSettings":
-      return join117(getCwd(), AGENT_PATHS.FOLDER_NAME, AGENT_PATHS.AGENTS_DIR);
+      return join118(getCwd(), AGENT_PATHS.FOLDER_NAME, AGENT_PATHS.AGENTS_DIR);
   }
 }
 function getRelativeAgentDirectoryPath(location) {
   switch (location) {
     case "projectSettings":
-      return join117(".", AGENT_PATHS.FOLDER_NAME, AGENT_PATHS.AGENTS_DIR);
+      return join118(".", AGENT_PATHS.FOLDER_NAME, AGENT_PATHS.AGENTS_DIR);
     default:
       return getAgentDirectoryPath(location);
   }
 }
 function getNewAgentFilePath(agent) {
   const dirPath = getAgentDirectoryPath(agent.source);
-  return join117(dirPath, `${agent.agentType}.md`);
+  return join118(dirPath, `${agent.agentType}.md`);
 }
 function getActualAgentFilePath(agent) {
   if (agent.source === "built-in") {
@@ -489522,14 +489592,14 @@ function getActualAgentFilePath(agent) {
   }
   const dirPath = getAgentDirectoryPath(agent.source);
   const filename = agent.filename || agent.agentType;
-  return join117(dirPath, `${filename}.md`);
+  return join118(dirPath, `${filename}.md`);
 }
 function getNewRelativeAgentFilePath(agent) {
   if (agent.source === "built-in") {
     return "Built-in";
   }
   const dirPath = getRelativeAgentDirectoryPath(agent.source);
-  return join117(dirPath, `${agent.agentType}.md`);
+  return join118(dirPath, `${agent.agentType}.md`);
 }
 function getActualRelativeAgentFilePath(agent) {
   if (isBuiltInAgent(agent)) {
@@ -489543,7 +489613,7 @@ function getActualRelativeAgentFilePath(agent) {
   }
   const dirPath = getRelativeAgentDirectoryPath(agent.source);
   const filename = agent.filename || agent.agentType;
-  return join117(dirPath, `${filename}.md`);
+  return join118(dirPath, `${filename}.md`);
 }
 async function ensureAgentDirectoryExists(source) {
   const dirPath = getAgentDirectoryPath(source);
@@ -489608,7 +489678,7 @@ var init_agentFileUtils = __esm(() => {
 
 // components/agents/AgentDetail.tsx
 function AgentDetail(t0) {
-  const $ = import_compiler_runtime246.c(48);
+  const $ = import_compiler_runtime245.c(48);
   const {
     agent,
     tools,
@@ -489966,7 +490036,7 @@ function AgentDetail(t0) {
   }
   return t24;
 }
-var import_compiler_runtime246, jsx_runtime304;
+var import_compiler_runtime245, jsx_runtime304;
 var init_AgentDetail = __esm(() => {
   init_figures();
   init_ink2();
@@ -489978,13 +490048,13 @@ var init_AgentDetail = __esm(() => {
   init_agent();
   init_Markdown();
   init_agentFileUtils();
-  import_compiler_runtime246 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime245 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime304 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/ColorPicker.tsx
 function ColorPicker(t0) {
-  const $ = import_compiler_runtime247.c(17);
+  const $ = import_compiler_runtime246.c(17);
   const {
     agentName,
     currentColor: t1,
@@ -490146,13 +490216,13 @@ function _temp259(prev_0) {
 function _temp139(prev) {
   return prev > 0 ? prev - 1 : COLOR_OPTIONS.length - 1;
 }
-var import_compiler_runtime247, import_react176, jsx_runtime305, COLOR_OPTIONS;
+var import_compiler_runtime246, import_react176, jsx_runtime305, COLOR_OPTIONS;
 var init_ColorPicker = __esm(() => {
   init_figures();
   init_ink2();
   init_agentColorManager();
   init_stringUtils();
-  import_compiler_runtime247 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime246 = __toESM(require_compiler_runtime(), 1);
   import_react176 = __toESM(require_react(), 1);
   jsx_runtime305 = __toESM(require_jsx_runtime(), 1);
   COLOR_OPTIONS = ["automatic", ...AGENT_COLORS];
@@ -490160,7 +490230,7 @@ var init_ColorPicker = __esm(() => {
 
 // components/agents/ModelSelector.tsx
 function ModelSelector(t0) {
-  const $ = import_compiler_runtime248.c(11);
+  const $ = import_compiler_runtime247.c(11);
   const {
     initialModel,
     onComplete,
@@ -490233,12 +490303,12 @@ function ModelSelector(t0) {
   }
   return t4;
 }
-var import_compiler_runtime248, jsx_runtime306;
+var import_compiler_runtime247, jsx_runtime306;
 var init_ModelSelector = __esm(() => {
   init_ink2();
   init_agent();
   init_select();
-  import_compiler_runtime248 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime247 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime306 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -490286,7 +490356,7 @@ function getMcpServerBuckets(tools) {
   })).sort((a, b) => a.serverName.localeCompare(b.serverName));
 }
 function ToolSelector(t0) {
-  const $ = import_compiler_runtime249.c(69);
+  const $ = import_compiler_runtime248.c(69);
   const {
     tools,
     initialTools,
@@ -490389,7 +490459,7 @@ function ToolSelector(t0) {
   let t8;
   if ($[16] !== customAgentTools || $[17] !== onComplete || $[18] !== validSelectedTools) {
     t8 = () => {
-      const allToolNames = customAgentTools.map(_temp338);
+      const allToolNames = customAgentTools.map(_temp337);
       const areAllToolsSelected = validSelectedTools.length === allToolNames.length && allToolNames.every((name_0) => validSelectedTools.includes(name_0));
       const finalTools = areAllToolsSelected ? undefined : validSelectedTools;
       onComplete(finalTools);
@@ -490787,7 +490857,7 @@ function _temp520(t_7) {
 function _temp429(t_6) {
   return t_6.name;
 }
-function _temp338(t_4) {
+function _temp337(t_4) {
   return t_4.name;
 }
 function _temp260(t_0) {
@@ -490796,7 +490866,7 @@ function _temp260(t_0) {
 function _temp140(t) {
   return t.name;
 }
-var import_compiler_runtime249, import_react177, jsx_runtime307;
+var import_compiler_runtime248, import_react177, jsx_runtime307;
 var init_ToolSelector = __esm(() => {
   init_figures();
   init_mcpStringUtils();
@@ -490823,7 +490893,7 @@ var init_ToolSelector = __esm(() => {
   init_useKeybinding();
   init_stringUtils();
   init_Divider();
-  import_compiler_runtime249 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime248 = __toESM(require_compiler_runtime(), 1);
   import_react177 = __toESM(require_react(), 1);
   jsx_runtime307 = __toESM(require_jsx_runtime(), 1);
 });
@@ -491044,7 +491114,7 @@ var init_AgentEditor = __esm(() => {
 
 // components/agents/AgentNavigationFooter.tsx
 function AgentNavigationFooter(t0) {
-  const $ = import_compiler_runtime250.c(2);
+  const $ = import_compiler_runtime249.c(2);
   const {
     instructions: t1
   } = t0;
@@ -491067,17 +491137,17 @@ function AgentNavigationFooter(t0) {
   }
   return t3;
 }
-var import_compiler_runtime250, jsx_runtime309;
+var import_compiler_runtime249, jsx_runtime309;
 var init_AgentNavigationFooter = __esm(() => {
   init_useExitOnCtrlCDWithKeybindings();
   init_ink2();
-  import_compiler_runtime250 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime249 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime309 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/AgentsList.tsx
 function AgentsList(t0) {
-  const $ = import_compiler_runtime251.c(96);
+  const $ = import_compiler_runtime250.c(96);
   const {
     source,
     agents,
@@ -491086,8 +491156,8 @@ function AgentsList(t0) {
     onCreateNew,
     changes
   } = t0;
-  const [selectedAgent, setSelectedAgent] = React96.useState(null);
-  const [isCreateNewSelected, setIsCreateNewSelected] = React96.useState(true);
+  const [selectedAgent, setSelectedAgent] = React97.useState(null);
+  const [isCreateNewSelected, setIsCreateNewSelected] = React97.useState(true);
   let t1;
   if ($[0] !== agents) {
     t1 = [...agents].sort(compareAgentsByName);
@@ -491185,7 +491255,7 @@ function AgentsList(t0) {
     bb0: {
       const nonBuiltIn = sortedAgents.filter(_temp261);
       if (source === "all") {
-        t4 = AGENT_SOURCE_GROUPS.filter(_temp339).flatMap((t5) => {
+        t4 = AGENT_SOURCE_GROUPS.filter(_temp338).flatMap((t5) => {
           const {
             source: groupSource
           } = t5;
@@ -491225,7 +491295,7 @@ function AgentsList(t0) {
     t5 = $[15];
     t6 = $[16];
   }
-  React96.useEffect(t5, t6);
+  React97.useEffect(t5, t6);
   let t7;
   if ($[17] !== isCreateNewSelected || $[18] !== onCreateNew || $[19] !== onSelect || $[20] !== selectableAgentsInOrder || $[21] !== selectedAgent) {
     t7 = (e) => {
@@ -491514,7 +491584,7 @@ function AgentsList(t0) {
               label,
               source: groupSource_0
             } = t24;
-            return /* @__PURE__ */ jsx_runtime310.jsx(React96.Fragment, {
+            return /* @__PURE__ */ jsx_runtime310.jsx(React97.Fragment, {
               children: renderAgentGroup(label, sortedAgents.filter((a_7) => a_7.source === groupSource_0))
             }, groupSource_0);
           }),
@@ -491678,7 +491748,7 @@ function _temp521(a_3) {
 function _temp430(a_2) {
   return a_2.source === "built-in";
 }
-function _temp339(g) {
+function _temp338(g) {
   return g.source !== "built-in";
 }
 function _temp261(a) {
@@ -491690,7 +491760,7 @@ function _temp143(agent) {
     overriddenBy: agent.overriddenBy || null
   };
 }
-var import_compiler_runtime251, React96, jsx_runtime310;
+var import_compiler_runtime250, React97, jsx_runtime310;
 var init_AgentsList = __esm(() => {
   init_figures();
   init_ink2();
@@ -491698,14 +491768,14 @@ var init_AgentsList = __esm(() => {
   init_Dialog();
   init_Divider();
   init_utils14();
-  import_compiler_runtime251 = __toESM(require_compiler_runtime(), 1);
-  React96 = __toESM(require_react(), 1);
+  import_compiler_runtime250 = __toESM(require_compiler_runtime(), 1);
+  React97 = __toESM(require_react(), 1);
   jsx_runtime310 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/wizard/WizardProvider.tsx
 function WizardProvider(t0) {
-  const $ = import_compiler_runtime252.c(38);
+  const $ = import_compiler_runtime251.c(38);
   const {
     steps,
     initialData: t1,
@@ -491788,7 +491858,7 @@ function WizardProvider(t0) {
         }
       } else {
         if (currentStepIndex > 0) {
-          setCurrentStepIndex(_temp340);
+          setCurrentStepIndex(_temp339);
         } else {
           if (onCancel) {
             onCancel();
@@ -491902,7 +491972,7 @@ function WizardProvider(t0) {
   }
   return t14;
 }
-function _temp340(prev_2) {
+function _temp339(prev_2) {
   return prev_2 - 1;
 }
 function _temp262(prev_1) {
@@ -491911,10 +491981,10 @@ function _temp262(prev_1) {
 function _temp144(prev_0) {
   return prev_0 + 1;
 }
-var import_compiler_runtime252, import_react179, jsx_runtime311, WizardContext;
+var import_compiler_runtime251, import_react179, jsx_runtime311, WizardContext;
 var init_WizardProvider = __esm(() => {
   init_useExitOnCtrlCDWithKeybindings();
-  import_compiler_runtime252 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime251 = __toESM(require_compiler_runtime(), 1);
   import_react179 = __toESM(require_react(), 1);
   jsx_runtime311 = __toESM(require_jsx_runtime(), 1);
   WizardContext = import_react179.createContext(null);
@@ -491977,7 +492047,7 @@ var init_WizardNavigationFooter = __esm(() => {
 
 // components/wizard/WizardDialogLayout.tsx
 function WizardDialogLayout(t0) {
-  const $ = import_compiler_runtime253.c(11);
+  const $ = import_compiler_runtime252.c(11);
   const {
     title: titleOverride,
     color: t1,
@@ -492042,12 +492112,12 @@ function WizardDialogLayout(t0) {
   }
   return t5;
 }
-var import_compiler_runtime253, jsx_runtime313;
+var import_compiler_runtime252, jsx_runtime313;
 var init_WizardDialogLayout = __esm(() => {
   init_Dialog();
   init_useWizard();
   init_WizardNavigationFooter();
-  import_compiler_runtime253 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime252 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime313 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -492061,7 +492131,7 @@ var init_wizard = __esm(() => {
 
 // components/agents/new-agent-creation/wizard-steps/ColorStep.tsx
 function ColorStep() {
-  const $ = import_compiler_runtime254.c(14);
+  const $ = import_compiler_runtime253.c(14);
   const {
     goNext,
     goBack,
@@ -492158,7 +492228,7 @@ function ColorStep() {
   }
   return t4;
 }
-var import_compiler_runtime254, jsx_runtime314;
+var import_compiler_runtime253, jsx_runtime314;
 var init_ColorStep = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -492168,7 +492238,7 @@ var init_ColorStep = __esm(() => {
   init_wizard();
   init_WizardDialogLayout();
   init_ColorPicker();
-  import_compiler_runtime254 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime253 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime314 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -492244,7 +492314,7 @@ var init_validateAgent = __esm(() => {
 
 // components/agents/new-agent-creation/wizard-steps/ConfirmStep.tsx
 function ConfirmStep(t0) {
-  const $ = import_compiler_runtime255.c(88);
+  const $ = import_compiler_runtime254.c(88);
   const {
     tools,
     existingAgents,
@@ -492576,7 +492646,7 @@ function ConfirmStep(t0) {
           color: "error",
           children: "Errors:"
         }),
-        validation.errors.map(_temp341)
+        validation.errors.map(_temp340)
       ]
     });
     $[4] = agent;
@@ -492744,7 +492814,7 @@ function ConfirmStep(t0) {
   }
   return t25;
 }
-function _temp341(err, i_0) {
+function _temp340(err, i_0) {
   return /* @__PURE__ */ jsx_runtime315.jsxs(ThemedText, {
     color: "error",
     children: [
@@ -492779,7 +492849,7 @@ function _temp145(toolNames) {
   }
   return `${toolNames.slice(0, -1).join(", ")}, and ${toolNames[toolNames.length - 1]}`;
 }
-var import_compiler_runtime255, jsx_runtime315;
+var import_compiler_runtime254, jsx_runtime315;
 var init_ConfirmStep = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -492794,7 +492864,7 @@ var init_ConfirmStep = __esm(() => {
   init_WizardDialogLayout();
   init_agentFileUtils();
   init_validateAgent();
-  import_compiler_runtime255 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime254 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime315 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -492879,7 +492949,7 @@ var init_ConfirmStepWrapper = __esm(() => {
 
 // components/agents/new-agent-creation/wizard-steps/DescriptionStep.tsx
 function DescriptionStep() {
-  const $ = import_compiler_runtime256.c(18);
+  const $ = import_compiler_runtime255.c(18);
   const {
     goNext,
     goBack,
@@ -493043,7 +493113,7 @@ function DescriptionStep() {
   }
   return t8;
 }
-var import_compiler_runtime256, import_react182, jsx_runtime317;
+var import_compiler_runtime255, import_react182, jsx_runtime317;
 var init_DescriptionStep = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -493054,7 +493124,7 @@ var init_DescriptionStep = __esm(() => {
   init_TextInput();
   init_wizard();
   init_WizardDialogLayout();
-  import_compiler_runtime256 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime255 = __toESM(require_compiler_runtime(), 1);
   import_react182 = __toESM(require_react(), 1);
   jsx_runtime317 = __toESM(require_jsx_runtime(), 1);
 });
@@ -493229,7 +493299,7 @@ function GenerateStep() {
   const [isGenerating, setIsGenerating] = import_react183.useState(false);
   const [error, setError] = import_react183.useState(null);
   const [cursorOffset, setCursorOffset] = import_react183.useState(prompt.length);
-  const model = useMainLoopModel2();
+  const model = useMainLoopModel();
   const abortControllerRef = import_react183.useRef(null);
   const handleCancelGeneration = import_react183.useCallback(() => {
     if (abortControllerRef.current) {
@@ -493401,7 +493471,7 @@ var init_GenerateStep = __esm(() => {
 
 // components/agents/new-agent-creation/wizard-steps/LocationStep.tsx
 function LocationStep() {
-  const $ = import_compiler_runtime257.c(11);
+  const $ = import_compiler_runtime256.c(11);
   const {
     goNext,
     updateWizardData,
@@ -493495,7 +493565,7 @@ function LocationStep() {
   }
   return t5;
 }
-var import_compiler_runtime257, jsx_runtime319;
+var import_compiler_runtime256, jsx_runtime319;
 var init_LocationStep = __esm(() => {
   init_ink2();
   init_ConfigurableShortcutHint();
@@ -493504,13 +493574,13 @@ var init_LocationStep = __esm(() => {
   init_KeyboardShortcutHint();
   init_wizard();
   init_WizardDialogLayout();
-  import_compiler_runtime257 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime256 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime319 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/wizard-steps/MemoryStep.tsx
 function MemoryStep() {
-  const $ = import_compiler_runtime258.c(13);
+  const $ = import_compiler_runtime257.c(13);
   const {
     goNext,
     goBack,
@@ -493633,7 +493703,7 @@ function MemoryStep() {
   }
   return t4;
 }
-var import_compiler_runtime258, jsx_runtime320;
+var import_compiler_runtime257, jsx_runtime320;
 var init_MemoryStep = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -493645,13 +493715,13 @@ var init_MemoryStep = __esm(() => {
   init_KeyboardShortcutHint();
   init_wizard();
   init_WizardDialogLayout();
-  import_compiler_runtime258 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime257 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime320 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/wizard-steps/MethodStep.tsx
 function MethodStep() {
-  const $ = import_compiler_runtime259.c(11);
+  const $ = import_compiler_runtime258.c(11);
   const {
     goNext,
     goBack,
@@ -493746,7 +493816,7 @@ function MethodStep() {
   }
   return t4;
 }
-var import_compiler_runtime259, jsx_runtime321;
+var import_compiler_runtime258, jsx_runtime321;
 var init_MethodStep = __esm(() => {
   init_ink2();
   init_ConfigurableShortcutHint();
@@ -493755,13 +493825,13 @@ var init_MethodStep = __esm(() => {
   init_KeyboardShortcutHint();
   init_wizard();
   init_WizardDialogLayout();
-  import_compiler_runtime259 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime258 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime321 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/wizard-steps/ModelStep.tsx
 function ModelStep() {
-  const $ = import_compiler_runtime260.c(8);
+  const $ = import_compiler_runtime259.c(8);
   const {
     goNext,
     goBack,
@@ -493827,7 +493897,7 @@ function ModelStep() {
   }
   return t2;
 }
-var import_compiler_runtime260, jsx_runtime322;
+var import_compiler_runtime259, jsx_runtime322;
 var init_ModelStep = __esm(() => {
   init_ConfigurableShortcutHint();
   init_Byline();
@@ -493835,13 +493905,13 @@ var init_ModelStep = __esm(() => {
   init_wizard();
   init_WizardDialogLayout();
   init_ModelSelector();
-  import_compiler_runtime260 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime259 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime322 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/wizard-steps/PromptStep.tsx
 function PromptStep() {
-  const $ = import_compiler_runtime261.c(20);
+  const $ = import_compiler_runtime260.c(20);
   const {
     goNext,
     goBack,
@@ -494014,7 +494084,7 @@ function PromptStep() {
   }
   return t9;
 }
-var import_compiler_runtime261, import_react184, jsx_runtime323;
+var import_compiler_runtime260, import_react184, jsx_runtime323;
 var init_PromptStep = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -494025,14 +494095,14 @@ var init_PromptStep = __esm(() => {
   init_TextInput();
   init_wizard();
   init_WizardDialogLayout();
-  import_compiler_runtime261 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime260 = __toESM(require_compiler_runtime(), 1);
   import_react184 = __toESM(require_react(), 1);
   jsx_runtime323 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/wizard-steps/ToolsStep.tsx
 function ToolsStep(t0) {
-  const $ = import_compiler_runtime262.c(9);
+  const $ = import_compiler_runtime261.c(9);
   const {
     tools
   } = t0;
@@ -494104,7 +494174,7 @@ function ToolsStep(t0) {
   }
   return t3;
 }
-var import_compiler_runtime262, jsx_runtime324;
+var import_compiler_runtime261, jsx_runtime324;
 var init_ToolsStep = __esm(() => {
   init_ConfigurableShortcutHint();
   init_Byline();
@@ -494112,13 +494182,13 @@ var init_ToolsStep = __esm(() => {
   init_wizard();
   init_WizardDialogLayout();
   init_ToolSelector();
-  import_compiler_runtime262 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime261 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime324 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/wizard-steps/TypeStep.tsx
 function TypeStep(_props) {
-  const $ = import_compiler_runtime263.c(15);
+  const $ = import_compiler_runtime262.c(15);
   const {
     goNext,
     goBack,
@@ -494252,7 +494322,7 @@ function TypeStep(_props) {
   }
   return t6;
 }
-var import_compiler_runtime263, import_react185, jsx_runtime325;
+var import_compiler_runtime262, import_react185, jsx_runtime325;
 var init_TypeStep = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -494263,14 +494333,14 @@ var init_TypeStep = __esm(() => {
   init_wizard();
   init_WizardDialogLayout();
   init_validateAgent();
-  import_compiler_runtime263 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime262 = __toESM(require_compiler_runtime(), 1);
   import_react185 = __toESM(require_react(), 1);
   jsx_runtime325 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/CreateAgentWizard.tsx
 function CreateAgentWizard(t0) {
-  const $ = import_compiler_runtime264.c(17);
+  const $ = import_compiler_runtime263.c(17);
   const {
     tools,
     existingAgents,
@@ -494355,7 +494425,7 @@ function CreateAgentWizard(t0) {
   return t7;
 }
 function _temp146() {}
-var import_compiler_runtime264, jsx_runtime326;
+var import_compiler_runtime263, jsx_runtime326;
 var init_CreateAgentWizard = __esm(() => {
   init_paths();
   init_wizard();
@@ -494370,13 +494440,13 @@ var init_CreateAgentWizard = __esm(() => {
   init_PromptStep();
   init_ToolsStep();
   init_TypeStep();
-  import_compiler_runtime264 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime263 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime326 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/AgentsMenu.tsx
 function AgentsMenu(t0) {
-  const $ = import_compiler_runtime265.c(157);
+  const $ = import_compiler_runtime264.c(157);
   const {
     tools,
     onExit
@@ -494394,7 +494464,7 @@ function AgentsMenu(t0) {
   const [modeState, setModeState] = import_react186.useState(t1);
   const agentDefinitions = useAppState(_temp147);
   const mcpTools = useAppState(_temp264);
-  const toolPermissionContext = useAppState(_temp342);
+  const toolPermissionContext = useAppState(_temp341);
   const setAppState = useSetAppState();
   const {
     allAgents,
@@ -495243,7 +495313,7 @@ function _temp522(a_0) {
 function _temp431(a) {
   return a.source === "built-in";
 }
-function _temp342(s_1) {
+function _temp341(s_1) {
   return s_1.toolPermissionContext;
 }
 function _temp264(s_0) {
@@ -495252,7 +495322,7 @@ function _temp264(s_0) {
 function _temp147(s) {
   return s.agentDefinitions;
 }
-var import_compiler_runtime265, import_react186, jsx_runtime327;
+var import_compiler_runtime264, import_react186, jsx_runtime327;
 var init_AgentsMenu = __esm(() => {
   init_source();
   init_useExitOnCtrlCDWithKeybindings();
@@ -495271,7 +495341,7 @@ var init_AgentsMenu = __esm(() => {
   init_AgentsList();
   init_agentFileUtils();
   init_CreateAgentWizard();
-  import_compiler_runtime265 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime264 = __toESM(require_compiler_runtime(), 1);
   import_react186 = __toESM(require_react(), 1);
   jsx_runtime327 = __toESM(require_jsx_runtime(), 1);
 });
@@ -495554,9 +495624,9 @@ var init_rewind = __esm(() => {
 });
 
 // utils/heapDumpService.ts
-import { createWriteStream as createWriteStream3, writeFileSync as writeFileSync4 } from "fs";
+import { createWriteStream as createWriteStream3, writeFileSync as writeFileSync5 } from "fs";
 import { readdir as readdir25, readFile as readFile45, writeFile as writeFile37 } from "fs/promises";
-import { join as join118 } from "path";
+import { join as join119 } from "path";
 import { pipeline as pipeline3 } from "stream/promises";
 import {
   getHeapSnapshot,
@@ -495646,7 +495716,7 @@ async function captureMemoryDiagnostics(trigger, dumpNumber = 0) {
     smapsRollup,
     platform: process.platform,
     nodeVersion: process.version,
-    ccVersion: "1.0.26"
+    ccVersion: "1.0.27"
   };
 }
 async function performHeapDump(trigger = "manual", dumpNumber = 0) {
@@ -495664,8 +495734,8 @@ async function performHeapDump(trigger = "manual", dumpNumber = 0) {
     const suffix = dumpNumber > 0 ? `-dump${dumpNumber}` : "";
     const heapFilename = `${sessionId}${suffix}.heapsnapshot`;
     const diagFilename = `${sessionId}${suffix}-diagnostics.json`;
-    const heapPath = join118(dumpDir, heapFilename);
-    const diagPath = join118(dumpDir, diagFilename);
+    const heapPath = join119(dumpDir, heapFilename);
+    const diagPath = join119(dumpDir, diagFilename);
     await writeFile37(diagPath, jsonStringify(diagnostics, null, 2), {
       mode: 384
     });
@@ -495693,7 +495763,7 @@ async function performHeapDump(trigger = "manual", dumpNumber = 0) {
 }
 async function writeHeapSnapshot(filepath) {
   if (typeof Bun !== "undefined") {
-    writeFileSync4(filepath, Bun.generateHeapSnapshot("v8", "arraybuffer"), {
+    writeFileSync5(filepath, Bun.generateHeapSnapshot("v8", "arraybuffer"), {
       mode: 384
     });
     Bun.gc(true);
@@ -496232,7 +496302,7 @@ var init_bridge_kick = __esm(() => {
 var call56 = async () => {
   return {
     type: "text",
-    value: "2026-11-10T11:10:41.276Z" ? `${"1.0.26"} (built ${"2026-11-10T11:10:41.276Z"})` : "1.0.26"
+    value: "2026-11-10T11:36:45.347Z" ? `${"1.0.27"} (built ${"2026-11-10T11:36:45.347Z"})` : "1.0.27"
   };
 }, version6, version_default;
 var init_version = __esm(() => {
@@ -496275,7 +496345,7 @@ var init_perf_issue = __esm(() => {
 
 // components/sandbox/SandboxConfigTab.tsx
 function SandboxConfigTab() {
-  const $ = import_compiler_runtime266.c(3);
+  const $ = import_compiler_runtime265.c(3);
   const isEnabled = SandboxManager2.isSandboxingEnabled();
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
@@ -496465,17 +496535,17 @@ function _temp148(w, i) {
     children: w
   }, i);
 }
-var import_compiler_runtime266, jsx_runtime330;
+var import_compiler_runtime265, jsx_runtime330;
 var init_SandboxConfigTab = __esm(() => {
   init_ink2();
   init_sandbox_adapter();
-  import_compiler_runtime266 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime265 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime330 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/sandbox/SandboxDependenciesTab.tsx
 function SandboxDependenciesTab(t0) {
-  const $ = import_compiler_runtime267.c(24);
+  const $ = import_compiler_runtime266.c(24);
   const {
     depCheck
   } = t0;
@@ -496508,7 +496578,7 @@ function SandboxDependenciesTab(t0) {
   const bwrapMissing = t3;
   let t4;
   if ($[5] !== depCheck.errors) {
-    t4 = depCheck.errors.some(_temp343);
+    t4 = depCheck.errors.some(_temp342);
     $[5] = depCheck.errors;
     $[6] = t4;
   } else {
@@ -496726,7 +496796,7 @@ function _temp523(err) {
 function _temp432(e_2) {
   return !e_2.includes("ripgrep") && !e_2.includes("bwrap") && !e_2.includes("socat");
 }
-function _temp343(e_1) {
+function _temp342(e_1) {
   return e_1.includes("socat");
 }
 function _temp265(e_0) {
@@ -496735,17 +496805,17 @@ function _temp265(e_0) {
 function _temp149(e) {
   return e.includes("ripgrep");
 }
-var import_compiler_runtime267, jsx_runtime331;
+var import_compiler_runtime266, jsx_runtime331;
 var init_SandboxDependenciesTab = __esm(() => {
   init_ink2();
   init_platform2();
-  import_compiler_runtime267 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime266 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime331 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/sandbox/SandboxOverridesTab.tsx
 function SandboxOverridesTab(t0) {
-  const $ = import_compiler_runtime268.c(5);
+  const $ = import_compiler_runtime267.c(5);
   const {
     onComplete
   } = t0;
@@ -496820,7 +496890,7 @@ function SandboxOverridesTab(t0) {
   return t1;
 }
 function OverridesSelect(t0) {
-  const $ = import_compiler_runtime268.c(25);
+  const $ = import_compiler_runtime267.c(25);
   const {
     onComplete,
     currentMode
@@ -497010,19 +497080,19 @@ function OverridesSelect(t0) {
   }
   return t14;
 }
-var import_compiler_runtime268, jsx_runtime332;
+var import_compiler_runtime267, jsx_runtime332;
 var init_SandboxOverridesTab = __esm(() => {
   init_ink2();
   init_sandbox_adapter();
   init_select();
   init_Tabs();
-  import_compiler_runtime268 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime267 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime332 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/sandbox/SandboxSettings.tsx
 function SandboxSettings(t0) {
-  const $ = import_compiler_runtime269.c(34);
+  const $ = import_compiler_runtime268.c(34);
   const {
     onComplete,
     depCheck
@@ -497254,7 +497324,7 @@ function SandboxSettings(t0) {
   return t17;
 }
 function SandboxModeTab(t0) {
-  const $ = import_compiler_runtime269.c(16);
+  const $ = import_compiler_runtime268.c(16);
   const {
     showSocketWarning,
     options,
@@ -497383,7 +497453,7 @@ function SandboxModeTab(t0) {
   }
   return t7;
 }
-var import_compiler_runtime269, jsx_runtime333;
+var import_compiler_runtime268, jsx_runtime333;
 var init_SandboxSettings = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -497395,7 +497465,7 @@ var init_SandboxSettings = __esm(() => {
   init_SandboxConfigTab();
   init_SandboxDependenciesTab();
   init_SandboxOverridesTab();
-  import_compiler_runtime269 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime268 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime333 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -497511,7 +497581,7 @@ var init_sandbox_toggle2 = __esm(() => {
 
 // utils/claudeInChrome/setupPortable.ts
 import { readdir as readdir26 } from "fs/promises";
-import { join as join119 } from "path";
+import { join as join120 } from "path";
 function getExtensionIds() {
   return process.env.USER_TYPE === "ant" ? [PROD_EXTENSION_ID, DEV_EXTENSION_ID, ANT_EXTENSION_ID] : [PROD_EXTENSION_ID];
 }
@@ -497538,7 +497608,7 @@ async function detectExtensionInstallationPortable(browserPaths, log) {
     }
     for (const profile of profileDirs) {
       for (const extensionId of extensionIds) {
-        const extensionPath = join119(browserBasePath, profile, "Extensions", extensionId);
+        const extensionPath = join120(browserBasePath, profile, "Extensions", extensionId);
         try {
           await readdir26(extensionPath);
           log?.(`[EvilClaude in Chrome] Extension ${extensionId} found in ${browser} ${profile}`);
@@ -497561,8 +497631,8 @@ var init_setupPortable = __esm(() => {
 
 // utils/claudeInChrome/setup.ts
 import { chmod as chmod10, mkdir as mkdir34, readFile as readFile46, writeFile as writeFile38 } from "fs/promises";
-import { homedir as homedir31 } from "os";
-import { join as join120 } from "path";
+import { homedir as homedir32 } from "os";
+import { join as join121 } from "path";
 import { fileURLToPath as fileURLToPath7 } from "url";
 function shouldEnableClaudeInChrome(chromeFlag) {
   if (getIsNonInteractiveSession() && chromeFlag !== true) {
@@ -497619,8 +497689,8 @@ function setupClaudeInChrome() {
     };
   } else {
     const __filename2 = fileURLToPath7(import.meta.url);
-    const __dirname2 = join120(__filename2, "..");
-    const cliPath = join120(__dirname2, "cli.js");
+    const __dirname2 = join121(__filename2, "..");
+    const cliPath = join121(__dirname2, "cli.js");
     createWrapperScript(`"${process.execPath}" "${cliPath}" --chrome-native-host`).then((manifestBinaryPath) => installChromeNativeHostManifest(manifestBinaryPath)).catch((e) => logForDebugging(`[EvilClaude in Chrome] Failed to install native host: ${e}`, { level: "error" }));
     const mcpConfig = {
       [CLAUDE_IN_CHROME_MCP_SERVER_NAME]: {
@@ -497641,9 +497711,9 @@ function setupClaudeInChrome() {
 function getNativeMessagingHostsDirs() {
   const platform = getPlatform();
   if (platform === "windows") {
-    const home = homedir31();
-    const appData = process.env.APPDATA || join120(home, "AppData", "Local");
-    return [join120(appData, "EvilClaude", "ChromeNativeHost")];
+    const home = homedir32();
+    const appData = process.env.APPDATA || join121(home, "AppData", "Local");
+    return [join121(appData, "EvilClaude", "ChromeNativeHost")];
   }
   return getAllNativeMessagingHostsDirs().map(({ path }) => path);
 }
@@ -497668,7 +497738,7 @@ async function installChromeNativeHostManifest(manifestBinaryPath) {
   const manifestContent = jsonStringify(manifest, null, 2);
   let anyManifestUpdated = false;
   for (const manifestDir of manifestDirs) {
-    const manifestPath = join120(manifestDir, NATIVE_HOST_MANIFEST_NAME);
+    const manifestPath = join121(manifestDir, NATIVE_HOST_MANIFEST_NAME);
     const existingContent = await readFile46(manifestPath, "utf-8").catch(() => null);
     if (existingContent === manifestContent) {
       continue;
@@ -497683,7 +497753,7 @@ async function installChromeNativeHostManifest(manifestBinaryPath) {
     }
   }
   if (getPlatform() === "windows") {
-    const manifestPath = join120(manifestDirs[0], NATIVE_HOST_MANIFEST_NAME);
+    const manifestPath = join121(manifestDirs[0], NATIVE_HOST_MANIFEST_NAME);
     registerWindowsNativeHosts(manifestPath);
   }
   if (anyManifestUpdated) {
@@ -497721,8 +497791,8 @@ function registerWindowsNativeHosts(manifestPath) {
 }
 async function createWrapperScript(command) {
   const platform = getPlatform();
-  const chromeDir = join120(getClaudeConfigHomeDir(), "chrome");
-  const wrapperPath = platform === "windows" ? join120(chromeDir, "chrome-native-host.bat") : join120(chromeDir, "chrome-native-host");
+  const chromeDir = join121(getClaudeConfigHomeDir(), "chrome");
+  const wrapperPath = platform === "windows" ? join121(chromeDir, "chrome-native-host.bat") : join121(chromeDir, "chrome-native-host");
   const scriptContent = platform === "windows" ? `@echo off
 REM Chrome native host wrapper script
 REM Generated by EvilClaude - do not edit manually
@@ -497790,7 +497860,7 @@ __export(exports_chrome, {
   call: () => call58
 });
 function ClaudeInChromeMenu(t0) {
-  const $ = import_compiler_runtime270.c(41);
+  const $ = import_compiler_runtime269.c(41);
   const {
     onDone,
     isExtensionInstalled: installed,
@@ -497841,7 +497911,7 @@ function ClaudeInChromeMenu(t0) {
       bb22:
         switch (action) {
           case "install-extension": {
-            setSelectKey(_temp344);
+            setSelectKey(_temp343);
             setShowInstallHint(true);
             openUrl(CHROME_EXTENSION_URL);
             break bb22;
@@ -498145,7 +498215,7 @@ function _temp524(k) {
 function _temp433(k_0) {
   return k_0 + 1;
 }
-function _temp344(k_1) {
+function _temp343(k_1) {
   return k_1 + 1;
 }
 function _temp266(c) {
@@ -498154,7 +498224,7 @@ function _temp266(c) {
 function _temp150(s) {
   return s.mcp.clients;
 }
-var import_compiler_runtime270, import_react187, jsx_runtime335, CHROME_EXTENSION_URL = "https://evilclaude.swampmine.in", CHROME_PERMISSIONS_URL = "https://clau.de/chrome/permissions", CHROME_RECONNECT_URL = "https://clau.de/chrome/reconnect", call58 = async function(onDone) {
+var import_compiler_runtime269, import_react187, jsx_runtime335, CHROME_EXTENSION_URL = "https://evilclaude.swampmine.in", CHROME_PERMISSIONS_URL = "https://clau.de/chrome/permissions", CHROME_RECONNECT_URL = "https://clau.de/chrome/reconnect", call58 = async function(onDone) {
   const isExtensionInstalled = await isChromeExtensionInstalled();
   const config = getGlobalConfig();
   const isSubscriber = isClaudeAISubscriber();
@@ -498179,7 +498249,7 @@ var init_chrome = __esm(() => {
   init_config2();
   init_env();
   init_envUtils();
-  import_compiler_runtime270 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime269 = __toESM(require_compiler_runtime(), 1);
   import_react187 = __toESM(require_react(), 1);
   jsx_runtime335 = __toESM(require_jsx_runtime(), 1);
 });
@@ -498328,7 +498398,7 @@ var init_advisor2 = __esm(() => {
 // skills/bundledSkills.ts
 import { constants as fsConstants7 } from "fs";
 import { mkdir as mkdir35, open as open13 } from "fs/promises";
-import { dirname as dirname51, isAbsolute as isAbsolute24, join as join121, normalize as normalize12, sep as pathSep2 } from "path";
+import { dirname as dirname51, isAbsolute as isAbsolute24, join as join122, normalize as normalize12, sep as pathSep2 } from "path";
 function registerBundledSkill(definition) {
   const { files } = definition;
   let skillRoot;
@@ -498376,7 +498446,7 @@ function getBundledSkills() {
   return [...bundledSkills];
 }
 function getBundledSkillExtractDir(skillName) {
-  return join121(getBundledSkillsRoot(), skillName);
+  return join122(getBundledSkillsRoot(), skillName);
 }
 async function extractBundledSkillFiles(skillName, files) {
   const dir = getBundledSkillExtractDir(skillName);
@@ -498418,7 +498488,7 @@ function resolveSkillFilePath(baseDir, relPath) {
   if (isAbsolute24(normalized) || normalized.split(pathSep2).includes("..") || normalized.split("/").includes("..")) {
     throw new Error(`bundled skill file path escapes skill dir: ${relPath}`);
   }
-  return join121(baseDir, normalized);
+  return join122(baseDir, normalized);
 }
 function prependBaseDir(blocks, baseDir) {
   const prefix = `Base directory for this skill: ${baseDir}
@@ -498683,7 +498753,7 @@ var init_WorktreeExitDialog = __esm(() => {
 
 // components/ExitFlow.tsx
 function ExitFlow(t0) {
-  const $ = import_compiler_runtime271.c(5);
+  const $ = import_compiler_runtime270.c(5);
   const {
     showWorktree,
     onDone,
@@ -498718,11 +498788,11 @@ function ExitFlow(t0) {
   }
   return null;
 }
-var import_compiler_runtime271, jsx_runtime337;
+var import_compiler_runtime270, jsx_runtime337;
 var init_ExitFlow = __esm(() => {
   init_gracefulShutdown();
   init_WorktreeExitDialog();
-  import_compiler_runtime271 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime270 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime337 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -498769,7 +498839,7 @@ var init_exit2 = __esm(() => {
 });
 
 // components/ExportDialog.tsx
-import { join as join122 } from "path";
+import { join as join123 } from "path";
 function ExportDialog({
   content,
   defaultFilename,
@@ -498802,7 +498872,7 @@ function ExportDialog({
   };
   const handleFilenameSubmit = () => {
     const finalFilename = filename.endsWith(".txt") ? filename : filename.replace(/\.[^.]+$/, "") + ".txt";
-    const filepath = join122(getCwd(), finalFilename);
+    const filepath = join123(getCwd(), finalFilename);
     try {
       writeFileSync_DEPRECATED(filepath, content, {
         encoding: "utf-8",
@@ -499025,7 +499095,7 @@ __export(exports_export, {
   extractFirstPrompt: () => extractFirstPrompt,
   sanitizeFilename: () => sanitizeFilename
 });
-import { join as join123 } from "path";
+import { join as join124 } from "path";
 function formatTimestamp(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -499069,7 +499139,7 @@ async function call62(onDone, context, args) {
   const filename = args.trim();
   if (filename) {
     const finalFilename = filename.endsWith(".txt") ? filename : filename.replace(/\.[^.]+$/, "") + ".txt";
-    const filepath = join123(getCwd(), finalFilename);
+    const filepath = join124(getCwd(), finalFilename);
     try {
       writeFileSync_DEPRECATED(filepath, content, {
         encoding: "utf-8",
@@ -499127,13 +499197,13 @@ __export(exports_model, {
   call: () => call63
 });
 function ModelPickerWrapper(t0) {
-  const $ = import_compiler_runtime272.c(17);
+  const $ = import_compiler_runtime271.c(17);
   const {
     onDone
   } = t0;
   const mainLoopModel = useAppState(_temp151);
   const mainLoopModelForSession = useAppState(_temp267);
-  const isFastMode = useAppState(_temp345);
+  const isFastMode = useAppState(_temp344);
   const setAppState = useSetAppState();
   let t1;
   if ($[0] !== mainLoopModel || $[1] !== onDone) {
@@ -499236,7 +499306,7 @@ function _temp434(prev_0) {
     fastMode: false
   };
 }
-function _temp345(s_1) {
+function _temp344(s_1) {
   return s_1.fastMode;
 }
 function _temp267(s_0) {
@@ -499252,7 +499322,7 @@ function SetModelAndClose({
   const isFastMode = useAppState((s) => s.fastMode);
   const setAppState = useSetAppState();
   const model = args === "default" ? null : args;
-  React107.useEffect(() => {
+  React108.useEffect(() => {
     async function handleModelChange() {
       if (model && !isModelAllowed(model)) {
         onDone(`Model '${model}' is not available. Your organization restricts model selection.`, {
@@ -499372,7 +499442,7 @@ function renderModelLabel(model) {
   const rendered = renderDefaultModelSetting(model ?? getDefaultMainLoopModelSetting());
   return model === null ? `${rendered} (default)` : rendered;
 }
-var import_compiler_runtime272, React107, jsx_runtime342, call63 = async (onDone, _context, args) => {
+var import_compiler_runtime271, React108, jsx_runtime342, call63 = async (onDone, _context, args) => {
   args = args?.trim() || "";
   if (COMMON_INFO_ARGS.includes(args)) {
     logEvent("tengu_model_command_inline_help", {
@@ -499414,8 +499484,8 @@ var init_model2 = __esm(() => {
   init_model();
   init_modelAllowlist();
   init_validateModel();
-  import_compiler_runtime272 = __toESM(require_compiler_runtime(), 1);
-  React107 = __toESM(require_react(), 1);
+  import_compiler_runtime271 = __toESM(require_compiler_runtime(), 1);
+  React108 = __toESM(require_react(), 1);
   jsx_runtime342 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -499444,7 +499514,7 @@ __export(exports_tag, {
   call: () => call64
 });
 function ConfirmRemoveTag(t0) {
-  const $ = import_compiler_runtime273.c(11);
+  const $ = import_compiler_runtime272.c(11);
   const {
     tagName,
     onConfirm,
@@ -499519,13 +499589,13 @@ function ConfirmRemoveTag(t0) {
   return t6;
 }
 function ToggleTagAndClose(t0) {
-  const $ = import_compiler_runtime273.c(17);
+  const $ = import_compiler_runtime272.c(17);
   const {
     tagName,
     onDone
   } = t0;
-  const [showConfirm, setShowConfirm] = React108.useState(false);
-  const [sessionId, setSessionId] = React108.useState(null);
+  const [showConfirm, setShowConfirm] = React109.useState(false);
+  const [sessionId, setSessionId] = React109.useState(null);
   let t1;
   if ($[0] !== tagName) {
     t1 = recursivelySanitizeUnicode(tagName).trim();
@@ -499580,7 +499650,7 @@ function ToggleTagAndClose(t0) {
     t2 = $[4];
     t3 = $[5];
   }
-  React108.useEffect(t2, t3);
+  React109.useEffect(t2, t3);
   if (showConfirm && sessionId) {
     let t4;
     if ($[6] !== normalizedTag || $[7] !== onDone || $[8] !== sessionId) {
@@ -499632,7 +499702,7 @@ function ToggleTagAndClose(t0) {
   return null;
 }
 function ShowHelp(t0) {
-  const $ = import_compiler_runtime273.c(3);
+  const $ = import_compiler_runtime272.c(3);
   const {
     onDone
   } = t0;
@@ -499662,7 +499732,7 @@ Examples:
     t1 = $[1];
     t2 = $[2];
   }
-  React108.useEffect(t1, t2);
+  React109.useEffect(t1, t2);
   return null;
 }
 async function call64(onDone, _context, args) {
@@ -499682,7 +499752,7 @@ async function call64(onDone, _context, args) {
     onDone
   });
 }
-var import_compiler_runtime273, React108, jsx_runtime343;
+var import_compiler_runtime272, React109, jsx_runtime343;
 var init_tag = __esm(() => {
   init_source();
   init_state();
@@ -499692,8 +499762,8 @@ var init_tag = __esm(() => {
   init_ink2();
   init_analytics();
   init_sessionStorage();
-  import_compiler_runtime273 = __toESM(require_compiler_runtime(), 1);
-  React108 = __toESM(require_react(), 1);
+  import_compiler_runtime272 = __toESM(require_compiler_runtime(), 1);
+  React109 = __toESM(require_react(), 1);
   jsx_runtime343 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -499780,7 +499850,7 @@ var init_environmentSelection = __esm(() => {
 
 // components/RemoteEnvironmentDialog.tsx
 function RemoteEnvironmentDialog(t0) {
-  const $ = import_compiler_runtime274.c(27);
+  const $ = import_compiler_runtime273.c(27);
   const {
     onDone
   } = t0;
@@ -499980,7 +500050,7 @@ function RemoteEnvironmentDialog(t0) {
   return t5;
 }
 function EnvironmentLabel(t0) {
-  const $ = import_compiler_runtime274.c(7);
+  const $ = import_compiler_runtime273.c(7);
   const {
     environment
   } = t0;
@@ -500030,7 +500100,7 @@ function EnvironmentLabel(t0) {
   return t3;
 }
 function SingleEnvironmentContent(t0) {
-  const $ = import_compiler_runtime274.c(6);
+  const $ = import_compiler_runtime273.c(6);
   const {
     environment,
     onDone
@@ -500072,7 +500142,7 @@ function SingleEnvironmentContent(t0) {
   return t3;
 }
 function MultipleEnvironmentsContent(t0) {
-  const $ = import_compiler_runtime274.c(18);
+  const $ = import_compiler_runtime273.c(18);
   const {
     environments,
     selectedEnvironment,
@@ -500210,7 +500280,7 @@ function _temp153(env) {
     value: env.environment_id
   };
 }
-var import_compiler_runtime274, import_react191, jsx_runtime344, DIALOG_TITLE = "Select Remote Environment", SETUP_HINT = `Configure environments at: https://evilclaude.swampmine.in`;
+var import_compiler_runtime273, import_react191, jsx_runtime344, DIALOG_TITLE = "Select Remote Environment", SETUP_HINT = `Configure environments at: https://evilclaude.swampmine.in`;
 var init_RemoteEnvironmentDialog = __esm(() => {
   init_source();
   init_figures();
@@ -500227,7 +500297,7 @@ var init_RemoteEnvironmentDialog = __esm(() => {
   init_Dialog();
   init_KeyboardShortcutHint();
   init_LoadingState();
-  import_compiler_runtime274 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime273 = __toESM(require_compiler_runtime(), 1);
   import_react191 = __toESM(require_react(), 1);
   jsx_runtime344 = __toESM(require_jsx_runtime(), 1);
 });
@@ -500333,7 +500403,7 @@ __export(exports_rate_limit_options, {
   call: () => call68
 });
 function RateLimitOptionsMenu(t0) {
-  const $ = import_compiler_runtime275.c(25);
+  const $ = import_compiler_runtime274.c(25);
   const {
     onDone,
     context
@@ -500530,7 +500600,7 @@ async function call68(onDone, context) {
     context
   });
 }
-var import_compiler_runtime275, import_react192, jsx_runtime347;
+var import_compiler_runtime274, import_react192, jsx_runtime347;
 var init_rate_limit_options = __esm(() => {
   init_select();
   init_Dialog();
@@ -500543,7 +500613,7 @@ var init_rate_limit_options = __esm(() => {
   init_extra_usage2();
   init_upgrade2();
   init_upgrade();
-  import_compiler_runtime275 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime274 = __toESM(require_compiler_runtime(), 1);
   import_react192 = __toESM(require_react(), 1);
   jsx_runtime347 = __toESM(require_jsx_runtime(), 1);
 });
@@ -500702,7 +500772,7 @@ function ShowCurrentEffort(t0) {
     onDone
   } = t0;
   const effortValue = useAppState(_temp154);
-  const model = useMainLoopModel2();
+  const model = useMainLoopModel();
   const {
     message
   } = showCurrentEffort(effortValue, model);
@@ -500713,7 +500783,7 @@ function _temp154(s) {
   return s.effortValue;
 }
 function ApplyEffortAndClose(t0) {
-  const $ = import_compiler_runtime276.c(6);
+  const $ = import_compiler_runtime275.c(6);
   const {
     result,
     onDone
@@ -500746,7 +500816,7 @@ function ApplyEffortAndClose(t0) {
     t1 = $[4];
     t2 = $[5];
   }
-  React110.useEffect(t1, t2);
+  React111.useEffect(t1, t2);
   return null;
 }
 async function call69(onDone, _context, args) {
@@ -500773,15 +500843,15 @@ Effort levels:
     onDone
   });
 }
-var import_compiler_runtime276, React110, jsx_runtime348, COMMON_HELP_ARGS2;
+var import_compiler_runtime275, React111, jsx_runtime348, COMMON_HELP_ARGS2;
 var init_effort2 = __esm(() => {
   init_useMainLoopModel();
   init_analytics();
   init_AppState();
   init_effort();
   init_settings2();
-  import_compiler_runtime276 = __toESM(require_compiler_runtime(), 1);
-  React110 = __toESM(require_react(), 1);
+  import_compiler_runtime275 = __toESM(require_compiler_runtime(), 1);
+  React111 = __toESM(require_react(), 1);
   jsx_runtime348 = __toESM(require_jsx_runtime(), 1);
   COMMON_HELP_ARGS2 = ["help", "-h", "--help"];
 });
@@ -500902,7 +500972,7 @@ var require_asciichart = __commonJS(function(exports2) {
 // utils/statsCache.ts
 import { randomBytes as randomBytes17 } from "crypto";
 import { open as open14 } from "fs/promises";
-import { join as join124 } from "path";
+import { join as join125 } from "path";
 async function withStatsCacheLock(fn) {
   while (statsCacheLockPromise) {
     await statsCacheLockPromise;
@@ -500919,7 +500989,7 @@ async function withStatsCacheLock(fn) {
   }
 }
 function getStatsCachePath() {
-  return join124(getClaudeConfigHomeDir(), STATS_CACHE_FILENAME);
+  return join125(getClaudeConfigHomeDir(), STATS_CACHE_FILENAME);
 }
 function getEmptyCache() {
   return {
@@ -501587,12 +501657,12 @@ var init_ansiToPng = __esm(() => {
 // utils/screenshotClipboard.ts
 import { mkdir as mkdir36, unlink as unlink19, writeFile as writeFile39 } from "fs/promises";
 import { tmpdir as tmpdir8 } from "os";
-import { join as join125 } from "path";
+import { join as join126 } from "path";
 async function copyAnsiToClipboard(ansiText, options) {
   try {
-    const tempDir = join125(tmpdir8(), "claude-code-screenshots");
+    const tempDir = join126(tmpdir8(), "claude-code-screenshots");
     await mkdir36(tempDir, { recursive: true });
-    const pngPath = join125(tempDir, `screenshot-${Date.now()}.png`);
+    const pngPath = join126(tempDir, `screenshot-${Date.now()}.png`);
     const pngBuffer = ansiToPng(ansiText, options);
     await writeFile39(pngPath, pngBuffer);
     const result = await copyPngToClipboard(pngPath);
@@ -501663,7 +501733,7 @@ var init_screenshotClipboard = __esm(() => {
 
 // utils/stats.ts
 import { open as open15 } from "fs/promises";
-import { basename as basename38, join as join126, sep as sep30 } from "path";
+import { basename as basename38, join as join127, sep as sep30 } from "path";
 async function processSessionFiles(sessionFiles, options = {}) {
   const { fromDate, toDate } = options;
   const fs = getFsImplementation();
@@ -501841,17 +501911,17 @@ async function getAllSessionFiles() {
       return [];
     throw e;
   }
-  const projectDirs = allEntries.filter((dirent) => dirent.isDirectory()).map((dirent) => join126(projectsDir, dirent.name));
+  const projectDirs = allEntries.filter((dirent) => dirent.isDirectory()).map((dirent) => join127(projectsDir, dirent.name));
   const projectResults = await Promise.all(projectDirs.map(async (projectDir) => {
     try {
       const entries = await fs.readdir(projectDir);
-      const mainFiles = entries.filter((dirent) => dirent.isFile() && dirent.name.endsWith(".jsonl")).map((dirent) => join126(projectDir, dirent.name));
+      const mainFiles = entries.filter((dirent) => dirent.isFile() && dirent.name.endsWith(".jsonl")).map((dirent) => join127(projectDir, dirent.name));
       const sessionDirs = entries.filter((dirent) => dirent.isDirectory());
       const subagentResults = await Promise.all(sessionDirs.map(async (sessionDir) => {
-        const subagentsDir = join126(projectDir, sessionDir.name, "subagents");
+        const subagentsDir = join127(projectDir, sessionDir.name, "subagents");
         try {
           const subagentEntries = await fs.readdir(subagentsDir);
-          return subagentEntries.filter((dirent) => dirent.isFile() && dirent.name.endsWith(".jsonl") && dirent.name.startsWith("agent-")).map((dirent) => join126(subagentsDir, dirent.name));
+          return subagentEntries.filter((dirent) => dirent.isFile() && dirent.name.endsWith(".jsonl") && dirent.name.startsWith("agent-")).map((dirent) => join127(subagentsDir, dirent.name));
         } catch {
           return [];
         }
@@ -502267,7 +502337,7 @@ function createAllTimeStatsPromise() {
   });
 }
 function Stats2(t0) {
-  const $ = import_compiler_runtime277.c(4);
+  const $ = import_compiler_runtime276.c(4);
   const {
     onClose
   } = t0;
@@ -502311,7 +502381,7 @@ function Stats2(t0) {
   return t3;
 }
 function StatsContent(t0) {
-  const $ = import_compiler_runtime277.c(34);
+  const $ = import_compiler_runtime276.c(34);
   const {
     allTimePromise,
     onClose
@@ -502571,7 +502641,7 @@ function _temp155(prev_0) {
   return prev_0 === "Overview" ? "Models" : "Overview";
 }
 function DateRangeSelector(t0) {
-  const $ = import_compiler_runtime277.c(9);
+  const $ = import_compiler_runtime276.c(9);
   const {
     dateRange,
     isLoading
@@ -503003,7 +503073,7 @@ function generateFunFactoid(stats, totalTokens) {
   return factoids[randomIndex];
 }
 function ModelsTab(t0) {
-  const $ = import_compiler_runtime277.c(15);
+  const $ = import_compiler_runtime276.c(15);
   const {
     stats,
     dateRange,
@@ -503208,7 +503278,7 @@ function _temp716(t0, t1) {
   return b.inputTokens + b.outputTokens - (a.inputTokens + a.outputTokens);
 }
 function ModelEntry(t0) {
-  const $ = import_compiler_runtime277.c(21);
+  const $ = import_compiler_runtime276.c(21);
   const {
     model,
     usage,
@@ -503519,7 +503589,7 @@ function renderModelsToAnsi(stats) {
   }
   return lines;
 }
-var import_compiler_runtime277, import_asciichart, import_react193, jsx_runtime349, DATE_RANGE_LABELS, DATE_RANGE_ORDER, BOOK_COMPARISONS, TIME_COMPARISONS;
+var import_compiler_runtime276, import_asciichart, import_react193, jsx_runtime349, DATE_RANGE_LABELS, DATE_RANGE_ORDER, BOOK_COMPARISONS, TIME_COMPARISONS;
 var init_Stats = __esm(() => {
   init_source();
   init_figures();
@@ -503539,7 +503609,7 @@ var init_Stats = __esm(() => {
   init_Pane();
   init_Tabs();
   init_Spinner2();
-  import_compiler_runtime277 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime276 = __toESM(require_compiler_runtime(), 1);
   import_asciichart = __toESM(require_asciichart(), 1);
   import_react193 = __toESM(require_react(), 1);
   jsx_runtime349 = __toESM(require_jsx_runtime(), 1);
@@ -505607,7 +505677,7 @@ import {
   writeFile as writeFile40
 } from "fs/promises";
 import { tmpdir as tmpdir9 } from "os";
-import { extname as extname13, join as join127 } from "path";
+import { extname as extname13, join as join128 } from "path";
 function getAnalysisModel() {
   return getDefaultOpusModel();
 }
@@ -505615,13 +505685,13 @@ function getInsightsModel() {
   return getDefaultOpusModel();
 }
 function getDataDir() {
-  return join127(getClaudeConfigHomeDir(), "usage-data");
+  return join128(getClaudeConfigHomeDir(), "usage-data");
 }
 function getFacetsDir() {
-  return join127(getDataDir(), "facets");
+  return join128(getDataDir(), "facets");
 }
 function getSessionMetaDir() {
-  return join127(getDataDir(), "session-meta");
+  return join128(getDataDir(), "session-meta");
 }
 function getLanguageFromPath(filePath) {
   const ext = extname13(filePath).toLowerCase();
@@ -505955,7 +506025,7 @@ async function formatTranscriptWithSummarization(log) {
 `);
 }
 async function loadCachedFacets(sessionId) {
-  const facetPath = join127(getFacetsDir(), `${sessionId}.json`);
+  const facetPath = join128(getFacetsDir(), `${sessionId}.json`);
   try {
     const content = await readFile47(facetPath, { encoding: "utf-8" });
     const parsed = jsonParse(content);
@@ -505974,14 +506044,14 @@ async function saveFacets(facets) {
   try {
     await mkdir37(getFacetsDir(), { recursive: true });
   } catch {}
-  const facetPath = join127(getFacetsDir(), `${facets.session_id}.json`);
+  const facetPath = join128(getFacetsDir(), `${facets.session_id}.json`);
   await writeFile40(facetPath, jsonStringify(facets, null, 2), {
     encoding: "utf-8",
     mode: 384
   });
 }
 async function loadCachedSessionMeta(sessionId) {
-  const metaPath = join127(getSessionMetaDir(), `${sessionId}.json`);
+  const metaPath = join128(getSessionMetaDir(), `${sessionId}.json`);
   try {
     const content = await readFile47(metaPath, { encoding: "utf-8" });
     return jsonParse(content);
@@ -505993,7 +506063,7 @@ async function saveSessionMeta(meta) {
   try {
     await mkdir37(getSessionMetaDir(), { recursive: true });
   } catch {}
-  const metaPath = join127(getSessionMetaDir(), `${meta.session_id}.json`);
+  const metaPath = join128(getSessionMetaDir(), `${meta.session_id}.json`);
   await writeFile40(metaPath, jsonStringify(meta, null, 2), {
     encoding: "utf-8",
     mode: 384
@@ -507057,7 +507127,7 @@ async function scanAllSessions() {
   } catch {
     return [];
   }
-  const projectDirs = dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => join127(projectsDir, dirent.name));
+  const projectDirs = dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => join128(projectsDir, dirent.name));
   const allSessions = [];
   for (let i = 0;i < projectDirs.length; i++) {
     const sessionFiles = await getSessionFilesWithMtime(projectDirs[i]);
@@ -507079,7 +507149,7 @@ async function scanAllSessions() {
 async function generateUsageReport(options) {
   let remoteStats;
   if (process.env.USER_TYPE === "ant" && options?.collectRemote) {
-    const destDir = join127(getClaudeConfigHomeDir(), "projects");
+    const destDir = join128(getClaudeConfigHomeDir(), "projects");
     const { hosts, totalCopied } = await collectAllRemoteHostData(destDir);
     remoteStats = { hosts, totalCopied };
   }
@@ -507218,7 +507288,7 @@ async function generateUsageReport(options) {
   try {
     await mkdir37(getDataDir(), { recursive: true });
   } catch {}
-  const htmlPath = join127(getDataDir(), "report.html");
+  const htmlPath = join128(getDataDir(), "report.html");
   await writeFile40(htmlPath, htmlReport, {
     encoding: "utf-8",
     mode: 384
@@ -507314,13 +507384,13 @@ var init_insights = __esm(() => {
   } : async () => 0;
   collectFromRemoteHost = process.env.USER_TYPE === "ant" ? async (homespace, destDir) => {
     const result = { copied: 0, skipped: 0 };
-    const tempDir = await mkdtemp(join127(tmpdir9(), "claude-hs-"));
+    const tempDir = await mkdtemp(join128(tmpdir9(), "claude-hs-"));
     try {
       const scpResult = await execFileNoThrow("scp", ["-rq", `${homespace}.coder:/root/.claude/projects/`, tempDir], { timeout: 300000 });
       if (scpResult.code !== 0) {
         return result;
       }
-      const projectsDir = join127(tempDir, "projects");
+      const projectsDir = join128(tempDir, "projects");
       let projectDirents;
       try {
         projectDirents = await readdir27(projectsDir, { withFileTypes: true });
@@ -507329,11 +507399,11 @@ var init_insights = __esm(() => {
       }
       await Promise.all(projectDirents.map(async (dirent) => {
         const projectName = dirent.name;
-        const projectPath = join127(projectsDir, projectName);
+        const projectPath = join128(projectsDir, projectName);
         if (!dirent.isDirectory())
           return;
         const destProjectName = `${projectName}__${homespace}`;
-        const destProjectPath = join127(destDir, destProjectName);
+        const destProjectPath = join128(destDir, destProjectName);
         try {
           await mkdir37(destProjectPath, { recursive: true });
         } catch {}
@@ -507347,8 +507417,8 @@ var init_insights = __esm(() => {
           const fileName = fileDirent.name;
           if (!fileName.endsWith(".jsonl"))
             return;
-          const srcFile = join127(projectPath, fileName);
-          const destFile = join127(destProjectPath, fileName);
+          const srcFile = join128(projectPath, fileName);
+          const destFile = join128(destProjectPath, fileName);
           try {
             await copyFile9(srcFile, destFile, fsConstants8.COPYFILE_EXCL);
             result.copied++;
@@ -508276,7 +508346,7 @@ import {
   unlink as unlink21,
   writeFile as writeFile41
 } from "fs/promises";
-import { basename as basename39, dirname as dirname53, join as join128 } from "path";
+import { basename as basename39, dirname as dirname53, join as join129 } from "path";
 function isTranscriptMessage(entry) {
   return entry.type === "user" || entry.type === "assistant" || entry.type === "attachment" || entry.type === "system";
 }
@@ -508290,18 +508360,18 @@ function isEphemeralToolProgress(dataType) {
   return typeof dataType === "string" && EPHEMERAL_PROGRESS_TYPES.has(dataType);
 }
 function getProjectsDir2() {
-  return join128(getClaudeConfigHomeDir(), "projects");
+  return join129(getClaudeConfigHomeDir(), "projects");
 }
 function getTranscriptPath() {
   const projectDir = getSessionProjectDir() ?? getProjectDir2(getOriginalCwd());
-  return join128(projectDir, `${getSessionId()}.jsonl`);
+  return join129(projectDir, `${getSessionId()}.jsonl`);
 }
 function getTranscriptPathForSession(sessionId) {
   if (sessionId === getSessionId()) {
     return getTranscriptPath();
   }
   const projectDir = getProjectDir2(getOriginalCwd());
-  return join128(projectDir, `${sessionId}.jsonl`);
+  return join129(projectDir, `${sessionId}.jsonl`);
 }
 function setAgentTranscriptSubdir(agentId, subdir) {
   agentTranscriptSubdirs.set(agentId, subdir);
@@ -508313,8 +508383,8 @@ function getAgentTranscriptPath(agentId) {
   const projectDir = getSessionProjectDir() ?? getProjectDir2(getOriginalCwd());
   const sessionId = getSessionId();
   const subdir = agentTranscriptSubdirs.get(agentId);
-  const base = subdir ? join128(projectDir, sessionId, "subagents", subdir) : join128(projectDir, sessionId, "subagents");
-  return join128(base, `agent-${agentId}.jsonl`);
+  const base = subdir ? join129(projectDir, sessionId, "subagents", subdir) : join129(projectDir, sessionId, "subagents");
+  return join129(base, `agent-${agentId}.jsonl`);
 }
 function getAgentMetadataPath(agentId) {
   return getAgentTranscriptPath(agentId).replace(/\.jsonl$/, ".meta.json");
@@ -508337,10 +508407,10 @@ async function readAgentMetadata(agentId) {
 }
 function getRemoteAgentsDir() {
   const projectDir = getSessionProjectDir() ?? getProjectDir2(getOriginalCwd());
-  return join128(projectDir, getSessionId(), "remote-agents");
+  return join129(projectDir, getSessionId(), "remote-agents");
 }
 function getRemoteAgentMetadataPath(taskId) {
-  return join128(getRemoteAgentsDir(), `remote-agent-${taskId}.meta.json`);
+  return join129(getRemoteAgentsDir(), `remote-agent-${taskId}.meta.json`);
 }
 async function writeRemoteAgentMetadata(taskId, metadata) {
   const path = getRemoteAgentMetadataPath(taskId);
@@ -508372,7 +508442,7 @@ async function listRemoteAgentMetadata() {
     if (!entry.isFile() || !entry.name.endsWith(".meta.json"))
       continue;
     try {
-      const raw = await readFile48(join128(dir, entry.name), "utf-8");
+      const raw = await readFile48(join129(dir, entry.name), "utf-8");
       results.push(JSON.parse(raw));
     } catch (e) {
       logForDebugging(`listRemoteAgentMetadata: skipping ${entry.name}: ${String(e)}`);
@@ -508382,7 +508452,7 @@ async function listRemoteAgentMetadata() {
 }
 function sessionIdExists(sessionId) {
   const projectDir = getProjectDir2(getOriginalCwd());
-  const sessionFile = join128(projectDir, `${sessionId}.jsonl`);
+  const sessionFile = join129(projectDir, `${sessionId}.jsonl`);
   const fs = getFsImplementation();
   try {
     fs.statSync(sessionFile);
@@ -510251,7 +510321,7 @@ async function loadTranscriptFile(filePath, opts) {
   };
 }
 async function loadSessionFile(sessionId) {
-  const sessionFile = join128(getSessionProjectDir() ?? getProjectDir2(getOriginalCwd()), `${sessionId}.jsonl`);
+  const sessionFile = join129(getSessionProjectDir() ?? getProjectDir2(getOriginalCwd()), `${sessionId}.jsonl`);
   return loadTranscriptFile(sessionFile);
 }
 function clearSessionMessagesCache() {
@@ -510319,7 +510389,7 @@ async function loadAllProjectsMessageLogsFull(limit) {
   } catch {
     return [];
   }
-  const projectDirs = dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => join128(projectsDir, dirent.name));
+  const projectDirs = dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => join129(projectsDir, dirent.name));
   const logsPerProject = await Promise.all(projectDirs.map((projectDir) => getLogsWithoutIndex(projectDir, limit)));
   const allLogs = logsPerProject.flat();
   const deduped = new Map;
@@ -510344,7 +510414,7 @@ async function loadAllProjectsMessageLogsProgressive(limit, initialEnrichCount =
   } catch {
     return { logs: [], allStatLogs: [], nextIndex: 0 };
   }
-  const projectDirs = dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => join128(projectsDir, dirent.name));
+  const projectDirs = dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => join129(projectsDir, dirent.name));
   const rawLogs = [];
   for (const projectDir of projectDirs) {
     rawLogs.push(...await getSessionFilesLite(projectDir, limit));
@@ -510405,7 +510475,7 @@ async function getStatOnlyLogsForWorktrees(worktreePaths, limit) {
     for (const { path: wtPath, prefix } of indexed) {
       if (dirName === prefix || dirName.startsWith(prefix + "-")) {
         seenDirs.add(dirName);
-        allLogs.push(...await getSessionFilesLite(join128(projectsDir, dirent.name), undefined, wtPath));
+        allLogs.push(...await getSessionFilesLite(join129(projectsDir, dirent.name), undefined, wtPath));
         break;
       }
     }
@@ -510474,7 +510544,7 @@ async function loadSubagentTranscripts(agentIds) {
   return transcripts;
 }
 async function loadAllSubagentTranscriptsFromDisk() {
-  const subagentsDir = join128(getSessionProjectDir() ?? getProjectDir2(getOriginalCwd()), getSessionId(), "subagents");
+  const subagentsDir = join129(getSessionProjectDir() ?? getProjectDir2(getOriginalCwd()), getSessionId(), "subagents");
   let entries;
   try {
     entries = await readdir28(subagentsDir, { withFileTypes: true });
@@ -510598,7 +510668,7 @@ async function getSessionFilesWithMtime(projectDir) {
     const sessionId = validateUuid2(basename39(dirent.name, ".jsonl"));
     if (!sessionId)
       continue;
-    candidates.push({ sessionId, filePath: join128(projectDir, dirent.name) });
+    candidates.push({ sessionId, filePath: join129(projectDir, dirent.name) });
   }
   await Promise.all(candidates.map(async ({ sessionId, filePath }) => {
     try {
@@ -510984,7 +511054,7 @@ var init_sessionStorage = __esm(() => {
   init_settings2();
   init_slowOperations();
   init_uuid();
-  VERSION5 = typeof MACRO !== "undefined" ? "1.0.26" : "unknown";
+  VERSION5 = typeof MACRO !== "undefined" ? "1.0.27" : "unknown";
   MAX_TOMBSTONE_REWRITE_BYTES = 50 * 1024 * 1024;
   SKIP_FIRST_PROMPT_PATTERN = /^(?:\s*<[a-z][\w-]*[\s>]|\[Request interrupted by user[^\]]*\])/;
   EPHEMERAL_PROGRESS_TYPES = new Set([
@@ -510996,7 +511066,7 @@ var init_sessionStorage = __esm(() => {
   MAX_TRANSCRIPT_READ_BYTES = 50 * 1024 * 1024;
   agentTranscriptSubdirs = new Map;
   getProjectDir2 = memoize_default((projectDir) => {
-    return join128(getProjectsDir2(), sanitizePath2(projectDir));
+    return join129(getProjectsDir2(), sanitizePath2(projectDir));
   });
   METADATA_TYPE_MARKERS = [
     '"type":"summary"',
@@ -511234,41 +511304,41 @@ var init_memdir = __esm(() => {
 });
 
 // tools/AgentTool/agentMemory.ts
-import { join as join129, normalize as normalize13, sep as sep31 } from "path";
+import { join as join130, normalize as normalize13, sep as sep31 } from "path";
 function sanitizeAgentTypeForPath(agentType) {
   return agentType.replace(/:/g, "-");
 }
 function getLocalAgentMemoryDir(dirName) {
   if (process.env.CLAUDE_CODE_REMOTE_MEMORY_DIR) {
-    return join129(process.env.CLAUDE_CODE_REMOTE_MEMORY_DIR, "projects", sanitizePath2(findCanonicalGitRoot(getProjectRoot()) ?? getProjectRoot()), "agent-memory-local", dirName) + sep31;
+    return join130(process.env.CLAUDE_CODE_REMOTE_MEMORY_DIR, "projects", sanitizePath2(findCanonicalGitRoot(getProjectRoot()) ?? getProjectRoot()), "agent-memory-local", dirName) + sep31;
   }
-  return join129(getCwd(), ".evilclaude", "agent-memory-local", dirName) + sep31;
+  return join130(getCwd(), ".evilclaude", "agent-memory-local", dirName) + sep31;
 }
 function getAgentMemoryDir(agentType, scope) {
   const dirName = sanitizeAgentTypeForPath(agentType);
   switch (scope) {
     case "project":
-      return join129(getCwd(), ".evilclaude", "agent-memory", dirName) + sep31;
+      return join130(getCwd(), ".evilclaude", "agent-memory", dirName) + sep31;
     case "local":
       return getLocalAgentMemoryDir(dirName);
     case "user":
-      return join129(getMemoryBaseDir(), "agent-memory", dirName) + sep31;
+      return join130(getMemoryBaseDir(), "agent-memory", dirName) + sep31;
   }
 }
 function isAgentMemoryPath(absolutePath) {
   const normalizedPath = normalize13(absolutePath);
   const memoryBase = getMemoryBaseDir();
-  if (normalizedPath.startsWith(join129(memoryBase, "agent-memory") + sep31)) {
+  if (normalizedPath.startsWith(join130(memoryBase, "agent-memory") + sep31)) {
     return true;
   }
-  if (normalizedPath.startsWith(join129(getCwd(), ".evilclaude", "agent-memory") + sep31)) {
+  if (normalizedPath.startsWith(join130(getCwd(), ".evilclaude", "agent-memory") + sep31)) {
     return true;
   }
   if (process.env.CLAUDE_CODE_REMOTE_MEMORY_DIR) {
-    if (normalizedPath.includes(sep31 + "agent-memory-local" + sep31) && normalizedPath.startsWith(join129(process.env.CLAUDE_CODE_REMOTE_MEMORY_DIR, "projects") + sep31)) {
+    if (normalizedPath.includes(sep31 + "agent-memory-local" + sep31) && normalizedPath.startsWith(join130(process.env.CLAUDE_CODE_REMOTE_MEMORY_DIR, "projects") + sep31)) {
       return true;
     }
-  } else if (normalizedPath.startsWith(join129(getCwd(), ".evilclaude", "agent-memory-local") + sep31)) {
+  } else if (normalizedPath.startsWith(join130(getCwd(), ".evilclaude", "agent-memory-local") + sep31)) {
     return true;
   }
   return false;
@@ -511276,7 +511346,7 @@ function isAgentMemoryPath(absolutePath) {
 function getMemoryScopeDisplay(memory) {
   switch (memory) {
     case "user":
-      return `User (${join129(getMemoryBaseDir(), "agent-memory")}/)`;
+      return `User (${join130(getMemoryBaseDir(), "agent-memory")}/)`;
     case "project":
       return "Project (.claude/agent-memory/)";
     case "local":
@@ -511318,8 +511388,8 @@ var init_agentMemory = __esm(() => {
 
 // utils/permissions/filesystem.ts
 import { randomBytes as randomBytes18 } from "crypto";
-import { homedir as homedir32, tmpdir as tmpdir10 } from "os";
-import { join as join130, normalize as normalize14, posix as posix8, sep as sep32 } from "path";
+import { homedir as homedir33, tmpdir as tmpdir10 } from "os";
+import { join as join131, normalize as normalize14, posix as posix8, sep as sep32 } from "path";
 function normalizeCaseForComparison(path) {
   return path.toLowerCase();
 }
@@ -511328,11 +511398,11 @@ function getClaudeSkillScope(filePath) {
   const absolutePathLower = normalizeCaseForComparison(absolutePath);
   const bases = [
     {
-      dir: expandPath(join130(getOriginalCwd(), ".evilclaude", "skills")),
+      dir: expandPath(join131(getOriginalCwd(), ".evilclaude", "skills")),
       prefix: "/.evilclaude/skills/"
     },
     {
-      dir: expandPath(join130(homedir32(), ".evilclaude", "skills")),
+      dir: expandPath(join131(homedir33(), ".evilclaude", "skills")),
       prefix: "~/.evilclaude/skills/"
     }
   ];
@@ -511387,21 +511457,21 @@ function isClaudeConfigFilePath(filePath) {
   if (isClaudeSettingsPath(filePath)) {
     return true;
   }
-  const commandsDir = join130(getOriginalCwd(), ".evilclaude", "commands");
-  const agentsDir = join130(getOriginalCwd(), ".evilclaude", "agents");
-  const skillsDir = join130(getOriginalCwd(), ".evilclaude", "skills");
+  const commandsDir = join131(getOriginalCwd(), ".evilclaude", "commands");
+  const agentsDir = join131(getOriginalCwd(), ".evilclaude", "agents");
+  const skillsDir = join131(getOriginalCwd(), ".evilclaude", "skills");
   return pathInWorkingPath(filePath, commandsDir) || pathInWorkingPath(filePath, agentsDir) || pathInWorkingPath(filePath, skillsDir);
 }
 function isSessionPlanFile(absolutePath) {
-  const expectedPrefix = join130(getPlansDirectory(), getPlanSlug());
+  const expectedPrefix = join131(getPlansDirectory(), getPlanSlug());
   const normalizedPath = normalize14(absolutePath);
   return normalizedPath.startsWith(expectedPrefix) && normalizedPath.endsWith(".md");
 }
 function getSessionMemoryDir() {
-  return join130(getProjectDir2(getCwd()), getSessionId(), "session-memory") + sep32;
+  return join131(getProjectDir2(getCwd()), getSessionId(), "session-memory") + sep32;
 }
 function getSessionMemoryPath() {
-  return join130(getSessionMemoryDir(), "summary.md");
+  return join131(getSessionMemoryDir(), "summary.md");
 }
 function isSessionMemoryPath(absolutePath) {
   const normalizedPath = normalize14(absolutePath);
@@ -511423,10 +511493,10 @@ function getClaudeTempDirName() {
   return `claude-${uid}`;
 }
 function getProjectTempDir() {
-  return join130(getClaudeTempDir(), sanitizePath2(getOriginalCwd())) + sep32;
+  return join131(getClaudeTempDir(), sanitizePath2(getOriginalCwd())) + sep32;
 }
 function getScratchpadDir() {
-  return join130(getProjectTempDir(), getSessionId(), "scratchpad");
+  return join131(getProjectTempDir(), getSessionId(), "scratchpad");
 }
 async function ensureScratchpadDir() {
   if (!isScratchpadEnabled()) {
@@ -511646,7 +511716,7 @@ function patternWithRoot(pattern, source) {
   } else if (pattern.startsWith(`~${DIR_SEP}`)) {
     return {
       relativePattern: pattern.slice(1),
-      root: homedir32().normalize("NFC")
+      root: homedir33().normalize("NFC")
     };
   } else if (pattern.startsWith(DIR_SEP)) {
     return {
@@ -512004,7 +512074,7 @@ function checkEditableInternalPath(absolutePath, input) {
       }
     };
   }
-  if (normalizeCaseForComparison(normalizedPath) === normalizeCaseForComparison(join130(getOriginalCwd(), ".evilclaude", "launch.json"))) {
+  if (normalizeCaseForComparison(normalizedPath) === normalizeCaseForComparison(join131(getOriginalCwd(), ".evilclaude", "launch.json"))) {
     return {
       behavior: "allow",
       updatedInput: input,
@@ -512101,7 +512171,7 @@ function checkReadableInternalPath(absolutePath, input) {
       }
     };
   }
-  const tasksDir = join130(getClaudeConfigHomeDir(), "tasks") + sep32;
+  const tasksDir = join131(getClaudeConfigHomeDir(), "tasks") + sep32;
   if (normalizedPath === tasksDir.slice(0, -1) || normalizedPath.startsWith(tasksDir)) {
     return {
       behavior: "allow",
@@ -512112,7 +512182,7 @@ function checkReadableInternalPath(absolutePath, input) {
       }
     };
   }
-  const teamsReadDir = join130(getClaudeConfigHomeDir(), "teams") + sep32;
+  const teamsReadDir = join131(getClaudeConfigHomeDir(), "teams") + sep32;
   if (normalizedPath === teamsReadDir.slice(0, -1) || normalizedPath.startsWith(teamsReadDir)) {
     return {
       behavior: "allow",
@@ -512185,11 +512255,11 @@ var init_filesystem = __esm(() => {
     try {
       resolvedBaseTmpDir = fs.realpathSync(baseTmpDir);
     } catch {}
-    return join130(resolvedBaseTmpDir, getClaudeTempDirName()) + sep32;
+    return join131(resolvedBaseTmpDir, getClaudeTempDirName()) + sep32;
   });
   getBundledSkillsRoot = memoize_default(function getBundledSkillsRoot() {
     const nonce = randomBytes18(16).toString("hex");
-    return join130(getClaudeTempDir(), "bundled-skills", "1.0.26", nonce);
+    return join131(getClaudeTempDir(), "bundled-skills", "1.0.27", nonce);
   });
   getResolvedWorkingDirPaths = memoize_default(getPathsForPermissionCheck);
 });
@@ -512203,10 +512273,10 @@ import {
   symlink as symlink4,
   unlink as unlink22
 } from "fs/promises";
-import { join as join131 } from "path";
+import { join as join132 } from "path";
 function getTaskOutputDir() {
   if (_taskOutputDir === undefined) {
-    _taskOutputDir = join131(getProjectTempDir(), getSessionId(), "tasks");
+    _taskOutputDir = join132(getProjectTempDir(), getSessionId(), "tasks");
   }
   return _taskOutputDir;
 }
@@ -512214,7 +512284,7 @@ async function ensureOutputDir() {
   await mkdir39(getTaskOutputDir(), { recursive: true });
 }
 function getTaskOutputPath(taskId) {
-  return join131(getTaskOutputDir(), `${taskId}.output`);
+  return join132(getTaskOutputDir(), `${taskId}.output`);
 }
 function track(p) {
   _pendingOps.add(p);
@@ -516393,7 +516463,7 @@ import {
   symlink as symlink5,
   utimes as utimes2
 } from "fs/promises";
-import { basename as basename41, dirname as dirname54, join as join132 } from "path";
+import { basename as basename41, dirname as dirname54, join as join133 } from "path";
 function validateWorktreeSlug(slug) {
   if (slug.length > MAX_WORKTREE_SLUG_LENGTH) {
     throw new Error(`Invalid worktree name: must be ${MAX_WORKTREE_SLUG_LENGTH} characters or fewer (got ${slug.length})`);
@@ -516416,8 +516486,8 @@ async function symlinkDirectories(repoRootPath, worktreePath, dirsToSymlink) {
       logForDebugging(`Skipping symlink for "${dir}": path traversal detected`, { level: "warn" });
       continue;
     }
-    const sourcePath = join132(repoRootPath, dir);
-    const destPath = join132(worktreePath, dir);
+    const sourcePath = join133(repoRootPath, dir);
+    const destPath = join133(worktreePath, dir);
     try {
       await symlink5(sourcePath, destPath, "dir");
       logForDebugging(`Symlinked ${dir} from main repository to worktree to avoid disk bloat`);
@@ -516441,7 +516511,7 @@ function generateTmuxSessionName(repoPath, branch) {
   return combined.replace(/[/.]/g, "_");
 }
 function worktreesDir(repoRoot) {
-  return join132(repoRoot, ".evilclaude", "worktrees");
+  return join133(repoRoot, ".evilclaude", "worktrees");
 }
 function flattenSlug(slug) {
   return slug.replaceAll("/", "+");
@@ -516450,7 +516520,7 @@ function worktreeBranchName(slug) {
   return `worktree-${flattenSlug(slug)}`;
 }
 function worktreePathFor(repoRoot, slug) {
-  return join132(worktreesDir(repoRoot), flattenSlug(slug));
+  return join133(worktreesDir(repoRoot), flattenSlug(slug));
 }
 async function getOrCreateWorktree(repoRoot, slug, options) {
   const worktreePath = worktreePathFor(repoRoot, slug);
@@ -516531,7 +516601,7 @@ async function getOrCreateWorktree(repoRoot, slug, options) {
 async function copyWorktreeIncludeFiles(repoRoot, worktreePath) {
   let includeContent;
   try {
-    includeContent = await readFile49(join132(repoRoot, ".worktreeinclude"), "utf-8");
+    includeContent = await readFile49(join133(repoRoot, ".worktreeinclude"), "utf-8");
   } catch {
     return [];
   }
@@ -516586,8 +516656,8 @@ async function copyWorktreeIncludeFiles(repoRoot, worktreePath) {
   }
   const copied = [];
   for (const relativePath of files) {
-    const srcPath = join132(repoRoot, relativePath);
-    const destPath = join132(worktreePath, relativePath);
+    const srcPath = join133(repoRoot, relativePath);
+    const destPath = join133(worktreePath, relativePath);
     try {
       await mkdir40(dirname54(destPath), { recursive: true });
       await copyFile10(srcPath, destPath);
@@ -516603,9 +516673,9 @@ async function copyWorktreeIncludeFiles(repoRoot, worktreePath) {
 }
 async function performPostCreationSetup(repoRoot, worktreePath) {
   const localSettingsRelativePath = getRelativeSettingsFilePathForSource("localSettings");
-  const sourceSettingsLocal = join132(repoRoot, localSettingsRelativePath);
+  const sourceSettingsLocal = join133(repoRoot, localSettingsRelativePath);
   try {
-    const destSettingsLocal = join132(worktreePath, localSettingsRelativePath);
+    const destSettingsLocal = join133(worktreePath, localSettingsRelativePath);
     await mkdirRecursive(dirname54(destSettingsLocal));
     await copyFile10(sourceSettingsLocal, destSettingsLocal);
     logForDebugging(`Copied settings.local.json to worktree: ${destSettingsLocal}`);
@@ -516615,8 +516685,8 @@ async function performPostCreationSetup(repoRoot, worktreePath) {
       logForDebugging(`Failed to copy settings.local.json: ${e.message}`, { level: "warn" });
     }
   }
-  const huskyPath = join132(repoRoot, ".husky");
-  const gitHooksPath = join132(repoRoot, ".git", "hooks");
+  const huskyPath = join133(repoRoot, ".husky");
+  const gitHooksPath = join133(repoRoot, ".git", "hooks");
   let hooksPath = null;
   for (const candidatePath of [huskyPath, gitHooksPath]) {
     try {
@@ -516891,7 +516961,7 @@ async function cleanupStaleAgentWorktrees(cutoffDate) {
     if (!EPHEMERAL_WORKTREE_PATTERNS.some((p) => p.test(slug))) {
       continue;
     }
-    const worktreePath = join132(dir, slug);
+    const worktreePath = join133(dir, slug);
     if (currentPath === worktreePath) {
       continue;
     }
@@ -518091,7 +518161,7 @@ function computeFingerprint(messageText, version) {
 }
 function computeFingerprintFromMessages(messages) {
   const firstMessageText = extractFirstMessageText(messages);
-  return computeFingerprint(firstMessageText, "1.0.26");
+  return computeFingerprint(firstMessageText, "1.0.27");
 }
 var FINGERPRINT_SALT = "59cf53e54c78";
 var init_fingerprint = () => {};
@@ -519949,7 +520019,7 @@ async function sideQuery(opts) {
     betas.push(STRUCTURED_OUTPUTS_BETA_HEADER);
   }
   const messageText = extractFirstUserMessageText(messages);
-  const fingerprint = computeFingerprint(messageText, "1.0.26");
+  const fingerprint = computeFingerprint(messageText, "1.0.27");
   const attributionHeader = getAttributionHeader(fingerprint);
   const systemBlocks = [
     attributionHeader ? { type: "text", text: attributionHeader } : null,
@@ -520224,8 +520294,8 @@ import {
   unlink as unlink23
 } from "fs/promises";
 import { createServer as createServer5 } from "net";
-import { homedir as homedir33, platform as platform6 } from "os";
-import { join as join133 } from "path";
+import { homedir as homedir34, platform as platform6 } from "os";
+import { join as join134 } from "path";
 function log3(message, ...args) {
   if (LOG_FILE) {
     const timestamp = new Date().toISOString();
@@ -520292,7 +520362,7 @@ class ChromeNativeHost {
           try {
             process.kill(pid, 0);
           } catch {
-            await unlink23(join133(socketDir, file)).catch(() => {});
+            await unlink23(join134(socketDir, file)).catch(() => {});
             log3(`Removed stale socket for PID ${pid}`);
           }
         }
@@ -520563,7 +520633,7 @@ var init_chromeNativeHost = __esm(() => {
   init_slowOperations();
   init_common2();
   MAX_MESSAGE_SIZE = 1024 * 1024;
-  LOG_FILE = process.env.USER_TYPE === "ant" ? join133(homedir33(), ".evilclaude", "debug", "chrome-native-host.txt") : undefined;
+  LOG_FILE = process.env.USER_TYPE === "ant" ? join134(homedir34(), ".evilclaude", "debug", "chrome-native-host.txt") : undefined;
   messageSchema = lazySchema(() => object({
     type: string2()
   }).passthrough());
@@ -520995,8 +521065,8 @@ var init_relay = __esm(() => {
 
 // upstreamproxy/upstreamproxy.ts
 import { mkdir as mkdir42, readFile as readFile50, unlink as unlink24, writeFile as writeFile42 } from "fs/promises";
-import { homedir as homedir34 } from "os";
-import { join as join134 } from "path";
+import { homedir as homedir35 } from "os";
+import { join as join135 } from "path";
 async function initUpstreamProxy(opts) {
   if (!isEnvTruthy(process.env.CLAUDE_CODE_REMOTE)) {
     return state3;
@@ -521017,7 +521087,7 @@ async function initUpstreamProxy(opts) {
   }
   setNonDumpable();
   const baseUrl = opts?.ccrBaseUrl ?? process.env.ANTHROPIC_BASE_URL ?? "https://evilclaude.swampmine.in";
-  const caBundlePath = opts?.caBundlePath ?? join134(homedir34(), ".ccr", "ca-bundle.crt");
+  const caBundlePath = opts?.caBundlePath ?? join135(homedir35(), ".ccr", "ca-bundle.crt");
   const caOk = await downloadCaBundle(baseUrl, opts?.systemCaPath ?? SYSTEM_CA_BUNDLE, caBundlePath);
   if (!caOk)
     return state3;
@@ -521114,7 +521184,7 @@ async function downloadCaBundle(baseUrl, systemCaPath, outPath) {
     }
     const ccrCa = await resp.text();
     const systemCa = await readFile50(systemCaPath, "utf8").catch(() => "");
-    await mkdir42(join134(outPath, ".."), { recursive: true });
+    await mkdir42(join135(outPath, ".."), { recursive: true });
     await writeFile42(outPath, systemCa + `
 ` + ccrCa, "utf8");
     return true;
@@ -521159,7 +521229,7 @@ var init_upstreamproxy = __esm(() => {
 
 // components/InvalidConfigDialog.tsx
 function InvalidConfigDialog(t0) {
-  const $ = import_compiler_runtime278.c(19);
+  const $ = import_compiler_runtime277.c(19);
   const {
     filePath,
     errorDescription,
@@ -521321,7 +521391,7 @@ async function showInvalidConfigDialog({
     }), renderOptions);
   });
 }
-var import_compiler_runtime278, jsx_runtime351, SAFE_ERROR_THEME_NAME = "dark";
+var import_compiler_runtime277, jsx_runtime351, SAFE_ERROR_THEME_NAME = "dark";
 var init_InvalidConfigDialog = __esm(() => {
   init_ink2();
   init_KeybindingProviderSetup();
@@ -521330,7 +521400,7 @@ var init_InvalidConfigDialog = __esm(() => {
   init_slowOperations();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime278 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime277 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime351 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -521523,7 +521593,7 @@ var init_init2 = __esm(() => {
 
 // context/fpsMetrics.tsx
 function FpsMetricsProvider(t0) {
-  const $ = import_compiler_runtime279.c(3);
+  const $ = import_compiler_runtime278.c(3);
   const {
     getFpsMetrics,
     children
@@ -521545,9 +521615,9 @@ function FpsMetricsProvider(t0) {
 function useFpsMetrics() {
   return import_react194.useContext(FpsMetricsContext);
 }
-var import_compiler_runtime279, import_react194, jsx_runtime352, FpsMetricsContext;
+var import_compiler_runtime278, import_react194, jsx_runtime352, FpsMetricsContext;
 var init_fpsMetrics = __esm(() => {
-  import_compiler_runtime279 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime278 = __toESM(require_compiler_runtime(), 1);
   import_react194 = __toESM(require_react(), 1);
   jsx_runtime352 = __toESM(require_jsx_runtime(), 1);
   FpsMetricsContext = import_react194.createContext(undefined);
@@ -521634,7 +521704,7 @@ function createStatsStore() {
   };
 }
 function StatsProvider(t0) {
-  const $ = import_compiler_runtime280.c(7);
+  const $ = import_compiler_runtime279.c(7);
   const {
     store: externalStore,
     children
@@ -521689,10 +521759,10 @@ function StatsProvider(t0) {
   }
   return t4;
 }
-var import_compiler_runtime280, import_react195, jsx_runtime353, RESERVOIR_SIZE = 1024, StatsContext;
+var import_compiler_runtime279, import_react195, jsx_runtime353, RESERVOIR_SIZE = 1024, StatsContext;
 var init_stats4 = __esm(() => {
   init_config2();
-  import_compiler_runtime280 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime279 = __toESM(require_compiler_runtime(), 1);
   import_react195 = __toESM(require_react(), 1);
   jsx_runtime353 = __toESM(require_jsx_runtime(), 1);
   StatsContext = import_react195.createContext(null);
@@ -521840,7 +521910,7 @@ __export(exports_App, {
   App: () => App2
 });
 function App2(t0) {
-  const $ = import_compiler_runtime281.c(9);
+  const $ = import_compiler_runtime280.c(9);
   const {
     getFpsMetrics,
     stats,
@@ -521886,13 +521956,13 @@ function App2(t0) {
   }
   return t3;
 }
-var import_compiler_runtime281, jsx_runtime354;
+var import_compiler_runtime280, jsx_runtime354;
 var init_App2 = __esm(() => {
   init_fpsMetrics();
   init_stats4();
   init_AppState();
   init_onChangeAppState();
-  import_compiler_runtime281 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime280 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime354 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -521924,7 +521994,7 @@ var init_use_search_highlight = __esm(() => {
 
 // components/CostThresholdDialog.tsx
 function CostThresholdDialog(t0) {
-  const $ = import_compiler_runtime282.c(7);
+  const $ = import_compiler_runtime281.c(7);
   const {
     onDone
   } = t0;
@@ -521984,18 +522054,18 @@ function CostThresholdDialog(t0) {
   }
   return t4;
 }
-var import_compiler_runtime282, jsx_runtime355;
+var import_compiler_runtime281, jsx_runtime355;
 var init_CostThresholdDialog = __esm(() => {
   init_ink2();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime282 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime281 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime355 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/IdleReturnDialog.tsx
 function IdleReturnDialog(t0) {
-  const $ = import_compiler_runtime283.c(16);
+  const $ = import_compiler_runtime282.c(16);
   const {
     idleMinutes,
     totalInputTokens,
@@ -522114,13 +522184,13 @@ function formatIdleDuration(minutes) {
   }
   return `${hours}h ${remainingMinutes}m`;
 }
-var import_compiler_runtime283, jsx_runtime356;
+var import_compiler_runtime282, jsx_runtime356;
 var init_IdleReturnDialog = __esm(() => {
   init_ink2();
   init_format();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime283 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime282 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime356 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -522279,7 +522349,7 @@ var init_QueryGuard = () => {};
 
 // components/permissions/WorkerBadge.tsx
 function WorkerBadge(t0) {
-  const $ = import_compiler_runtime284.c(7);
+  const $ = import_compiler_runtime283.c(7);
   const {
     name,
     color
@@ -522329,18 +522399,18 @@ function WorkerBadge(t0) {
   }
   return t3;
 }
-var import_compiler_runtime284, jsx_runtime357;
+var import_compiler_runtime283, jsx_runtime357;
 var init_WorkerBadge = __esm(() => {
   init_figures2();
   init_ink2();
   init_ink3();
-  import_compiler_runtime284 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime283 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime357 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/WorkerPendingPermission.tsx
 function WorkerPendingPermission(t0) {
-  const $ = import_compiler_runtime285.c(15);
+  const $ = import_compiler_runtime284.c(15);
   const {
     toolName,
     description
@@ -522491,13 +522561,13 @@ function WorkerPendingPermission(t0) {
   }
   return t11;
 }
-var import_compiler_runtime285, jsx_runtime358;
+var import_compiler_runtime284, jsx_runtime358;
 var init_WorkerPendingPermission = __esm(() => {
   init_ink2();
   init_teammate();
   init_Spinner2();
   init_WorkerBadge();
-  import_compiler_runtime285 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime284 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime358 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -522617,7 +522687,7 @@ function buildSystemInitMessage(inputs) {
     slash_commands: inputs.commands.filter((c) => c.userInvocable !== false).map((c) => c.name),
     apiKeySource: getAnthropicApiKeyWithSource().source,
     betas: getSdkBetas(),
-    claude_code_version: "1.0.26",
+    claude_code_version: "1.0.27",
     output_style: outputStyle,
     agents: inputs.agents.map((agent) => agent.agentType),
     skills: inputs.skills.filter((s) => s.userInvocable !== false).map((skill) => skill.name),
@@ -522710,7 +522780,7 @@ __export(exports_MessageSelector, {
   selectableUserMessagesFilter: () => selectableUserMessagesFilter
 });
 import { randomUUID as randomUUID34 } from "crypto";
-import * as path24 from "path";
+import * as path25 from "path";
 function isTextBlock2(block) {
   return block.type === "text";
 }
@@ -523127,7 +523197,7 @@ ${codeError}`);
                                 color: "inactive",
                                 children: numFilesChanged ? /* @__PURE__ */ jsx_runtime359.jsxs(jsx_runtime359.Fragment, {
                                   children: [
-                                    numFilesChanged === 1 && metadata.filesChanged[0] ? `${path24.basename(metadata.filesChanged[0])} ` : `${numFilesChanged} files changed `,
+                                    numFilesChanged === 1 && metadata.filesChanged[0] ? `${path25.basename(metadata.filesChanged[0])} ` : `${numFilesChanged} files changed `,
                                     /* @__PURE__ */ jsx_runtime359.jsx(DiffStatsText, {
                                       diffStats: metadata
                                     })
@@ -523189,7 +523259,7 @@ function getRestoreOptionConversationText(option) {
   }
 }
 function RestoreOptionDescription(t0) {
-  const $ = import_compiler_runtime286.c(11);
+  const $ = import_compiler_runtime285.c(11);
   const {
     selectedRestoreOption,
     canRestoreCode,
@@ -523248,7 +523318,7 @@ function RestoreOptionDescription(t0) {
   return t4;
 }
 function RestoreCodeConfirmation(t0) {
-  const $ = import_compiler_runtime286.c(14);
+  const $ = import_compiler_runtime285.c(14);
   const {
     diffStatsForRestore
   } = t0;
@@ -523273,7 +523343,7 @@ function RestoreCodeConfirmation(t0) {
   if (numFilesChanged === 1) {
     let t1;
     if ($[1] !== diffStatsForRestore.filesChanged[0]) {
-      t1 = path24.basename(diffStatsForRestore.filesChanged[0] || "");
+      t1 = path25.basename(diffStatsForRestore.filesChanged[0] || "");
       $[1] = diffStatsForRestore.filesChanged[0];
       $[2] = t1;
     } else {
@@ -523284,7 +523354,7 @@ function RestoreCodeConfirmation(t0) {
     if (numFilesChanged === 2) {
       let t1;
       if ($[3] !== diffStatsForRestore.filesChanged[0]) {
-        t1 = path24.basename(diffStatsForRestore.filesChanged[0] || "");
+        t1 = path25.basename(diffStatsForRestore.filesChanged[0] || "");
         $[3] = diffStatsForRestore.filesChanged[0];
         $[4] = t1;
       } else {
@@ -523293,7 +523363,7 @@ function RestoreCodeConfirmation(t0) {
       const file1 = t1;
       let t2;
       if ($[5] !== diffStatsForRestore.filesChanged[1]) {
-        t2 = path24.basename(diffStatsForRestore.filesChanged[1] || "");
+        t2 = path25.basename(diffStatsForRestore.filesChanged[1] || "");
         $[5] = diffStatsForRestore.filesChanged[1];
         $[6] = t2;
       } else {
@@ -523304,7 +523374,7 @@ function RestoreCodeConfirmation(t0) {
     } else {
       let t1;
       if ($[7] !== diffStatsForRestore.filesChanged[0]) {
-        t1 = path24.basename(diffStatsForRestore.filesChanged[0] || "");
+        t1 = path25.basename(diffStatsForRestore.filesChanged[0] || "");
         $[7] = diffStatsForRestore.filesChanged[0];
         $[8] = t1;
       } else {
@@ -523348,7 +523418,7 @@ function RestoreCodeConfirmation(t0) {
   return t2;
 }
 function DiffStatsText(t0) {
-  const $ = import_compiler_runtime286.c(7);
+  const $ = import_compiler_runtime285.c(7);
   const {
     diffStats
   } = t0;
@@ -523401,7 +523471,7 @@ function DiffStatsText(t0) {
   return t3;
 }
 function UserMessageOption(t0) {
-  const $ = import_compiler_runtime286.c(31);
+  const $ = import_compiler_runtime285.c(31);
   const {
     userMessage,
     color,
@@ -523709,7 +523779,7 @@ function messagesAfterAreOnlySynthetic(messages, fromIndex) {
   }
   return true;
 }
-var import_compiler_runtime286, import_react199, jsx_runtime359, MAX_VISIBLE_MESSAGES = 7;
+var import_compiler_runtime285, import_react199, jsx_runtime359, MAX_VISIBLE_MESSAGES = 7;
 var init_MessageSelector = __esm(() => {
   init_figures();
   init_analytics();
@@ -523727,7 +523797,7 @@ var init_MessageSelector = __esm(() => {
   init_xml();
   init_format();
   init_Divider();
-  import_compiler_runtime286 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime285 = __toESM(require_compiler_runtime(), 1);
   import_react199 = __toESM(require_react(), 1);
   jsx_runtime359 = __toESM(require_jsx_runtime(), 1);
 });
@@ -523799,7 +523869,7 @@ var init_useNotifyAfterTimeout = __esm(() => {
 
 // components/permissions/AskUserQuestionPermissionRequest/PreviewBox.tsx
 function PreviewBox(props) {
-  const $ = import_compiler_runtime287.c(4);
+  const $ = import_compiler_runtime286.c(4);
   const settings = useSettings();
   if (settings.syntaxHighlightingDisabled) {
     let t0;
@@ -523834,7 +523904,7 @@ function PreviewBox(props) {
   return t0;
 }
 function PreviewBoxWithHighlight(props) {
-  const $ = import_compiler_runtime287.c(4);
+  const $ = import_compiler_runtime286.c(4);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = getCliHighlightPromise();
@@ -523858,7 +523928,7 @@ function PreviewBoxWithHighlight(props) {
   return t1;
 }
 function PreviewBoxBody(t0) {
-  const $ = import_compiler_runtime287.c(34);
+  const $ = import_compiler_runtime286.c(34);
   const {
     content,
     maxLines,
@@ -524042,7 +524112,7 @@ function PreviewBoxBody(t0) {
 function _temp157(line) {
   return stringWidth(line);
 }
-var import_compiler_runtime287, import_react202, jsx_runtime360, BOX_CHARS;
+var import_compiler_runtime286, import_react202, jsx_runtime360, BOX_CHARS;
 var init_PreviewBox = __esm(() => {
   init_useSettings();
   init_useTerminalSize();
@@ -524051,7 +524121,7 @@ var init_PreviewBox = __esm(() => {
   init_cliHighlight();
   init_markdown();
   init_sliceAnsi();
-  import_compiler_runtime287 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime286 = __toESM(require_compiler_runtime(), 1);
   import_react202 = __toESM(require_react(), 1);
   jsx_runtime360 = __toESM(require_jsx_runtime(), 1);
   BOX_CHARS = {
@@ -524068,7 +524138,7 @@ var init_PreviewBox = __esm(() => {
 
 // components/permissions/AskUserQuestionPermissionRequest/QuestionNavigationBar.tsx
 function QuestionNavigationBar(t0) {
-  const $ = import_compiler_runtime288.c(39);
+  const $ = import_compiler_runtime287.c(39);
   const {
     questions,
     currentQuestionIndex,
@@ -524111,7 +524181,7 @@ function QuestionNavigationBar(t0) {
       }
       const tabHeaders = questions.map(_temp158);
       const idealWidths = tabHeaders.map(_temp268);
-      const totalIdealWidth = idealWidths.reduce(_temp346, 0);
+      const totalIdealWidth = idealWidths.reduce(_temp345, 0);
       if (totalIdealWidth <= availableForTabs) {
         t2 = tabHeaders;
         break bb0;
@@ -524279,7 +524349,7 @@ function QuestionNavigationBar(t0) {
   }
   return t7;
 }
-function _temp346(sum, w) {
+function _temp345(sum, w) {
   return sum + w;
 }
 function _temp268(header_0) {
@@ -524288,14 +524358,14 @@ function _temp268(header_0) {
 function _temp158(q_0, index_0) {
   return q_0?.header || `Q${index_0 + 1}`;
 }
-var import_compiler_runtime288, jsx_runtime361;
+var import_compiler_runtime287, jsx_runtime361;
 var init_QuestionNavigationBar = __esm(() => {
   init_figures();
   init_useTerminalSize();
   init_stringWidth();
   init_ink2();
   init_format();
-  import_compiler_runtime288 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime287 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime361 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -524691,7 +524761,7 @@ var init_PreviewQuestionView = __esm(() => {
 
 // components/permissions/AskUserQuestionPermissionRequest/QuestionView.tsx
 function QuestionView(t0) {
-  const $ = import_compiler_runtime289.c(114);
+  const $ = import_compiler_runtime288.c(114);
   const {
     question,
     questions,
@@ -524882,7 +524952,7 @@ function QuestionView(t0) {
     t7 = $[17];
   }
   const options = t7;
-  const hasAnyPreview = !question.multiSelect && question.options.some(_temp347);
+  const hasAnyPreview = !question.multiSelect && question.options.some(_temp346);
   if (hasAnyPreview) {
     let t8;
     if ($[30] !== answers || $[31] !== currentQuestionIndex || $[32] !== hideSubmitTab || $[33] !== minContentHeight || $[34] !== minContentWidth || $[35] !== onAnswer || $[36] !== onCancel || $[37] !== onFinishPlanInterview || $[38] !== onRespondToClaude || $[39] !== onTabNext || $[40] !== onTabPrev || $[41] !== onTextInputFocus || $[42] !== onUpdateQuestionState || $[43] !== question || $[44] !== questionStates || $[45] !== questions) {
@@ -525273,7 +525343,7 @@ function QuestionView(t0) {
 function _temp435(v) {
   return v !== "__other__";
 }
-function _temp347(opt_0) {
+function _temp346(opt_0) {
   return opt_0.preview;
 }
 function _temp269(opt) {
@@ -525287,7 +525357,7 @@ function _temp269(opt) {
 function _temp159(s) {
   return s.toolPermissionContext.mode;
 }
-var import_compiler_runtime289, import_react204, jsx_runtime363;
+var import_compiler_runtime288, import_react204, jsx_runtime363;
 var init_QuestionView = __esm(() => {
   init_figures();
   init_ink2();
@@ -525301,7 +525371,7 @@ var init_QuestionView = __esm(() => {
   init_PermissionRequestTitle();
   init_PreviewQuestionView();
   init_QuestionNavigationBar();
-  import_compiler_runtime289 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime288 = __toESM(require_compiler_runtime(), 1);
   import_react204 = __toESM(require_react(), 1);
   jsx_runtime363 = __toESM(require_jsx_runtime(), 1);
 });
@@ -525343,7 +525413,7 @@ ${reason.reason}` : ".";
   }
 }
 function PermissionRuleExplanation(t0) {
-  const $ = import_compiler_runtime290.c(11);
+  const $ = import_compiler_runtime289.c(11);
   const {
     permissionResult,
     toolType
@@ -525412,20 +525482,20 @@ function PermissionRuleExplanation(t0) {
 function _temp160(s) {
   return s.toolPermissionContext.mode;
 }
-var import_compiler_runtime290, jsx_runtime364;
+var import_compiler_runtime289, jsx_runtime364;
 var init_PermissionRuleExplanation = __esm(() => {
   init_source();
   init_ink2();
   init_AppState();
   init_permissionRuleParser();
   init_ThemedText();
-  import_compiler_runtime290 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime289 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime364 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/AskUserQuestionPermissionRequest/SubmitQuestionsView.tsx
 function SubmitQuestionsView(t0) {
-  const $ = import_compiler_runtime291.c(27);
+  const $ = import_compiler_runtime290.c(27);
   const {
     questions,
     currentQuestionIndex,
@@ -525633,7 +525703,7 @@ function SubmitQuestionsView(t0) {
   }
   return t12;
 }
-var import_compiler_runtime291, jsx_runtime365;
+var import_compiler_runtime290, jsx_runtime365;
 var init_SubmitQuestionsView = __esm(() => {
   init_figures();
   init_ink2();
@@ -525642,7 +525712,7 @@ var init_SubmitQuestionsView = __esm(() => {
   init_PermissionRequestTitle();
   init_PermissionRuleExplanation();
   init_QuestionNavigationBar();
-  import_compiler_runtime291 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime290 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime365 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -525751,7 +525821,7 @@ var init_use_multiple_choice_state = __esm(() => {
 
 // components/permissions/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx
 function AskUserQuestionPermissionRequest(props) {
-  const $ = import_compiler_runtime292.c(4);
+  const $ = import_compiler_runtime291.c(4);
   const settings = useSettings();
   if (settings.syntaxHighlightingDisabled) {
     let t0;
@@ -525786,7 +525856,7 @@ function AskUserQuestionPermissionRequest(props) {
   return t0;
 }
 function AskUserQuestionWithHighlight(props) {
-  const $ = import_compiler_runtime292.c(4);
+  const $ = import_compiler_runtime291.c(4);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = getCliHighlightPromise();
@@ -525810,7 +525880,7 @@ function AskUserQuestionWithHighlight(props) {
   return t1;
 }
 function AskUserQuestionPermissionRequestBody(t0) {
-  const $ = import_compiler_runtime292.c(115);
+  const $ = import_compiler_runtime291.c(115);
   const {
     toolUseConfirm,
     onDone,
@@ -525957,7 +526027,7 @@ function AskUserQuestionPermissionRequestBody(t0) {
   const onRemoveImage = t8;
   let t9;
   if ($[18] !== pastedContentsByQuestion) {
-    t9 = Object.values(pastedContentsByQuestion).flatMap(_temp270).filter(_temp348);
+    t9 = Object.values(pastedContentsByQuestion).flatMap(_temp270).filter(_temp347);
     $[18] = pastedContentsByQuestion;
     $[19] = t9;
   } else {
@@ -526398,7 +526468,7 @@ function _temp525(c_0) {
 function _temp436(s) {
   return s.toolPermissionContext.mode;
 }
-function _temp348(c) {
+function _temp347(c) {
   return c.type === "image";
 }
 function _temp270(contents) {
@@ -526423,7 +526493,7 @@ async function convertImagesToBlocks(images) {
     return resized.block;
   }));
 }
-var import_compiler_runtime292, import_react206, jsx_runtime366, MIN_CONTENT_HEIGHT = 12, MIN_CONTENT_WIDTH = 40, CONTENT_CHROME_OVERHEAD = 15;
+var import_compiler_runtime291, import_react206, jsx_runtime366, MIN_CONTENT_HEIGHT = 12, MIN_CONTENT_WIDTH = 40, CONTENT_CHROME_OVERHEAD = 15;
 var init_AskUserQuestionPermissionRequest = __esm(() => {
   init_useSettings();
   init_useTerminalSize();
@@ -526443,7 +526513,7 @@ var init_AskUserQuestionPermissionRequest = __esm(() => {
   init_QuestionView();
   init_SubmitQuestionsView();
   init_use_multiple_choice_state();
-  import_compiler_runtime292 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime291 = __toESM(require_compiler_runtime(), 1);
   import_react206 = __toESM(require_react(), 1);
   jsx_runtime366 = __toESM(require_jsx_runtime(), 1);
 });
@@ -527232,7 +527302,7 @@ function decisionReasonDisplayString(decisionReason) {
   }
 }
 function PermissionDecisionInfoItem(t0) {
-  const $ = import_compiler_runtime293.c(10);
+  const $ = import_compiler_runtime292.c(10);
   const {
     title,
     decisionReason
@@ -527333,7 +527403,7 @@ function PermissionDecisionInfoItem(t0) {
   return t4;
 }
 function SuggestedRules(t0) {
-  const $ = import_compiler_runtime293.c(18);
+  const $ = import_compiler_runtime292.c(18);
   const {
     suggestions
   } = t0;
@@ -527445,7 +527515,7 @@ function extractMode(updates) {
   return update?.type === "setMode" ? update.mode : undefined;
 }
 function SuggestionDisplay(t0) {
-  const $ = import_compiler_runtime293.c(22);
+  const $ = import_compiler_runtime292.c(22);
   const {
     suggestions,
     width
@@ -527634,7 +527704,7 @@ function SuggestionDisplay(t0) {
               }),
               /* @__PURE__ */ jsx_runtime367.jsx(ThemedBox_default, {
                 flexDirection: "column",
-                children: directories.map(_temp349)
+                children: directories.map(_temp348)
               })
             ]
           }),
@@ -527670,7 +527740,7 @@ function SuggestionDisplay(t0) {
   }
   return t1;
 }
-function _temp349(dir, index_0) {
+function _temp348(dir, index_0) {
   return /* @__PURE__ */ jsx_runtime367.jsxs(ThemedText, {
     children: [
       figures_default.bullet,
@@ -527689,7 +527759,7 @@ function _temp271(rule, index) {
   }, index);
 }
 function PermissionDecisionDebugInfo(t0) {
-  const $ = import_compiler_runtime293.c(25);
+  const $ = import_compiler_runtime292.c(25);
   const {
     permissionResult,
     toolName
@@ -527904,7 +527974,7 @@ function _temp526(u_1, i) {
 function _temp437(s) {
   return s.toolPermissionContext;
 }
-var import_compiler_runtime293, jsx_runtime367;
+var import_compiler_runtime292, jsx_runtime367;
 var init_PermissionDecisionDebugInfo = __esm(() => {
   init_source();
   init_figures();
@@ -527916,7 +527986,7 @@ var init_PermissionDecisionDebugInfo = __esm(() => {
   init_shadowedRuleDetection();
   init_sandbox_adapter();
   init_constants2();
-  import_compiler_runtime293 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime292 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime367 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -528084,7 +528154,7 @@ var init_permissionExplainer = __esm(() => {
 
 // components/permissions/PermissionExplanation.tsx
 function ShimmerLoadingText() {
-  const $ = import_compiler_runtime294.c(7);
+  const $ = import_compiler_runtime293.c(7);
   const [ref, glimmerIndex] = useShimmerAnimation("responding", LOADING_MESSAGE, false);
   let t0;
   if ($[0] !== glimmerIndex) {
@@ -528154,7 +528224,7 @@ function createExplanationPromise(props) {
   }).catch(() => null);
 }
 function usePermissionExplainerUI(props) {
-  const $ = import_compiler_runtime294.c(9);
+  const $ = import_compiler_runtime293.c(9);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = isPermissionExplainerEnabled();
@@ -528213,7 +528283,7 @@ function _temp164(v) {
   return !v;
 }
 function ExplanationResult(t0) {
-  const $ = import_compiler_runtime294.c(21);
+  const $ = import_compiler_runtime293.c(21);
   const {
     promise
   } = t0;
@@ -528339,7 +528409,7 @@ function ExplanationResult(t0) {
   return t8;
 }
 function PermissionExplainerContent(t0) {
-  const $ = import_compiler_runtime294.c(3);
+  const $ = import_compiler_runtime293.c(3);
   const {
     visible,
     promise
@@ -528372,7 +528442,7 @@ function PermissionExplainerContent(t0) {
   }
   return t2;
 }
-var import_compiler_runtime294, import_react208, jsx_runtime368, LOADING_MESSAGE = "Loading explanation…";
+var import_compiler_runtime293, import_react208, jsx_runtime368, LOADING_MESSAGE = "Loading explanation…";
 var init_PermissionExplanation = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -528380,14 +528450,14 @@ var init_PermissionExplanation = __esm(() => {
   init_permissionExplainer();
   init_ShimmerChar();
   init_useShimmerAnimation();
-  import_compiler_runtime294 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime293 = __toESM(require_compiler_runtime(), 1);
   import_react208 = __toESM(require_react(), 1);
   jsx_runtime368 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/FileEditToolDiff.tsx
 function FileEditToolDiff(props) {
-  const $ = import_compiler_runtime295.c(7);
+  const $ = import_compiler_runtime294.c(7);
   let t0;
   if ($[0] !== props.edits || $[1] !== props.file_path) {
     t0 = () => loadDiffData(props.file_path, props.edits);
@@ -528425,7 +528495,7 @@ function FileEditToolDiff(props) {
   return t2;
 }
 function DiffBody(t0) {
-  const $ = import_compiler_runtime295.c(6);
+  const $ = import_compiler_runtime294.c(6);
   const {
     promise,
     file_path
@@ -528462,7 +528532,7 @@ function DiffBody(t0) {
   return t1;
 }
 function DiffFrame(t0) {
-  const $ = import_compiler_runtime295.c(5);
+  const $ = import_compiler_runtime294.c(5);
   const {
     children,
     placeholder
@@ -528568,7 +528638,7 @@ function normalizeEdit(fileContent, edit) {
     new_string: actualNew
   };
 }
-var import_compiler_runtime295, import_react209, jsx_runtime369;
+var import_compiler_runtime294, import_react209, jsx_runtime369;
 var init_FileEditToolDiff = __esm(() => {
   init_useTerminalSize();
   init_ink2();
@@ -528578,7 +528648,7 @@ var init_FileEditToolDiff = __esm(() => {
   init_readEditContext();
   init_stringUtils();
   init_StructuredDiffList();
-  import_compiler_runtime295 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime294 = __toESM(require_compiler_runtime(), 1);
   import_react209 = __toESM(require_react(), 1);
   jsx_runtime369 = __toESM(require_jsx_runtime(), 1);
 });
@@ -528780,7 +528850,7 @@ var init_useDiffInIDE = __esm(() => {
 // components/ShowInIDEPrompt.tsx
 import { basename as basename44, relative as relative27 } from "path";
 function ShowInIDEPrompt(t0) {
-  const $ = import_compiler_runtime296.c(36);
+  const $ = import_compiler_runtime295.c(36);
   const {
     onChange,
     options,
@@ -528983,20 +529053,20 @@ function ShowInIDEPrompt(t0) {
   }
   return t13;
 }
-var import_compiler_runtime296, jsx_runtime370;
+var import_compiler_runtime295, jsx_runtime370;
 var init_ShowInIDEPrompt = __esm(() => {
   init_ink2();
   init_cwd2();
   init_ide();
   init_CustomSelect();
   init_Pane();
-  import_compiler_runtime296 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime295 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime370 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/FilePermissionDialog/permissionOptions.tsx
-import { homedir as homedir35 } from "os";
-import { basename as basename45, join as join135, sep as sep33 } from "path";
+import { homedir as homedir36 } from "os";
+import { basename as basename45, join as join136, sep as sep33 } from "path";
 function isInClaudeFolder(filePath) {
   const absolutePath = expandPath(filePath);
   const claudeFolderPath = expandPath(`${getOriginalCwd()}/.claude`);
@@ -529006,7 +529076,7 @@ function isInClaudeFolder(filePath) {
 }
 function isInGlobalClaudeFolder(filePath) {
   const absolutePath = expandPath(filePath);
-  const globalClaudeFolderPath = join135(homedir35(), ".claude");
+  const globalClaudeFolderPath = join136(homedir36(), ".claude");
   const normalizedAbsolutePath = normalizeCaseForComparison(absolutePath);
   const normalizedGlobalClaudeFolderPath = normalizeCaseForComparison(globalClaudeFolderPath);
   return normalizedAbsolutePath.startsWith(normalizedGlobalClaudeFolderPath + sep33.toLowerCase()) || normalizedAbsolutePath.startsWith(normalizedGlobalClaudeFolderPath + "/");
@@ -529579,7 +529649,7 @@ var init_FilePermissionDialog = __esm(() => {
 // components/permissions/SedEditPermissionRequest/SedEditPermissionRequest.tsx
 import { basename as basename46, relative as relative29 } from "path";
 function SedEditPermissionRequest(t0) {
-  const $ = import_compiler_runtime297.c(9);
+  const $ = import_compiler_runtime296.c(9);
   let props;
   let sedInfo;
   if ($[0] !== t0) {
@@ -529646,7 +529716,7 @@ function _temp165(e) {
   };
 }
 function SedEditPermissionRequestInner(t0) {
-  const $ = import_compiler_runtime297.c(35);
+  const $ = import_compiler_runtime296.c(35);
   let contentPromise;
   let props;
   let sedInfo;
@@ -529825,7 +529895,7 @@ function SedEditPermissionRequestInner(t0) {
   }
   return t13;
 }
-var import_compiler_runtime297, import_react213, jsx_runtime373;
+var import_compiler_runtime296, import_react213, jsx_runtime373;
 var init_SedEditPermissionRequest = __esm(() => {
   init_FileEditToolDiff();
   init_cwd2();
@@ -529836,7 +529906,7 @@ var init_SedEditPermissionRequest = __esm(() => {
   init_BashTool();
   init_sedEditParser();
   init_FilePermissionDialog();
-  import_compiler_runtime297 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime296 = __toESM(require_compiler_runtime(), 1);
   import_react213 = __toESM(require_react(), 1);
   jsx_runtime373 = __toESM(require_jsx_runtime(), 1);
 });
@@ -530278,7 +530348,7 @@ var init_bashToolUseOptions = __esm(() => {
 
 // components/permissions/BashPermissionRequest/BashPermissionRequest.tsx
 function BashPermissionRequest(props) {
-  const $ = import_compiler_runtime298.c(21);
+  const $ = import_compiler_runtime297.c(21);
   const {
     toolUseConfirm,
     toolUseContext,
@@ -530664,7 +530734,7 @@ function BashPermissionRequestInner({
     ]
   });
 }
-var import_compiler_runtime298, import_react215, jsx_runtime375;
+var import_compiler_runtime297, import_react215, jsx_runtime375;
 var init_BashPermissionRequest = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -530692,14 +530762,14 @@ var init_BashPermissionRequest = __esm(() => {
   init_useShellPermissionFeedback();
   init_utils15();
   init_bashToolUseOptions();
-  import_compiler_runtime298 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime297 = __toESM(require_compiler_runtime(), 1);
   import_react215 = __toESM(require_react(), 1);
   jsx_runtime375 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/EnterPlanModePermissionRequest/EnterPlanModePermissionRequest.tsx
 function EnterPlanModePermissionRequest(t0) {
-  const $ = import_compiler_runtime299.c(18);
+  const $ = import_compiler_runtime298.c(18);
   const {
     toolUseConfirm,
     onDone,
@@ -530864,7 +530934,7 @@ function EnterPlanModePermissionRequest(t0) {
 function _temp166(s) {
   return s.toolPermissionContext.mode;
 }
-var import_compiler_runtime299, jsx_runtime376;
+var import_compiler_runtime298, jsx_runtime376;
 var init_EnterPlanModePermissionRequest = __esm(() => {
   init_state();
   init_ink2();
@@ -530873,7 +530943,7 @@ var init_EnterPlanModePermissionRequest = __esm(() => {
   init_planModeV2();
   init_CustomSelect();
   init_PermissionDialog();
-  import_compiler_runtime299 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime298 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime376 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -531609,7 +531679,7 @@ var init_ExitPlanModePermissionRequest = __esm(() => {
 
 // components/permissions/PermissionPrompt.tsx
 function PermissionPrompt(t0) {
-  const $ = import_compiler_runtime300.c(54);
+  const $ = import_compiler_runtime299.c(54);
   const {
     options,
     onSelect,
@@ -531924,14 +531994,14 @@ function _temp167(prev) {
     }
   };
 }
-var import_compiler_runtime300, import_react217, jsx_runtime378, DEFAULT_PLACEHOLDERS;
+var import_compiler_runtime299, import_react217, jsx_runtime378, DEFAULT_PLACEHOLDERS;
 var init_PermissionPrompt = __esm(() => {
   init_ink2();
   init_useKeybinding();
   init_analytics();
   init_AppState();
   init_select();
-  import_compiler_runtime300 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime299 = __toESM(require_compiler_runtime(), 1);
   import_react217 = __toESM(require_react(), 1);
   jsx_runtime378 = __toESM(require_jsx_runtime(), 1);
   DEFAULT_PLACEHOLDERS = {
@@ -531942,7 +532012,7 @@ var init_PermissionPrompt = __esm(() => {
 
 // components/permissions/FallbackPermissionRequest.tsx
 function FallbackPermissionRequest(t0) {
-  const $ = import_compiler_runtime301.c(58);
+  const $ = import_compiler_runtime300.c(58);
   const {
     toolUseConfirm,
     onDone,
@@ -532313,7 +532383,7 @@ function FallbackPermissionRequest(t0) {
   }
   return t20;
 }
-var import_compiler_runtime301, jsx_runtime379;
+var import_compiler_runtime300, jsx_runtime379;
 var init_FallbackPermissionRequest = __esm(() => {
   init_state();
   init_ink2();
@@ -532326,7 +532396,7 @@ var init_FallbackPermissionRequest = __esm(() => {
   init_PermissionDialog();
   init_PermissionPrompt();
   init_PermissionRuleExplanation();
-  import_compiler_runtime301 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime300 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime379 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -532348,7 +532418,7 @@ function createSingleEditDiffConfig(filePath, oldString, newString, replaceAll) 
 // components/permissions/FileEditPermissionRequest/FileEditPermissionRequest.tsx
 import { basename as basename48, relative as relative30 } from "path";
 function FileEditPermissionRequest(props) {
-  const $ = import_compiler_runtime302.c(51);
+  const $ = import_compiler_runtime301.c(51);
   const parseInput = _temp168;
   let T0;
   let T1;
@@ -532528,14 +532598,14 @@ function FileEditPermissionRequest(props) {
 function _temp168(input) {
   return FileEditTool.inputSchema.parse(input);
 }
-var import_compiler_runtime302, jsx_runtime380, ideDiffSupport;
+var import_compiler_runtime301, jsx_runtime380, ideDiffSupport;
 var init_FileEditPermissionRequest = __esm(() => {
   init_FileEditToolDiff();
   init_cwd2();
   init_ink2();
   init_FileEditTool();
   init_FilePermissionDialog();
-  import_compiler_runtime302 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime301 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime380 = __toESM(require_jsx_runtime(), 1);
   ideDiffSupport = {
     getConfig: (input) => createSingleEditDiffConfig(input.file_path, input.old_string, input.new_string, input.replace_all),
@@ -532567,7 +532637,7 @@ function pathFromToolUse(toolUseConfirm) {
   return null;
 }
 function FilesystemPermissionRequest(t0) {
-  const $ = import_compiler_runtime303.c(30);
+  const $ = import_compiler_runtime302.c(30);
   const {
     toolUseConfirm,
     onDone,
@@ -532693,18 +532763,18 @@ function FilesystemPermissionRequest(t0) {
 function _temp169(input) {
   return input;
 }
-var import_compiler_runtime303, jsx_runtime381;
+var import_compiler_runtime302, jsx_runtime381;
 var init_FilesystemPermissionRequest = __esm(() => {
   init_ink2();
   init_FallbackPermissionRequest();
   init_FilePermissionDialog();
-  import_compiler_runtime303 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime302 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime381 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/FileWritePermissionRequest/FileWriteToolDiff.tsx
 function FileWriteToolDiff(t0) {
-  const $ = import_compiler_runtime304.c(15);
+  const $ = import_compiler_runtime303.c(15);
   const {
     file_path,
     content,
@@ -532804,21 +532874,21 @@ function _temp170(i) {
     })
   }, `ellipsis-${i}`);
 }
-var import_compiler_runtime304, jsx_runtime382;
+var import_compiler_runtime303, jsx_runtime382;
 var init_FileWriteToolDiff = __esm(() => {
   init_useTerminalSize();
   init_ink2();
   init_diff2();
   init_HighlightedCode();
   init_StructuredDiff();
-  import_compiler_runtime304 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime303 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime382 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/FileWritePermissionRequest/FileWritePermissionRequest.tsx
 import { basename as basename49, relative as relative31 } from "path";
 function FileWritePermissionRequest(props) {
-  const $ = import_compiler_runtime305.c(30);
+  const $ = import_compiler_runtime304.c(30);
   const parseInput = _temp171;
   let t0;
   if ($[0] !== props.toolUseConfirm.input) {
@@ -532969,7 +533039,7 @@ function FileWritePermissionRequest(props) {
 function _temp171(input) {
   return FileWriteTool.inputSchema.parse(input);
 }
-var import_compiler_runtime305, jsx_runtime383, ideDiffSupport2;
+var import_compiler_runtime304, jsx_runtime383, ideDiffSupport2;
 var init_FileWritePermissionRequest = __esm(() => {
   init_ink2();
   init_FileWriteTool();
@@ -532978,7 +533048,7 @@ var init_FileWritePermissionRequest = __esm(() => {
   init_fileRead();
   init_FilePermissionDialog();
   init_FileWriteToolDiff();
-  import_compiler_runtime305 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime304 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime383 = __toESM(require_jsx_runtime(), 1);
   ideDiffSupport2 = {
     getConfig: (input) => {
@@ -533008,7 +533078,7 @@ var init_FileWritePermissionRequest = __esm(() => {
 // components/permissions/NotebookEditPermissionRequest/NotebookEditToolDiff.tsx
 import { relative as relative32 } from "path";
 function NotebookEditToolDiff(props) {
-  const $ = import_compiler_runtime306.c(5);
+  const $ = import_compiler_runtime305.c(5);
   let t0;
   if ($[0] !== props.notebook_path) {
     t0 = getFsImplementation().readFile(props.notebook_path, {
@@ -533044,7 +533114,7 @@ function _temp173(content) {
   return safeParseJSON(content);
 }
 function NotebookEditToolDiffInner(t0) {
-  const $ = import_compiler_runtime306.c(34);
+  const $ = import_compiler_runtime305.c(34);
   const {
     notebook_path,
     cell_id,
@@ -533226,7 +533296,7 @@ function NotebookEditToolDiffInner(t0) {
       firstLine: new_source.split(`
 `)[0] ?? null,
       fileContent: oldSource
-    }, _.newStart)), _temp350) : /* @__PURE__ */ jsx_runtime384.jsx(HighlightedCode, {
+    }, _.newStart)), _temp349) : /* @__PURE__ */ jsx_runtime384.jsx(HighlightedCode, {
       code: new_source,
       filePath: cell_type === "markdown" ? "file.md" : notebook_path
     });
@@ -533263,7 +533333,7 @@ function NotebookEditToolDiffInner(t0) {
   }
   return t10;
 }
-function _temp350(i) {
+function _temp349(i) {
   return /* @__PURE__ */ jsx_runtime384.jsx(NoSelect, {
     fromLeftEdge: true,
     children: /* @__PURE__ */ jsx_runtime384.jsx(ThemedText, {
@@ -533272,7 +533342,7 @@ function _temp350(i) {
     })
   }, `ellipsis-${i}`);
 }
-var import_compiler_runtime306, import_react218, jsx_runtime384;
+var import_compiler_runtime305, import_react218, jsx_runtime384;
 var init_NotebookEditToolDiff = __esm(() => {
   init_ink2();
   init_cwd2();
@@ -533282,7 +533352,7 @@ var init_NotebookEditToolDiff = __esm(() => {
   init_notebook();
   init_HighlightedCode();
   init_StructuredDiff();
-  import_compiler_runtime306 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime305 = __toESM(require_compiler_runtime(), 1);
   import_react218 = __toESM(require_react(), 1);
   jsx_runtime384 = __toESM(require_jsx_runtime(), 1);
 });
@@ -533290,7 +533360,7 @@ var init_NotebookEditToolDiff = __esm(() => {
 // components/permissions/NotebookEditPermissionRequest/NotebookEditPermissionRequest.tsx
 import { basename as basename50 } from "path";
 function NotebookEditPermissionRequest(props) {
-  const $ = import_compiler_runtime307.c(52);
+  const $ = import_compiler_runtime306.c(52);
   const parseInput = _temp174;
   let T0;
   let T1;
@@ -533475,14 +533545,14 @@ function _temp174(input) {
   }
   return result.data;
 }
-var import_compiler_runtime307, jsx_runtime385;
+var import_compiler_runtime306, jsx_runtime385;
 var init_NotebookEditPermissionRequest = __esm(() => {
   init_ink2();
   init_NotebookEditTool();
   init_log3();
   init_FilePermissionDialog();
   init_NotebookEditToolDiff();
-  import_compiler_runtime307 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime306 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime385 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -534037,7 +534107,7 @@ var init_PowerShellPermissionRequest = __esm(() => {
 
 // components/permissions/SkillPermissionRequest/SkillPermissionRequest.tsx
 function SkillPermissionRequest(props) {
-  const $ = import_compiler_runtime308.c(51);
+  const $ = import_compiler_runtime307.c(51);
   const {
     toolUseConfirm,
     onDone,
@@ -534445,7 +534515,7 @@ function _temp175(input) {
   }
   return result.data.skill;
 }
-var import_compiler_runtime308, jsx_runtime387;
+var import_compiler_runtime307, jsx_runtime387;
 var init_SkillPermissionRequest = __esm(() => {
   init_log3();
   init_state();
@@ -534459,7 +534529,7 @@ var init_SkillPermissionRequest = __esm(() => {
   init_PermissionDialog();
   init_PermissionPrompt();
   init_PermissionRuleExplanation();
-  import_compiler_runtime308 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime307 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime387 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -534480,7 +534550,7 @@ function inputToPermissionRuleContent(input) {
   }
 }
 function WebFetchPermissionRequest(t0) {
-  const $ = import_compiler_runtime309.c(41);
+  const $ = import_compiler_runtime308.c(41);
   const {
     toolUseConfirm,
     onDone,
@@ -534753,7 +534823,7 @@ function WebFetchPermissionRequest(t0) {
   }
   return t15;
 }
-var import_compiler_runtime309, jsx_runtime388;
+var import_compiler_runtime308, jsx_runtime388;
 var init_WebFetchPermissionRequest = __esm(() => {
   init_ink2();
   init_WebFetchTool();
@@ -534763,7 +534833,7 @@ var init_WebFetchPermissionRequest = __esm(() => {
   init_PermissionDialog();
   init_PermissionRuleExplanation();
   init_utils15();
-  import_compiler_runtime309 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime308 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime388 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -534819,7 +534889,7 @@ function getNotificationMessage(toolUseConfirm) {
   return `EvilClaude needs your permission to use ${toolName}`;
 }
 function PermissionRequest(t0) {
-  const $ = import_compiler_runtime310.c(18);
+  const $ = import_compiler_runtime309.c(18);
   const {
     toolUseConfirm,
     toolUseContext,
@@ -534897,7 +534967,7 @@ function PermissionRequest(t0) {
   }
   return t5;
 }
-var import_compiler_runtime310, jsx_runtime389, ReviewArtifactTool = null, ReviewArtifactPermissionRequest = null, WorkflowTool2 = null, WorkflowPermissionRequest = null, MonitorTool2 = null, MonitorPermissionRequest = null;
+var import_compiler_runtime309, jsx_runtime389, ReviewArtifactTool = null, ReviewArtifactPermissionRequest = null, WorkflowTool2 = null, WorkflowPermissionRequest = null, MonitorTool2 = null, MonitorPermissionRequest = null;
 var init_PermissionRequest = __esm(() => {
   init_EnterPlanModeTool();
   init_ExitPlanModeV2Tool();
@@ -534926,7 +534996,7 @@ var init_PermissionRequest = __esm(() => {
   init_PowerShellPermissionRequest();
   init_SkillPermissionRequest();
   init_WebFetchPermissionRequest();
-  import_compiler_runtime310 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime309 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime389 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -535176,7 +535246,7 @@ function resetTypeahead(ta) {
   ta.timer = undefined;
 }
 function ResolvingSpinner() {
-  const $ = import_compiler_runtime311.c(4);
+  const $ = import_compiler_runtime310.c(4);
   const [frame, setFrame] = import_react220.useState(0);
   let t0;
   let t1;
@@ -535240,7 +535310,7 @@ function formatDateDisplay(isoValue, schema) {
   }
 }
 function ElicitationDialog(t0) {
-  const $ = import_compiler_runtime311.c(7);
+  const $ = import_compiler_runtime310.c(7);
   const {
     event,
     onResponse,
@@ -536482,7 +536552,7 @@ ${message}`,
     })
   });
 }
-var import_compiler_runtime311, import_react220, jsx_runtime390, isTextField = (s) => ["string", "number", "integer"].includes(s.type), RESOLVING_SPINNER_CHARS = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", advanceSpinnerFrame = (f) => (f + 1) % RESOLVING_SPINNER_CHARS.length;
+var import_compiler_runtime310, import_react220, jsx_runtime390, isTextField = (s) => ["string", "number", "integer"].includes(s.type), RESOLVING_SPINNER_CHARS = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", advanceSpinnerFrame = (f) => (f + 1) % RESOLVING_SPINNER_CHARS.length;
 var init_ElicitationDialog = __esm(() => {
   init_figures();
   init_overlayContext();
@@ -536498,14 +536568,14 @@ var init_ElicitationDialog = __esm(() => {
   init_Dialog();
   init_KeyboardShortcutHint();
   init_TextInput();
-  import_compiler_runtime311 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime310 = __toESM(require_compiler_runtime(), 1);
   import_react220 = __toESM(require_react(), 1);
   jsx_runtime390 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/hooks/PromptDialog.tsx
 function PromptDialog(t0) {
-  const $ = import_compiler_runtime312.c(15);
+  const $ = import_compiler_runtime311.c(15);
   const {
     title,
     toolInputSummary,
@@ -536594,13 +536664,13 @@ function _temp176(opt) {
     description: opt.description
   };
 }
-var import_compiler_runtime312, jsx_runtime391;
+var import_compiler_runtime311, jsx_runtime391;
 var init_PromptDialog = __esm(() => {
   init_ink2();
   init_useKeybinding();
   init_select();
   init_PermissionDialog();
-  import_compiler_runtime312 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime311 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime391 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -537097,7 +537167,7 @@ function companionReservedColumns(terminalColumns, speaking) {
   const bubble = speaking && !isFullscreenActive() ? BUBBLE_WIDTH : 0;
   return spriteColWidth(nameWidth) + SPRITE_PADDING_X + bubble;
 }
-var import_compiler_runtime313, import_react223, H3, PET_HEARTS, MIN_COLS_FOR_FULL_SPRITE = 100, SPRITE_BODY_WIDTH = 12, NAME_ROW_PAD = 2, SPRITE_PADDING_X = 2, BUBBLE_WIDTH = 36;
+var import_compiler_runtime312, import_react223, H3, PET_HEARTS, MIN_COLS_FOR_FULL_SPRITE = 100, SPRITE_BODY_WIDTH = 12, NAME_ROW_PAD = 2, SPRITE_PADDING_X = 2, BUBBLE_WIDTH = 36;
 var init_CompanionSprite = __esm(() => {
   init_figures();
   init_useTerminalSize();
@@ -537109,7 +537179,7 @@ var init_CompanionSprite = __esm(() => {
   init_companion();
   init_sprites();
   init_types4();
-  import_compiler_runtime313 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime312 = __toESM(require_compiler_runtime(), 1);
   import_react223 = __toESM(require_react(), 1);
   H3 = figures_default.heart;
   PET_HEARTS = [`   ${H3}    ${H3}   `, `  ${H3}  ${H3}   ${H3}  `, ` ${H3}   ${H3}  ${H3}   `, `${H3}  ${H3}      ${H3} `, "·    ·   ·  "];
@@ -537123,7 +537193,7 @@ function isBuddyTeaserWindow() {
   return d.getFullYear() === 2026 && d.getMonth() === 3 && d.getDate() <= 7;
 }
 function RainbowText2(t0) {
-  const $ = import_compiler_runtime314.c(2);
+  const $ = import_compiler_runtime313.c(2);
   const {
     text
   } = t0;
@@ -537146,7 +537216,7 @@ function _temp177(ch, i) {
   }, i);
 }
 function useBuddyNotification() {
-  const $ = import_compiler_runtime314.c(4);
+  const $ = import_compiler_runtime313.c(4);
   const {
     addNotification,
     removeNotification
@@ -537197,13 +537267,13 @@ function findBuddyTriggerPositions(text) {
   }
   return triggers;
 }
-var import_compiler_runtime314, import_react224, jsx_runtime392;
+var import_compiler_runtime313, import_react224, jsx_runtime392;
 var init_useBuddyNotification = __esm(() => {
   init_notifications();
   init_ink2();
   init_config2();
   init_thinking();
-  import_compiler_runtime314 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime313 = __toESM(require_compiler_runtime(), 1);
   import_react224 = __toESM(require_react(), 1);
   jsx_runtime392 = __toESM(require_jsx_runtime(), 1);
 });
@@ -537243,7 +537313,7 @@ var init_useVoiceEnabled = __esm(() => {
 function getSemverPart(version) {
   return `${import_semver13.major(version, { loose: true })}.${import_semver13.minor(version, { loose: true })}.${import_semver13.patch(version, { loose: true })}`;
 }
-function useUpdateNotification(updatedVersion, initialVersion = "1.0.26") {
+function useUpdateNotification(updatedVersion, initialVersion = "1.0.27") {
   const [lastNotifiedSemver, setLastNotifiedSemver] = import_react227.useState(() => getSemverPart(initialVersion));
   if (!updatedVersion) {
     return null;
@@ -537278,12 +537348,12 @@ function AutoUpdater({
   }, []);
   const isUpdatingRef = import_react228.useRef(isUpdating);
   isUpdatingRef.current = isUpdating;
-  const checkForUpdates = React129.useCallback(async () => {
+  const checkForUpdates = React130.useCallback(async () => {
     if (isUpdatingRef.current) {
       return;
     }
     if (false) {}
-    const currentVersion = "1.0.26";
+    const currentVersion = "1.0.27";
     const channel = getInitialSettings()?.autoUpdatesChannel ?? "latest";
     let latestVersion = await getLatestVersion(channel);
     const isDisabled = isAutoUpdaterDisabled();
@@ -537426,7 +537496,7 @@ function AutoUpdater({
     ]
   });
 }
-var React129, import_react228, jsx_runtime393;
+var React130, import_react228, jsx_runtime393;
 var init_AutoUpdater = __esm(() => {
   init_analytics();
   init_dist7();
@@ -537439,7 +537509,7 @@ var init_AutoUpdater = __esm(() => {
   init_localInstaller();
   init_nativeInstaller();
   init_settings2();
-  React129 = __toESM(require_react(), 1);
+  React130 = __toESM(require_react(), 1);
   import_react228 = __toESM(require_react(), 1);
   jsx_runtime393 = __toESM(require_jsx_runtime(), 1);
 });
@@ -537483,7 +537553,7 @@ function NativeAutoUpdater({
   const channel = getInitialSettings()?.autoUpdatesChannel ?? "latest";
   const isUpdatingRef = import_react229.useRef(isUpdating);
   isUpdatingRef.current = isUpdating;
-  const checkForUpdates = React130.useCallback(async () => {
+  const checkForUpdates = React131.useCallback(async () => {
     if (isUpdatingRef.current) {
       return;
     }
@@ -537496,12 +537566,12 @@ function NativeAutoUpdater({
     logEvent("tengu_native_auto_updater_start", {});
     try {
       const maxVersion = await getMaxVersion();
-      if (maxVersion && gt("1.0.26", maxVersion)) {
+      if (maxVersion && gt("1.0.27", maxVersion)) {
         const msg = await getMaxVersionMessage();
         setMaxVersionIssue(msg ?? "affects your version");
       }
       const result = await installLatest(channel);
-      const currentVersion = "1.0.26";
+      const currentVersion = "1.0.27";
       const latencyMs = Date.now() - startTime;
       if (result.lockFailed) {
         logEvent("tengu_native_auto_updater_lock_contention", {
@@ -537601,7 +537671,7 @@ function NativeAutoUpdater({
     ]
   });
 }
-var React130, import_react229, jsx_runtime394;
+var React131, import_react229, jsx_runtime394;
 var init_NativeAutoUpdater = __esm(() => {
   init_analytics();
   init_debug();
@@ -537613,14 +537683,14 @@ var init_NativeAutoUpdater = __esm(() => {
   init_config2();
   init_nativeInstaller();
   init_settings2();
-  React130 = __toESM(require_react(), 1);
+  React131 = __toESM(require_react(), 1);
   import_react229 = __toESM(require_react(), 1);
   jsx_runtime394 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/PackageManagerAutoUpdater.tsx
 function PackageManagerAutoUpdater(t0) {
-  const $ = import_compiler_runtime315.c(10);
+  const $ = import_compiler_runtime314.c(10);
   const {
     verbose
   } = t0;
@@ -537638,17 +537708,17 @@ function PackageManagerAutoUpdater(t0) {
       const maxVersion = await getMaxVersion();
       if (maxVersion && latest && gt(latest, maxVersion)) {
         logForDebugging(`PackageManagerAutoUpdater: maxVersion ${maxVersion} is set, capping update from ${latest} to ${maxVersion}`);
-        if (gte("1.0.26", maxVersion)) {
-          logForDebugging(`PackageManagerAutoUpdater: current version ${"1.0.26"} is already at or above maxVersion ${maxVersion}, skipping update`);
+        if (gte("1.0.27", maxVersion)) {
+          logForDebugging(`PackageManagerAutoUpdater: current version ${"1.0.27"} is already at or above maxVersion ${maxVersion}, skipping update`);
           setUpdateAvailable(false);
           return;
         }
         latest = maxVersion;
       }
-      const hasUpdate = latest && !gte("1.0.26", latest) && !shouldSkipVersion(latest);
+      const hasUpdate = latest && !gte("1.0.27", latest) && !shouldSkipVersion(latest);
       setUpdateAvailable(!!hasUpdate);
       if (hasUpdate) {
-        logForDebugging(`PackageManagerAutoUpdater: Update available ${"1.0.26"} -> ${latest}`);
+        logForDebugging(`PackageManagerAutoUpdater: Update available ${"1.0.27"} -> ${latest}`);
       }
     };
     $[0] = t1;
@@ -537669,7 +537739,7 @@ function PackageManagerAutoUpdater(t0) {
     t2 = $[1];
     t3 = $[2];
   }
-  React131.useEffect(t2, t3);
+  React132.useEffect(t2, t3);
   useInterval(checkForUpdates, 1800000);
   if (!updateAvailable) {
     return null;
@@ -537682,7 +537752,7 @@ function PackageManagerAutoUpdater(t0) {
       wrap: "truncate",
       children: [
         "currentVersion: ",
-        "1.0.26"
+        "1.0.27"
       ]
     });
     $[3] = verbose;
@@ -537724,7 +537794,7 @@ function PackageManagerAutoUpdater(t0) {
   }
   return t6;
 }
-var import_compiler_runtime315, React131, import_react230, jsx_runtime395;
+var import_compiler_runtime314, React132, import_react230, jsx_runtime395;
 var init_PackageManagerAutoUpdater = __esm(() => {
   init_dist7();
   init_ink2();
@@ -537733,15 +537803,15 @@ var init_PackageManagerAutoUpdater = __esm(() => {
   init_debug();
   init_packageManagers();
   init_settings2();
-  import_compiler_runtime315 = __toESM(require_compiler_runtime(), 1);
-  React131 = __toESM(require_react(), 1);
+  import_compiler_runtime314 = __toESM(require_compiler_runtime(), 1);
+  React132 = __toESM(require_react(), 1);
   import_react230 = __toESM(require_react(), 1);
   jsx_runtime395 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/AutoUpdaterWrapper.tsx
 function AutoUpdaterWrapper(t0) {
-  const $ = import_compiler_runtime316.c(17);
+  const $ = import_compiler_runtime315.c(17);
   const {
     isUpdating,
     onChangeIsUpdating,
@@ -537750,8 +537820,8 @@ function AutoUpdaterWrapper(t0) {
     showSuccessMessage,
     verbose
   } = t0;
-  const [useNativeInstaller, setUseNativeInstaller] = React132.useState(null);
-  const [isPackageManager, setIsPackageManager] = React132.useState(null);
+  const [useNativeInstaller, setUseNativeInstaller] = React133.useState(null);
+  const [isPackageManager, setIsPackageManager] = React133.useState(null);
   let t1;
   let t2;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
@@ -537772,7 +537842,7 @@ function AutoUpdaterWrapper(t0) {
     t1 = $[0];
     t2 = $[1];
   }
-  React132.useEffect(t1, t2);
+  React133.useEffect(t1, t2);
   if (useNativeInstaller === null || isPackageManager === null) {
     return null;
   }
@@ -537823,7 +537893,7 @@ function AutoUpdaterWrapper(t0) {
   }
   return t3;
 }
-var import_compiler_runtime316, React132, jsx_runtime396;
+var import_compiler_runtime315, React133, jsx_runtime396;
 var init_AutoUpdaterWrapper = __esm(() => {
   init_config2();
   init_debug();
@@ -537831,15 +537901,15 @@ var init_AutoUpdaterWrapper = __esm(() => {
   init_AutoUpdater();
   init_NativeAutoUpdater();
   init_PackageManagerAutoUpdater();
-  import_compiler_runtime316 = __toESM(require_compiler_runtime(), 1);
-  React132 = __toESM(require_react(), 1);
+  import_compiler_runtime315 = __toESM(require_compiler_runtime(), 1);
+  React133 = __toESM(require_react(), 1);
   jsx_runtime396 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/IdeStatusIndicator.tsx
 import { basename as basename51 } from "path";
 function IdeStatusIndicator(t0) {
-  const $ = import_compiler_runtime317.c(7);
+  const $ = import_compiler_runtime316.c(7);
   const {
     ideSelection,
     mcpClients
@@ -537901,11 +537971,11 @@ function IdeStatusIndicator(t0) {
     return t2;
   }
 }
-var import_compiler_runtime317, jsx_runtime397;
+var import_compiler_runtime316, jsx_runtime397;
 var init_IdeStatusIndicator = __esm(() => {
   init_useIdeConnectionStatus();
   init_ink2();
-  import_compiler_runtime317 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime316 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime397 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -537981,7 +538051,7 @@ var init_compactWarningHook = __esm(() => {
 
 // components/TokenWarning.tsx
 function TokenWarning(t0) {
-  const $ = import_compiler_runtime318.c(13);
+  const $ = import_compiler_runtime317.c(13);
   const {
     tokenUsage,
     model
@@ -538063,21 +538133,21 @@ function TokenWarning(t0) {
   }
   return t4;
 }
-var import_compiler_runtime318, import_react233, jsx_runtime399;
+var import_compiler_runtime317, import_react233, jsx_runtime399;
 var init_TokenWarning = __esm(() => {
   init_ink2();
   init_growthbook();
   init_autoCompact();
   init_compactWarningHook();
   init_contextWindowUpgradeCheck();
-  import_compiler_runtime318 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime317 = __toESM(require_compiler_runtime(), 1);
   import_react233 = __toESM(require_react(), 1);
   jsx_runtime399 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/PromptInput/SandboxPromptFooterHint.tsx
 function SandboxPromptFooterHint() {
-  const $ = import_compiler_runtime319.c(6);
+  const $ = import_compiler_runtime318.c(6);
   const [recentViolationCount, setRecentViolationCount] = import_react234.useState(0);
   const timerRef = import_react234.useRef(null);
   const detailsShortcut = useShortcutDisplay("app:toggleTranscript", "Global", "ctrl+o");
@@ -538153,19 +538223,19 @@ function SandboxPromptFooterHint() {
   }
   return t3;
 }
-var import_compiler_runtime319, import_react234, jsx_runtime400;
+var import_compiler_runtime318, import_react234, jsx_runtime400;
 var init_SandboxPromptFooterHint = __esm(() => {
   init_ink2();
   init_useShortcutDisplay();
   init_sandbox_adapter();
-  import_compiler_runtime319 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime318 = __toESM(require_compiler_runtime(), 1);
   import_react234 = __toESM(require_react(), 1);
   jsx_runtime400 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/PromptInput/Notifications.tsx
 function Notifications(t0) {
-  const $ = import_compiler_runtime320.c(34);
+  const $ = import_compiler_runtime319.c(34);
   const {
     apiKeyStatus,
     autoUpdaterResult,
@@ -538192,7 +538262,7 @@ function Notifications(t0) {
     t3 = $[1];
   }
   const tokenUsage = t3;
-  const mainLoopModel = useMainLoopModel2();
+  const mainLoopModel = useMainLoopModel();
   let t4;
   if ($[2] !== mainLoopModel || $[3] !== tokenUsage) {
     t4 = calculateTokenWarningState(tokenUsage, mainLoopModel);
@@ -538477,7 +538547,7 @@ function NotificationContent({
     ]
   });
 }
-var import_compiler_runtime320, import_react235, jsx_runtime401, FOOTER_TEMPORARY_STATUS_TIMEOUT = 5000;
+var import_compiler_runtime319, import_react235, jsx_runtime401, FOOTER_TEMPORARY_STATUS_TIMEOUT = 5000;
 var init_Notifications = __esm(() => {
   init_notifications();
   init_analytics();
@@ -538504,7 +538574,7 @@ var init_Notifications = __esm(() => {
   init_SentryErrorBoundary();
   init_TokenWarning();
   init_SandboxPromptFooterHint();
-  import_compiler_runtime320 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime319 = __toESM(require_compiler_runtime(), 1);
   import_react235 = __toESM(require_react(), 1);
   jsx_runtime401 = __toESM(require_jsx_runtime(), 1);
 });
@@ -542917,28 +542987,28 @@ var init_keyword = __esm(() => {
 });
 
 // components/AutoModeOptInDialog.tsx
-var import_compiler_runtime321, import_react241;
+var import_compiler_runtime320, import_react241;
 var init_AutoModeOptInDialog = __esm(() => {
   init_analytics();
   init_ink2();
   init_settings2();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime321 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime320 = __toESM(require_compiler_runtime(), 1);
   import_react241 = __toESM(require_react(), 1);
 });
 
 // components/BridgeDialog.tsx
 import { basename as basename53 } from "path";
 function BridgeDialog(t0) {
-  const $ = import_compiler_runtime322.c(87);
+  const $ = import_compiler_runtime321.c(87);
   const {
     onDone
   } = t0;
   useRegisterOverlay("bridge-dialog");
   const connected = useAppState(_temp180);
   const sessionActive = useAppState(_temp274);
-  const reconnecting = useAppState(_temp351);
+  const reconnecting = useAppState(_temp350);
   const connectUrl = useAppState(_temp438);
   const sessionUrl = useAppState(_temp527);
   const error = useAppState(_temp621);
@@ -543366,7 +543436,7 @@ function _temp527(s_3) {
 function _temp438(s_2) {
   return s_2.replBridgeConnectUrl;
 }
-function _temp351(s_1) {
+function _temp350(s_1) {
   return s_1.replBridgeReconnecting;
 }
 function _temp274(s_0) {
@@ -543375,7 +543445,7 @@ function _temp274(s_0) {
 function _temp180(s) {
   return s.replBridgeConnected;
 }
-var import_compiler_runtime322, import_react242, jsx_runtime404;
+var import_compiler_runtime321, import_react242, jsx_runtime404;
 var init_BridgeDialog = __esm(() => {
   init_server();
   init_state();
@@ -543388,7 +543458,7 @@ var init_BridgeDialog = __esm(() => {
   init_config2();
   init_git();
   init_Dialog();
-  import_compiler_runtime322 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime321 = __toESM(require_compiler_runtime(), 1);
   import_react242 = __toESM(require_react(), 1);
   jsx_runtime404 = __toESM(require_jsx_runtime(), 1);
 });
@@ -543406,7 +543476,7 @@ function useCoordinatorTaskCount() {
 function _temp181(s) {
   return s.tasks;
 }
-var import_compiler_runtime323, React135;
+var import_compiler_runtime322, React136;
 var init_CoordinatorAgentStatus = __esm(() => {
   init_figures2();
   init_useTerminalSize();
@@ -543418,8 +543488,8 @@ var init_CoordinatorAgentStatus = __esm(() => {
   init_format();
   init_framework();
   init_taskStatusUtils();
-  import_compiler_runtime323 = __toESM(require_compiler_runtime(), 1);
-  React135 = __toESM(require_react(), 1);
+  import_compiler_runtime322 = __toESM(require_compiler_runtime(), 1);
+  React136 = __toESM(require_react(), 1);
 });
 
 // utils/highlightMatch.tsx
@@ -543428,7 +543498,7 @@ var init_highlightMatch = __esm(() => {
 });
 
 // components/design-system/FuzzyPicker.tsx
-var import_compiler_runtime324, import_react243;
+var import_compiler_runtime323, import_react243;
 var init_FuzzyPicker = __esm(() => {
   init_useSearchInput();
   init_useTerminalSize();
@@ -543439,12 +543509,12 @@ var init_FuzzyPicker = __esm(() => {
   init_KeyboardShortcutHint();
   init_ListItem();
   init_Pane();
-  import_compiler_runtime324 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime323 = __toESM(require_compiler_runtime(), 1);
   import_react243 = __toESM(require_react(), 1);
 });
 
 // components/GlobalSearchDialog.tsx
-var import_compiler_runtime325, import_react244;
+var import_compiler_runtime324, import_react244;
 var init_GlobalSearchDialog = __esm(() => {
   init_overlayContext();
   init_useTerminalSize();
@@ -543459,7 +543529,7 @@ var init_GlobalSearchDialog = __esm(() => {
   init_ripgrep();
   init_FuzzyPicker();
   init_LoadingState();
-  import_compiler_runtime325 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime324 = __toESM(require_compiler_runtime(), 1);
   import_react244 = __toESM(require_react(), 1);
 });
 
@@ -543479,7 +543549,7 @@ var init_HistorySearchDialog = __esm(() => {
 });
 
 // components/QuickOpenDialog.tsx
-var import_compiler_runtime326, import_react246;
+var import_compiler_runtime325, import_react246;
 var init_QuickOpenDialog = __esm(() => {
   init_overlayContext();
   init_fileSuggestions();
@@ -543493,13 +543563,13 @@ var init_QuickOpenDialog = __esm(() => {
   init_readFileInRange();
   init_FuzzyPicker();
   init_LoadingState();
-  import_compiler_runtime326 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime325 = __toESM(require_compiler_runtime(), 1);
   import_react246 = __toESM(require_react(), 1);
 });
 
 // components/ThinkingToggle.tsx
 function ThinkingToggle(t0) {
-  const $ = import_compiler_runtime327.c(27);
+  const $ = import_compiler_runtime326.c(27);
   const {
     currentValue,
     onSelect,
@@ -543720,7 +543790,7 @@ function ThinkingToggle(t0) {
   return t11;
 }
 function _temp183() {}
-var import_compiler_runtime327, import_react247, jsx_runtime405;
+var import_compiler_runtime326, import_react247, jsx_runtime405;
 var init_ThinkingToggle = __esm(() => {
   init_useExitOnCtrlCDWithKeybindings();
   init_ink2();
@@ -543730,7 +543800,7 @@ var init_ThinkingToggle = __esm(() => {
   init_Byline();
   init_KeyboardShortcutHint();
   init_Pane();
-  import_compiler_runtime327 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime326 = __toESM(require_compiler_runtime(), 1);
   import_react247 = __toESM(require_react(), 1);
   jsx_runtime405 = __toESM(require_jsx_runtime(), 1);
 });
@@ -543928,7 +543998,7 @@ function TeamsDialog({
   return null;
 }
 function TeamDetailView(t0) {
-  const $ = import_compiler_runtime328.c(13);
+  const $ = import_compiler_runtime327.c(13);
   const {
     teamName,
     teammates,
@@ -544015,7 +544085,7 @@ function TeamDetailView(t0) {
   return t5;
 }
 function TeammateListItem(t0) {
-  const $ = import_compiler_runtime328.c(21);
+  const $ = import_compiler_runtime327.c(21);
   const {
     teammate,
     isSelected
@@ -544120,7 +544190,7 @@ function TeammateListItem(t0) {
   return t8;
 }
 function TeammateDetailView(t0) {
-  const $ = import_compiler_runtime328.c(39);
+  const $ = import_compiler_runtime327.c(39);
   const {
     teammate,
     teamName,
@@ -544478,7 +544548,7 @@ function cycleAllTeammateModes(teammates, teamName, isBypassAvailable) {
   }
   logForDebugging(`[TeamsDialog] Sent mode change to all ${teammates.length} teammates: ${targetMode}`);
 }
-var import_compiler_runtime328, import_react248, jsx_runtime406;
+var import_compiler_runtime327, import_react248, jsx_runtime406;
 var init_TeamsDialog = __esm(() => {
   init_figures();
   init_dist7();
@@ -544504,7 +544574,7 @@ var init_TeamsDialog = __esm(() => {
   init_teammateMailbox();
   init_Dialog();
   init_ThemedText();
-  import_compiler_runtime328 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime327 = __toESM(require_compiler_runtime(), 1);
   import_react248 = __toESM(require_react(), 1);
   jsx_runtime406 = __toESM(require_jsx_runtime(), 1);
 });
@@ -545603,7 +545673,7 @@ var init_useVimInput = __esm(() => {
 
 // components/VimTextInput.tsx
 function VimTextInput(props) {
-  const $ = import_compiler_runtime329.c(38);
+  const $ = import_compiler_runtime328.c(38);
   const [theme] = useTheme();
   const isTerminalFocused = useTerminalFocus();
   useClipboardImageHint(isTerminalFocused, !!props.onImagePaste);
@@ -545737,14 +545807,14 @@ function VimTextInput(props) {
 function _temp185(text) {
   return text;
 }
-var import_compiler_runtime329, import_react250, jsx_runtime407;
+var import_compiler_runtime328, import_react250, jsx_runtime407;
 var init_VimTextInput = __esm(() => {
   init_source();
   init_useClipboardImageHint();
   init_useVimInput();
   init_ink2();
   init_BaseTextInput();
-  import_compiler_runtime329 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime328 = __toESM(require_compiler_runtime(), 1);
   import_react250 = __toESM(require_react(), 1);
   jsx_runtime407 = __toESM(require_jsx_runtime(), 1);
 });
@@ -545798,7 +545868,7 @@ function buildStatusLineCommandInput(permissionMode, exceeds200kTokens, settings
       project_dir: getOriginalCwd(),
       added_dirs: addedDirs
     },
-    version: "1.0.26",
+    version: "1.0.27",
     output_style: {
       name: outputStyleName
     },
@@ -545864,7 +545934,7 @@ function StatusLineInner({
   const {
     addNotification
   } = useNotifications();
-  const mainLoopModel = useMainLoopModel2();
+  const mainLoopModel = useMainLoopModel();
   const settingsRef = import_react251.useRef(settings);
   settingsRef.current = settings;
   const vimModeRef = import_react251.useRef(vimMode);
@@ -546094,7 +546164,7 @@ function calculateHorizontalScrollWindow(itemWidths, availableWidth, arrowWidth,
 
 // components/tasks/BackgroundTaskStatus.tsx
 function BackgroundTaskStatus(t0) {
-  const $ = import_compiler_runtime330.c(48);
+  const $ = import_compiler_runtime329.c(48);
   const {
     tasksSelected,
     isViewingTeammate,
@@ -546112,7 +546182,7 @@ function BackgroundTaskStatus(t0) {
   const viewingAgentTaskId = useAppState(_temp276);
   let t3;
   if ($[0] !== tasks) {
-    t3 = Object.values(tasks ?? {}).filter(_temp352);
+    t3 = Object.values(tasks ?? {}).filter(_temp351);
     $[0] = tasks;
     $[1] = t3;
   } else {
@@ -546229,7 +546299,7 @@ function BackgroundTaskStatus(t0) {
     if ($[25] !== selectedIdx || $[26] !== setAppState || $[27] !== viewedIdx || $[28] !== visiblePills) {
       t13 = visiblePills.map((pill_1, i_1) => {
         const needsSeparator = i_1 > 0;
-        return /* @__PURE__ */ jsx_runtime409.jsxs(React138.Fragment, {
+        return /* @__PURE__ */ jsx_runtime409.jsxs(React139.Fragment, {
           children: [
             needsSeparator && /* @__PURE__ */ jsx_runtime409.jsx(ThemedText, {
               children: " "
@@ -546397,7 +546467,7 @@ function _temp528(t_0) {
 function _temp439(s_1) {
   return s_1.expandedView;
 }
-function _temp352(t) {
+function _temp351(t) {
   return isBackgroundTask(t) && true;
 }
 function _temp276(s_0) {
@@ -546407,7 +546477,7 @@ function _temp187(s) {
   return s.tasks;
 }
 function AgentPill(t0) {
-  const $ = import_compiler_runtime330.c(19);
+  const $ = import_compiler_runtime329.c(19);
   const {
     name,
     color,
@@ -546539,7 +546609,7 @@ function AgentPill(t0) {
   return t3;
 }
 function SummaryPill(t0) {
-  const $ = import_compiler_runtime330.c(8);
+  const $ = import_compiler_runtime329.c(8);
   const {
     selected,
     onClick,
@@ -546599,7 +546669,7 @@ function getAgentThemeColor(colorName) {
   }
   return;
 }
-var import_compiler_runtime330, React138, import_react252, jsx_runtime409;
+var import_compiler_runtime329, React139, import_react252, jsx_runtime409;
 var init_BackgroundTaskStatus = __esm(() => {
   init_figures();
   init_useTerminalSize();
@@ -546612,15 +546682,15 @@ var init_BackgroundTaskStatus = __esm(() => {
   init_agentColorManager();
   init_KeyboardShortcutHint();
   init_taskStatusUtils();
-  import_compiler_runtime330 = __toESM(require_compiler_runtime(), 1);
-  React138 = __toESM(require_react(), 1);
+  import_compiler_runtime329 = __toESM(require_compiler_runtime(), 1);
+  React139 = __toESM(require_react(), 1);
   import_react252 = __toESM(require_react(), 1);
   jsx_runtime409 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/teams/TeamStatus.tsx
 function TeamStatus(t0) {
-  const $ = import_compiler_runtime331.c(14);
+  const $ = import_compiler_runtime330.c(14);
   const {
     teamsSelected,
     showHint
@@ -546710,17 +546780,17 @@ function _temp277(t) {
 function _temp188(s) {
   return s.teamContext;
 }
-var import_compiler_runtime331, jsx_runtime410;
+var import_compiler_runtime330, jsx_runtime410;
 var init_TeamStatus = __esm(() => {
   init_ink2();
   init_AppState();
-  import_compiler_runtime331 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime330 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime410 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/PromptInput/HistorySearchInput.tsx
 function HistorySearchInput(t0) {
-  const $ = import_compiler_runtime332.c(9);
+  const $ = import_compiler_runtime331.c(9);
   const {
     value,
     onChange,
@@ -546777,12 +546847,12 @@ function HistorySearchInput(t0) {
   return t5;
 }
 function _temp189() {}
-var import_compiler_runtime332, jsx_runtime411, HistorySearchInput_default;
+var import_compiler_runtime331, jsx_runtime411, HistorySearchInput_default;
 var init_HistorySearchInput = __esm(() => {
   init_stringWidth();
   init_ink2();
   init_TextInput();
-  import_compiler_runtime332 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime331 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime411 = __toESM(require_jsx_runtime(), 1);
   HistorySearchInput_default = HistorySearchInput;
 });
@@ -546923,17 +546993,17 @@ var init_usePrStatus = __esm(() => {
 });
 
 // components/PromptInput/VoiceIndicator.tsx
-var import_compiler_runtime333;
+var import_compiler_runtime332;
 var init_VoiceIndicator = __esm(() => {
   init_useSettings();
   init_ink2();
   init_utils9();
-  import_compiler_runtime333 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime332 = __toESM(require_compiler_runtime(), 1);
 });
 
 // components/PromptInput/PromptInputFooterLeftSide.tsx
 function PromptInputFooterLeftSide(t0) {
-  const $ = import_compiler_runtime334.c(27);
+  const $ = import_compiler_runtime333.c(27);
   const {
     exitMessage,
     vimMode,
@@ -547336,7 +547406,7 @@ function getSpinnerHintParts(isLoading, escShortcut, todosShortcut, killAgentsSh
 function isPrStatusEnabled() {
   return getGlobalConfig().prStatusFooterEnabled ?? true;
 }
-var import_compiler_runtime334, import_react254, jsx_runtime412, proactiveModule3 = null, NO_OP_SUBSCRIBE = (_cb) => () => {}, NULL = () => null;
+var import_compiler_runtime333, import_react254, jsx_runtime412, proactiveModule3 = null, NO_OP_SUBSCRIBE = (_cb) => () => {}, NULL = () => null;
 var init_PromptInputFooterLeftSide = __esm(() => {
   init_ink2();
   init_figures();
@@ -547368,7 +547438,7 @@ var init_PromptInputFooterLeftSide = __esm(() => {
   init_config2();
   init_platform2();
   init_PrBadge();
-  import_compiler_runtime334 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime333 = __toESM(require_compiler_runtime(), 1);
   import_react254 = __toESM(require_react(), 1);
   jsx_runtime412 = __toESM(require_jsx_runtime(), 1);
 });
@@ -547585,7 +547655,7 @@ function getTeammateThemeColor() {
   return;
 }
 function PromptChar(t0) {
-  const $ = import_compiler_runtime335.c(3);
+  const $ = import_compiler_runtime334.c(3);
   const {
     isLoading,
     themeColor
@@ -547611,7 +547681,7 @@ function PromptChar(t0) {
   return t1;
 }
 function PromptInputModeIndicator(t0) {
-  const $ = import_compiler_runtime335.c(6);
+  const $ = import_compiler_runtime334.c(6);
   const {
     mode,
     isLoading,
@@ -547656,14 +547726,14 @@ function PromptInputModeIndicator(t0) {
   }
   return t2;
 }
-var import_compiler_runtime335, jsx_runtime414;
+var import_compiler_runtime334, jsx_runtime414;
 var init_PromptInputModeIndicator = __esm(() => {
   init_figures();
   init_ink2();
   init_agentColorManager();
   init_teammate();
   init_agentSwarmsEnabled();
-  import_compiler_runtime335 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime334 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime414 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -547744,7 +547814,7 @@ function PromptInputQueuedCommandsImpl() {
     }, i))
   });
 }
-var React139, import_react256, jsx_runtime415, EMPTY_SET2, MAX_VISIBLE_NOTIFICATIONS = 3, PromptInputQueuedCommands;
+var React140, import_react256, jsx_runtime415, EMPTY_SET2, MAX_VISIBLE_NOTIFICATIONS = 3, PromptInputQueuedCommands;
 var init_PromptInputQueuedCommands = __esm(() => {
   init_ink2();
   init_AppState();
@@ -547755,16 +547825,16 @@ var init_PromptInputQueuedCommands = __esm(() => {
   init_messages3();
   init_slowOperations();
   init_Message();
-  React139 = __toESM(require_react(), 1);
+  React140 = __toESM(require_react(), 1);
   import_react256 = __toESM(require_react(), 1);
   jsx_runtime415 = __toESM(require_jsx_runtime(), 1);
   EMPTY_SET2 = new Set;
-  PromptInputQueuedCommands = React139.memo(PromptInputQueuedCommandsImpl);
+  PromptInputQueuedCommands = React140.memo(PromptInputQueuedCommandsImpl);
 });
 
 // components/PromptInput/PromptInputStashNotice.tsx
 function PromptInputStashNotice(t0) {
-  const $ = import_compiler_runtime336.c(1);
+  const $ = import_compiler_runtime335.c(1);
   const {
     hasStash
   } = t0;
@@ -547789,11 +547859,11 @@ function PromptInputStashNotice(t0) {
   }
   return t1;
 }
-var import_compiler_runtime336, jsx_runtime416;
+var import_compiler_runtime335, jsx_runtime416;
 var init_PromptInputStashNotice = __esm(() => {
   init_figures();
   init_ink2();
-  import_compiler_runtime336 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime335 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime416 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -548098,8 +548168,8 @@ function useSwarmBanner() {
   const agent = useAppState((s) => s.agent);
   useAppState((s) => s.viewingAgentTaskId);
   const store = useAppStateStore();
-  const [insideTmux, setInsideTmux] = React140.useState(null);
-  React140.useEffect(() => {
+  const [insideTmux, setInsideTmux] = React141.useState(null);
+  React141.useEffect(() => {
     isInsideTmux().then(setInsideTmux);
   }, []);
   const state = store.getState();
@@ -548166,7 +548236,7 @@ function useSwarmBanner() {
 function toThemeColor(colorName, fallback = "cyan_FOR_SUBAGENTS_ONLY") {
   return colorName && AGENT_COLORS.includes(colorName) ? AGENT_COLOR_TO_THEME_COLOR[colorName] : fallback;
 }
-var React140;
+var React141;
 var init_useSwarmBanner = __esm(() => {
   init_AppState();
   init_selectors();
@@ -548176,11 +548246,11 @@ var init_useSwarmBanner = __esm(() => {
   init_registry();
   init_teammate();
   init_teammateContext();
-  React140 = __toESM(require_react(), 1);
+  React141 = __toESM(require_react(), 1);
 });
 
 // components/PromptInput/PromptInput.tsx
-import * as path25 from "path";
+import * as path26 from "path";
 function PromptInput({
   debug,
   ideSelection,
@@ -548225,19 +548295,19 @@ function PromptInput({
   insertTextRef,
   voiceInterimRange
 }) {
-  const mainLoopModel = useMainLoopModel2();
+  const mainLoopModel = useMainLoopModel();
   const isModalOverlayActive = useIsModalOverlayActive() || isLocalJSXCommandActive;
   const [isAutoUpdating, setIsAutoUpdating] = import_react260.useState(false);
   const [exitMessage, setExitMessage] = import_react260.useState({
     show: false
   });
   const [cursorOffset, setCursorOffset] = import_react260.useState(input.length);
-  const lastInternalInputRef = React141.useRef(input);
+  const lastInternalInputRef = React142.useRef(input);
   if (input !== lastInternalInputRef.current) {
     setCursorOffset(input.length);
     lastInternalInputRef.current = input;
   }
-  const trackAndSetInput = React141.useCallback((value) => {
+  const trackAndSetInput = React142.useCallback((value) => {
     lastInternalInputRef.current = value;
     onInputChange(value);
   }, [onInputChange]);
@@ -549019,7 +549089,7 @@ function PromptInput({
   const onIdeAtMentioned = function(atMentioned) {
     logEvent("tengu_ext_at_mentioned", {});
     let atMentionedText;
-    const relativePath = path25.relative(getCwd(), atMentioned.filePath);
+    const relativePath = path26.relative(getCwd(), atMentioned.filePath);
     if (atMentioned.lineStart && atMentioned.lineEnd) {
       atMentionedText = atMentioned.lineStart === atMentioned.lineEnd ? `@${relativePath}#L${atMentioned.lineStart} ` : `@${relativePath}#L${atMentioned.lineStart}-${atMentioned.lineEnd} `;
     } else {
@@ -549913,7 +549983,7 @@ function buildBorderText(showFastIcon, showFastIconHint, fastModeCooldown) {
     offset: 0
   };
 }
-var React141, import_react260, jsx_runtime417, PROMPT_FOOTER_LINES = 5, MIN_INPUT_VIEWPORT_LINES = 3, PromptInput_default;
+var React142, import_react260, jsx_runtime417, PROMPT_FOOTER_LINES = 5, MIN_INPUT_VIEWPORT_LINES = 3, PromptInput_default;
 var init_PromptInput = __esm(() => {
   init_source();
   init_notifications();
@@ -550009,10 +550079,10 @@ var init_PromptInput = __esm(() => {
   init_useShowFastIconHint();
   init_useSwarmBanner();
   init_utils13();
-  React141 = __toESM(require_react(), 1);
+  React142 = __toESM(require_react(), 1);
   import_react260 = __toESM(require_react(), 1);
   jsx_runtime417 = __toESM(require_jsx_runtime(), 1);
-  PromptInput_default = React141.memo(PromptInput);
+  PromptInput_default = React142.memo(PromptInput);
 });
 
 // utils/controlMessageCompat.ts
@@ -551696,7 +551766,7 @@ var init_useDebouncedDigitInput = __esm(() => {
 
 // components/FeedbackSurvey/FeedbackSurveyView.tsx
 function FeedbackSurveyView(t0) {
-  const $ = import_compiler_runtime337.c(15);
+  const $ = import_compiler_runtime336.c(15);
   const {
     onSelect,
     inputValue,
@@ -551850,11 +551920,11 @@ function FeedbackSurveyView(t0) {
   }
   return t10;
 }
-var import_compiler_runtime337, jsx_runtime418, RESPONSE_INPUTS, inputToResponse, isValidResponseInput = (input) => RESPONSE_INPUTS.includes(input), DEFAULT_MESSAGE = "How is EvilClaude doing this session? (optional)";
+var import_compiler_runtime336, jsx_runtime418, RESPONSE_INPUTS, inputToResponse, isValidResponseInput = (input) => RESPONSE_INPUTS.includes(input), DEFAULT_MESSAGE = "How is EvilClaude doing this session? (optional)";
 var init_FeedbackSurveyView = __esm(() => {
   init_ink2();
   init_useDebouncedDigitInput();
-  import_compiler_runtime337 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime336 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime418 = __toESM(require_jsx_runtime(), 1);
   RESPONSE_INPUTS = ["0", "1", "2", "3"];
   inputToResponse = {
@@ -551866,13 +551936,13 @@ var init_FeedbackSurveyView = __esm(() => {
 });
 
 // components/SkillImprovementSurvey.tsx
-var import_compiler_runtime338, import_react266;
+var import_compiler_runtime337, import_react266;
 var init_SkillImprovementSurvey = __esm(() => {
   init_figures2();
   init_ink2();
   init_stringUtils();
   init_FeedbackSurveyView();
-  import_compiler_runtime338 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime337 = __toESM(require_compiler_runtime(), 1);
   import_react266 = __toESM(require_react(), 1);
 });
 
@@ -552046,9 +552116,9 @@ function useMoreRight(_args) {
 }
 
 // utils/cleanup.ts
-import * as fs12 from "fs/promises";
-import { homedir as homedir36 } from "os";
-import { join as join136 } from "path";
+import * as fs13 from "fs/promises";
+import { homedir as homedir37 } from "os";
+import { join as join137 } from "path";
 function getCutoffDate() {
   const settings = getSettings_DEPRECATED() || {};
   const cleanupPeriodDays = settings.cleanupPeriodDays ?? DEFAULT_CLEANUP_PERIOD_DAYS;
@@ -552073,7 +552143,7 @@ async function cleanupOldFilesInDirectory(dirPath, cutoffDate, isMessagePath) {
       try {
         const timestamp = convertFileNameToDate(file.name);
         if (timestamp < cutoffDate) {
-          await getFsImplementation().unlink(join136(dirPath, file.name));
+          await getFsImplementation().unlink(join137(dirPath, file.name));
           if (isMessagePath) {
             result.messages++;
           } else {
@@ -552104,7 +552174,7 @@ async function cleanupOldMessageFiles() {
     } catch {
       return result;
     }
-    const mcpLogDirs = dirents.filter((dirent) => dirent.isDirectory() && dirent.name.startsWith("mcp-logs-")).map((dirent) => join136(baseCachePath, dirent.name));
+    const mcpLogDirs = dirents.filter((dirent) => dirent.isDirectory() && dirent.name.startsWith("mcp-logs-")).map((dirent) => join137(baseCachePath, dirent.name));
     for (const mcpLogDir of mcpLogDirs) {
       result = addCleanupResults(result, await cleanupOldFilesInDirectory(mcpLogDir, cutoffDate, true));
       await tryRmdir(mcpLogDir, fsImpl);
@@ -552143,7 +552213,7 @@ async function cleanupOldSessionFiles() {
   for (const projectDirent of projectDirents) {
     if (!projectDirent.isDirectory())
       continue;
-    const projectDir = join136(projectsDir, projectDirent.name);
+    const projectDir = join137(projectsDir, projectDirent.name);
     let entries;
     try {
       entries = await fsImpl.readdir(projectDir);
@@ -552157,15 +552227,15 @@ async function cleanupOldSessionFiles() {
           continue;
         }
         try {
-          if (await unlinkIfOld(join136(projectDir, entry.name), cutoffDate, fsImpl)) {
+          if (await unlinkIfOld(join137(projectDir, entry.name), cutoffDate, fsImpl)) {
             result.messages++;
           }
         } catch {
           result.errors++;
         }
       } else if (entry.isDirectory()) {
-        const sessionDir = join136(projectDir, entry.name);
-        const toolResultsDir = join136(sessionDir, TOOL_RESULTS_SUBDIR);
+        const sessionDir = join137(projectDir, entry.name);
+        const toolResultsDir = join137(sessionDir, TOOL_RESULTS_SUBDIR);
         let toolDirs;
         try {
           toolDirs = await fsImpl.readdir(toolResultsDir);
@@ -552176,14 +552246,14 @@ async function cleanupOldSessionFiles() {
         for (const toolEntry of toolDirs) {
           if (toolEntry.isFile()) {
             try {
-              if (await unlinkIfOld(join136(toolResultsDir, toolEntry.name), cutoffDate, fsImpl)) {
+              if (await unlinkIfOld(join137(toolResultsDir, toolEntry.name), cutoffDate, fsImpl)) {
                 result.messages++;
               }
             } catch {
               result.errors++;
             }
           } else if (toolEntry.isDirectory()) {
-            const toolDirPath = join136(toolResultsDir, toolEntry.name);
+            const toolDirPath = join137(toolResultsDir, toolEntry.name);
             let toolFiles;
             try {
               toolFiles = await fsImpl.readdir(toolDirPath);
@@ -552194,7 +552264,7 @@ async function cleanupOldSessionFiles() {
               if (!tf.isFile())
                 continue;
               try {
-                if (await unlinkIfOld(join136(toolDirPath, tf.name), cutoffDate, fsImpl)) {
+                if (await unlinkIfOld(join137(toolDirPath, tf.name), cutoffDate, fsImpl)) {
                   result.messages++;
                 }
               } catch {
@@ -552226,7 +552296,7 @@ async function cleanupSingleDirectory(dirPath, extension, removeEmptyDir = true)
     if (!dirent.isFile() || !dirent.name.endsWith(extension))
       continue;
     try {
-      if (await unlinkIfOld(join136(dirPath, dirent.name), cutoffDate, fsImpl)) {
+      if (await unlinkIfOld(join137(dirPath, dirent.name), cutoffDate, fsImpl)) {
         result.messages++;
       }
     } catch {
@@ -552239,7 +552309,7 @@ async function cleanupSingleDirectory(dirPath, extension, removeEmptyDir = true)
   return result;
 }
 function cleanupOldPlanFiles() {
-  const plansDir = join136(getClaudeConfigHomeDir(), "plans");
+  const plansDir = join137(getClaudeConfigHomeDir(), "plans");
   return cleanupSingleDirectory(plansDir, ".md");
 }
 async function cleanupOldFileHistoryBackups() {
@@ -552248,14 +552318,14 @@ async function cleanupOldFileHistoryBackups() {
   const fsImpl = getFsImplementation();
   try {
     const configDir = getClaudeConfigHomeDir();
-    const fileHistoryStorageDir = join136(configDir, "file-history");
+    const fileHistoryStorageDir = join137(configDir, "file-history");
     let dirents;
     try {
       dirents = await fsImpl.readdir(fileHistoryStorageDir);
     } catch {
       return result;
     }
-    const fileHistorySessionsDirs = dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => join136(fileHistoryStorageDir, dirent.name));
+    const fileHistorySessionsDirs = dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => join137(fileHistoryStorageDir, dirent.name));
     await Promise.all(fileHistorySessionsDirs.map(async (fileHistorySessionDir) => {
       try {
         const stats = await fsImpl.stat(fileHistorySessionDir);
@@ -552282,14 +552352,14 @@ async function cleanupOldSessionEnvDirs() {
   const fsImpl = getFsImplementation();
   try {
     const configDir = getClaudeConfigHomeDir();
-    const sessionEnvBaseDir = join136(configDir, "session-env");
+    const sessionEnvBaseDir = join137(configDir, "session-env");
     let dirents;
     try {
       dirents = await fsImpl.readdir(sessionEnvBaseDir);
     } catch {
       return result;
     }
-    const sessionEnvDirs = dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => join136(sessionEnvBaseDir, dirent.name));
+    const sessionEnvDirs = dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => join137(sessionEnvBaseDir, dirent.name));
     for (const sessionEnvDir of sessionEnvDirs) {
       try {
         const stats = await fsImpl.stat(sessionEnvDir);
@@ -552311,7 +552381,7 @@ async function cleanupOldDebugLogs() {
   const cutoffDate = getCutoffDate();
   const result = { messages: 0, errors: 0 };
   const fsImpl = getFsImplementation();
-  const debugDir = join136(getClaudeConfigHomeDir(), "debug");
+  const debugDir = join137(getClaudeConfigHomeDir(), "debug");
   let dirents;
   try {
     dirents = await fsImpl.readdir(debugDir);
@@ -552323,7 +552393,7 @@ async function cleanupOldDebugLogs() {
       continue;
     }
     try {
-      if (await unlinkIfOld(join136(debugDir, dirent.name), cutoffDate, fsImpl)) {
+      if (await unlinkIfOld(join137(debugDir, dirent.name), cutoffDate, fsImpl)) {
         result.messages++;
       }
     } catch {
@@ -552333,9 +552403,9 @@ async function cleanupOldDebugLogs() {
   return result;
 }
 async function cleanupNpmCacheForAnthropicPackages() {
-  const markerPath = join136(getClaudeConfigHomeDir(), ".npm-cache-cleanup");
+  const markerPath = join137(getClaudeConfigHomeDir(), ".npm-cache-cleanup");
   try {
-    const stat = await fs12.stat(markerPath);
+    const stat = await fs13.stat(markerPath);
     if (Date.now() - stat.mtimeMs < ONE_DAY_MS) {
       logForDebugging("npm cache cleanup: skipping, ran recently");
       return;
@@ -552348,7 +552418,7 @@ async function cleanupNpmCacheForAnthropicPackages() {
     return;
   }
   logForDebugging("npm cache cleanup: starting");
-  const npmCachePath = join136(homedir36(), ".npm", "_cacache");
+  const npmCachePath = join137(homedir37(), ".npm", "_cacache");
   const NPM_CACHE_RETENTION_COUNT = 5;
   const startTime = Date.now();
   try {
@@ -552380,7 +552450,7 @@ async function cleanupNpmCacheForAnthropicPackages() {
       }
     }
     await Promise.all(keysToRemove.map((key) => cacache.rm.entry(npmCachePath, key)));
-    await fs12.writeFile(markerPath, new Date().toISOString());
+    await fs13.writeFile(markerPath, new Date().toISOString());
     const durationMs = Date.now() - startTime;
     if (keysToRemove.length > 0) {
       logForDebugging(`npm cache cleanup: Removed ${keysToRemove.length} old @anthropic-ai entries in ${durationMs}ms`);
@@ -552403,9 +552473,9 @@ async function cleanupNpmCacheForAnthropicPackages() {
   }
 }
 async function cleanupOldVersionsThrottled() {
-  const markerPath = join136(getClaudeConfigHomeDir(), ".version-cleanup");
+  const markerPath = join137(getClaudeConfigHomeDir(), ".version-cleanup");
   try {
-    const stat = await fs12.stat(markerPath);
+    const stat = await fs13.stat(markerPath);
     if (Date.now() - stat.mtimeMs < ONE_DAY_MS) {
       logForDebugging("version cleanup: skipping, ran recently");
       return;
@@ -552420,7 +552490,7 @@ async function cleanupOldVersionsThrottled() {
   logForDebugging("version cleanup: starting (throttled)");
   try {
     await cleanupOldVersions();
-    await fs12.writeFile(markerPath, new Date().toISOString());
+    await fs13.writeFile(markerPath, new Date().toISOString());
   } catch (error) {
     logError2(error);
   } finally {
@@ -552807,7 +552877,7 @@ var init_useGlobalKeybindings = __esm(() => {
 
 // hooks/useCommandKeybindings.tsx
 function CommandKeybindingHandlers(t0) {
-  const $ = import_compiler_runtime339.c(8);
+  const $ = import_compiler_runtime338.c(8);
   const {
     onSubmit,
     isActive: t1
@@ -552877,12 +552947,12 @@ function CommandKeybindingHandlers(t0) {
   useKeybindings(handlers, t4);
   return null;
 }
-var import_compiler_runtime339, NOOP_HELPERS;
+var import_compiler_runtime338, NOOP_HELPERS;
 var init_useCommandKeybindings = __esm(() => {
   init_overlayContext();
   init_KeybindingContext();
   init_useKeybinding();
-  import_compiler_runtime339 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime338 = __toESM(require_compiler_runtime(), 1);
   NOOP_HELPERS = {
     setCursorOffset: () => {},
     clearBuffer: () => {},
@@ -553869,7 +553939,7 @@ var init_swarmWorkerHandler = __esm(() => {
 
 // hooks/useCanUseTool.tsx
 function useCanUseTool(setToolUseConfirmQueue, setToolPermissionContext) {
-  const $ = import_compiler_runtime340.c(3);
+  const $ = import_compiler_runtime339.c(3);
   let t0;
   if ($[0] !== setToolPermissionContext || $[1] !== setToolUseConfirmQueue) {
     t0 = async (tool, input, toolUseContext, assistantMessage, toolUseID, forceDecision) => new Promise((resolve) => {
@@ -553979,7 +554049,7 @@ function useCanUseTool(setToolUseConfirmQueue, setToolPermissionContext) {
   }
   return t0;
 }
-var import_compiler_runtime340, useCanUseTool_default;
+var import_compiler_runtime339, useCanUseTool_default;
 var init_useCanUseTool = __esm(() => {
   init_sdk();
   init_ink2();
@@ -553995,7 +554065,7 @@ var init_useCanUseTool = __esm(() => {
   init_swarmWorkerHandler();
   init_PermissionContext();
   init_permissionLogging();
-  import_compiler_runtime340 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime339 = __toESM(require_compiler_runtime(), 1);
   useCanUseTool_default = useCanUseTool;
 });
 
@@ -554070,7 +554140,7 @@ var init_processTextPrompt = __esm(() => {
 
 // components/BashModeProgress.tsx
 function BashModeProgress(t0) {
-  const $ = import_compiler_runtime341.c(8);
+  const $ = import_compiler_runtime340.c(8);
   const {
     input,
     progress,
@@ -554128,13 +554198,13 @@ function BashModeProgress(t0) {
   }
   return t4;
 }
-var import_compiler_runtime341, jsx_runtime419;
+var import_compiler_runtime340, jsx_runtime419;
 var init_BashModeProgress = __esm(() => {
   init_ink2();
   init_BashTool();
   init_UserBashInputMessage();
   init_ShellProgressMessage();
-  import_compiler_runtime341 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime340 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime419 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -555428,7 +555498,7 @@ var init_useManagePlugins = __esm(() => {
 
 // components/TeammateViewHeader.tsx
 function TeammateViewHeader() {
-  const $ = import_compiler_runtime342.c(14);
+  const $ = import_compiler_runtime341.c(14);
   const viewedTeammate = useAppState(_temp190);
   if (!viewedTeammate) {
     return null;
@@ -555531,7 +555601,7 @@ function TeammateViewHeader() {
 function _temp190(s) {
   return getViewedTeammateTask(s);
 }
-var import_compiler_runtime342, jsx_runtime421;
+var import_compiler_runtime341, jsx_runtime421;
 var init_TeammateViewHeader = __esm(() => {
   init_ink2();
   init_AppState();
@@ -555539,7 +555609,7 @@ var init_TeammateViewHeader = __esm(() => {
   init_ink3();
   init_KeyboardShortcutHint();
   init_OffscreenFreeze();
-  import_compiler_runtime342 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime341 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime421 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -555627,15 +555697,15 @@ var init_useIdeSelection = __esm(() => {
 
 // utils/asciicast.ts
 import { appendFile as appendFile7, rename as rename10 } from "fs/promises";
-import { basename as basename54, dirname as dirname55, join as join138 } from "path";
+import { basename as basename54, dirname as dirname55, join as join139 } from "path";
 async function renameRecordingForSession() {
   const oldPath = recordingState.filePath;
   if (!oldPath || recordingState.timestamp === 0) {
     return;
   }
-  const projectsDir = join138(getClaudeConfigHomeDir(), "projects");
-  const projectDir = join138(projectsDir, sanitizePath2(getOriginalCwd()));
-  const newPath = join138(projectDir, `${getSessionId()}-${recordingState.timestamp}.cast`);
+  const projectsDir = join139(getClaudeConfigHomeDir(), "projects");
+  const projectDir = join139(projectsDir, sanitizePath2(getOriginalCwd()));
+  const newPath = join139(projectDir, `${getSessionId()}-${recordingState.timestamp}.cast`);
   if (oldPath === newPath) {
     return;
   }
@@ -556447,7 +556517,7 @@ var init_useTaskListWatcher = __esm(() => {
 
 // hooks/useIDEIntegration.tsx
 function useIDEIntegration(t0) {
-  const $ = import_compiler_runtime343.c(7);
+  const $ = import_compiler_runtime342.c(7);
   const {
     autoConnectIdeFlag,
     ideToInstallExtension,
@@ -556501,18 +556571,18 @@ function useIDEIntegration(t0) {
   }
   import_react286.useEffect(t1, t2);
 }
-var import_compiler_runtime343, import_react286;
+var import_compiler_runtime342, import_react286;
 var init_useIDEIntegration = __esm(() => {
   init_config2();
   init_envUtils();
   init_ide();
-  import_compiler_runtime343 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime342 = __toESM(require_compiler_runtime(), 1);
   import_react286 = __toESM(require_react(), 1);
 });
 
 // components/SessionBackgroundHint.tsx
 function SessionBackgroundHint(t0) {
-  const $ = import_compiler_runtime344.c(10);
+  const $ = import_compiler_runtime343.c(10);
   const {
     onBackgroundSession,
     isLoading
@@ -556601,7 +556671,7 @@ function _temp278(c) {
   };
 }
 function _temp191() {}
-var import_compiler_runtime344, import_react287, jsx_runtime422;
+var import_compiler_runtime343, import_react287, jsx_runtime422;
 var init_SessionBackgroundHint = __esm(() => {
   init_useDoublePress();
   init_ink2();
@@ -556613,7 +556683,7 @@ var init_SessionBackgroundHint = __esm(() => {
   init_env();
   init_envUtils();
   init_KeyboardShortcutHint();
-  import_compiler_runtime344 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime343 = __toESM(require_compiler_runtime(), 1);
   import_react287 = __toESM(require_react(), 1);
   jsx_runtime422 = __toESM(require_jsx_runtime(), 1);
 });
@@ -556745,7 +556815,7 @@ var init_useSessionBackgrounding = __esm(() => {
 
 // components/EffortCallout.tsx
 function EffortCallout(t0) {
-  const $ = import_compiler_runtime345.c(18);
+  const $ = import_compiler_runtime344.c(18);
   const {
     model,
     onDone
@@ -556941,7 +557011,7 @@ function _temp192() {
   markV2Dismissed();
 }
 function EffortIndicatorSymbol(t0) {
-  const $ = import_compiler_runtime345.c(4);
+  const $ = import_compiler_runtime344.c(4);
   const {
     level
   } = t0;
@@ -556967,7 +557037,7 @@ function EffortIndicatorSymbol(t0) {
   return t2;
 }
 function EffortOptionLabel(t0) {
-  const $ = import_compiler_runtime345.c(5);
+  const $ = import_compiler_runtime344.c(5);
   const {
     level,
     text
@@ -557034,7 +557104,7 @@ function markV2Dismissed() {
     };
   });
 }
-var import_compiler_runtime345, import_react289, jsx_runtime423, AUTO_DISMISS_MS = 30000;
+var import_compiler_runtime344, import_react289, jsx_runtime423, AUTO_DISMISS_MS = 30000;
 var init_EffortCallout = __esm(() => {
   init_ink2();
   init_auth2();
@@ -557045,7 +557115,7 @@ var init_EffortCallout = __esm(() => {
   init_select();
   init_EffortIndicator();
   init_PermissionDialog();
-  import_compiler_runtime345 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime344 = __toESM(require_compiler_runtime(), 1);
   import_react289 = __toESM(require_react(), 1);
   jsx_runtime423 = __toESM(require_jsx_runtime(), 1);
 });
@@ -557161,7 +557231,7 @@ async function submitTranscriptShare(messages, trigger, appearanceId) {
     } catch {}
     const data = {
       trigger,
-      version: "1.0.26",
+      version: "1.0.27",
       platform: process.platform,
       transcript,
       subagentTranscripts: Object.keys(subagentTranscripts).length > 0 ? subagentTranscripts : undefined,
@@ -557746,7 +557816,7 @@ function hasMessageAfterBoundary(messages, boundaryUuid) {
   return false;
 }
 function usePostCompactSurvey(messages, isLoading, t0, t1) {
-  const $ = import_compiler_runtime346.c(23);
+  const $ = import_compiler_runtime345.c(23);
   const hasActivePrompt = t0 === undefined ? false : t0;
   let t2;
   if ($[0] !== t1) {
@@ -557809,7 +557879,7 @@ function usePostCompactSurvey(messages, isLoading, t0, t1) {
   import_react295.useEffect(t6, t7);
   let t8;
   if ($[7] !== messages) {
-    t8 = new Set(messages.filter(_temp353).map(_temp440));
+    t8 = new Set(messages.filter(_temp352).map(_temp440));
     $[7] = messages;
     $[8] = t8;
   } else {
@@ -557888,7 +557958,7 @@ function usePostCompactSurvey(messages, isLoading, t0, t1) {
 function _temp440(msg_0) {
   return msg_0.uuid;
 }
-function _temp353(msg) {
+function _temp352(msg) {
   return isCompactBoundaryMessage(msg);
 }
 function _temp279(appearanceId_0, selected) {
@@ -557919,7 +557989,7 @@ function _temp193(appearanceId) {
     survey_type: "post_compact"
   });
 }
-var import_compiler_runtime346, import_react295, HIDE_THANKS_AFTER_MS2 = 3000, POST_COMPACT_SURVEY_GATE = "tengu_post_compact_survey", SURVEY_PROBABILITY2 = 0.2;
+var import_compiler_runtime345, import_react295, HIDE_THANKS_AFTER_MS2 = 3000, POST_COMPACT_SURVEY_GATE = "tengu_post_compact_survey", SURVEY_PROBABILITY2 = 0.2;
 var init_usePostCompactSurvey = __esm(() => {
   init_config();
   init_growthbook();
@@ -557929,13 +557999,13 @@ var init_usePostCompactSurvey = __esm(() => {
   init_messages3();
   init_events();
   init_useSurveyState();
-  import_compiler_runtime346 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime345 = __toESM(require_compiler_runtime(), 1);
   import_react295 = __toESM(require_react(), 1);
 });
 
 // components/FeedbackSurvey/TranscriptSharePrompt.tsx
 function TranscriptSharePrompt(t0) {
-  const $ = import_compiler_runtime347.c(11);
+  const $ = import_compiler_runtime346.c(11);
   const {
     onSelect,
     inputValue,
@@ -558069,12 +558139,12 @@ function TranscriptSharePrompt(t0) {
   }
   return t7;
 }
-var import_compiler_runtime347, jsx_runtime425, RESPONSE_INPUTS2, inputToResponse2, isValidResponseInput2 = (input) => RESPONSE_INPUTS2.includes(input);
+var import_compiler_runtime346, jsx_runtime425, RESPONSE_INPUTS2, inputToResponse2, isValidResponseInput2 = (input) => RESPONSE_INPUTS2.includes(input);
 var init_TranscriptSharePrompt = __esm(() => {
   init_figures2();
   init_ink2();
   init_useDebouncedDigitInput();
-  import_compiler_runtime347 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime346 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime425 = __toESM(require_jsx_runtime(), 1);
   RESPONSE_INPUTS2 = ["1", "2", "3"];
   inputToResponse2 = {
@@ -558086,7 +558156,7 @@ var init_TranscriptSharePrompt = __esm(() => {
 
 // components/FeedbackSurvey/FeedbackSurvey.tsx
 function FeedbackSurvey(t0) {
-  const $ = import_compiler_runtime348.c(16);
+  const $ = import_compiler_runtime347.c(16);
   const {
     state,
     lastResponse,
@@ -558202,7 +558272,7 @@ function FeedbackSurvey(t0) {
   return t1;
 }
 function FeedbackSurveyThanks(t0) {
-  const $ = import_compiler_runtime348.c(12);
+  const $ = import_compiler_runtime347.c(12);
   const {
     lastResponse,
     inputValue,
@@ -558296,14 +558366,14 @@ function FeedbackSurveyThanks(t0) {
   }
   return t5;
 }
-var import_compiler_runtime348, jsx_runtime426, isFollowUpDigit = (char) => char === "1";
+var import_compiler_runtime347, jsx_runtime426, isFollowUpDigit = (char) => char === "1";
 var init_FeedbackSurvey = __esm(() => {
   init_analytics();
   init_ink2();
   init_FeedbackSurveyView();
   init_TranscriptSharePrompt();
   init_useDebouncedDigitInput();
-  import_compiler_runtime348 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime347 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime426 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -558446,7 +558516,7 @@ var init_useChromeExtensionNotification = __esm(() => {
 });
 
 // utils/plugins/officialMarketplaceStartupCheck.ts
-import { join as join139 } from "path";
+import { join as join140 } from "path";
 function isOfficialMarketplaceAutoInstallDisabled() {
   return isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL);
 }
@@ -558529,7 +558599,7 @@ async function checkAndInstallOfficialMarketplace() {
       return { installed: false, skipped: true, reason: "policy_blocked" };
     }
     const cacheDir = getMarketplacesCacheDir();
-    const installLocation = join139(cacheDir, OFFICIAL_MARKETPLACE_NAME);
+    const installLocation = join140(cacheDir, OFFICIAL_MARKETPLACE_NAME);
     const gcsSha = await fetchOfficialMarketplaceFromGcs(installLocation, cacheDir);
     if (gcsSha !== null) {
       const known = await loadKnownMarketplacesConfig();
@@ -558766,7 +558836,7 @@ var init_useOfficialMarketplaceNotification = __esm(() => {
 
 // hooks/usePromptsFromClaudeInChrome.tsx
 function usePromptsFromClaudeInChrome(mcpClients, toolPermissionMode) {
-  const $ = import_compiler_runtime349.c(6);
+  const $ = import_compiler_runtime348.c(6);
   import_react298.useRef(undefined);
   let t0;
   if ($[0] !== mcpClients) {
@@ -558805,12 +558875,12 @@ function _temp197() {}
 function findChromeClient(clients) {
   return clients.find((client) => client.type === "connected" && client.name === CLAUDE_IN_CHROME_MCP_SERVER_NAME);
 }
-var import_compiler_runtime349, import_react298, ClaudeInChromePromptNotificationSchema;
+var import_compiler_runtime348, import_react298, ClaudeInChromePromptNotificationSchema;
 var init_usePromptsFromClaudeInChrome = __esm(() => {
   init_v4();
   init_client9();
   init_common2();
-  import_compiler_runtime349 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime348 = __toESM(require_compiler_runtime(), 1);
   import_react298 = __toESM(require_react(), 1);
   ClaudeInChromePromptNotificationSchema = lazySchema(() => object({
     method: literal("notifications/message"),
@@ -558867,7 +558937,7 @@ function shouldShowDesktopUpsellStartup() {
   return true;
 }
 function DesktopUpsellStartup(t0) {
-  const $ = import_compiler_runtime350.c(14);
+  const $ = import_compiler_runtime349.c(14);
   const {
     onDone
   } = t0;
@@ -559019,7 +559089,7 @@ function _temp198() {
     seen_count: newCount
   });
 }
-var import_compiler_runtime350, import_react299, jsx_runtime429, DESKTOP_UPSELL_DEFAULT;
+var import_compiler_runtime349, import_react299, jsx_runtime429, DESKTOP_UPSELL_DEFAULT;
 var init_DesktopUpsellStartup = __esm(() => {
   init_ink2();
   init_growthbook();
@@ -559028,7 +559098,7 @@ var init_DesktopUpsellStartup = __esm(() => {
   init_select();
   init_DesktopHandoff();
   init_PermissionDialog();
-  import_compiler_runtime350 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime349 = __toESM(require_compiler_runtime(), 1);
   import_react299 = __toESM(require_react(), 1);
   jsx_runtime429 = __toESM(require_jsx_runtime(), 1);
   DESKTOP_UPSELL_DEFAULT = {
@@ -560541,7 +560611,7 @@ var init_useFileHistorySnapshotInit = __esm(() => {
 
 // components/permissions/SandboxPermissionRequest.tsx
 function SandboxPermissionRequest(t0) {
-  const $ = import_compiler_runtime351.c(22);
+  const $ = import_compiler_runtime350.c(22);
   const {
     hostPattern: t1,
     onUserResponse
@@ -560738,13 +560808,13 @@ function SandboxPermissionRequest(t0) {
   }
   return t13;
 }
-var import_compiler_runtime351, jsx_runtime430;
+var import_compiler_runtime350, jsx_runtime430;
 var init_SandboxPermissionRequest = __esm(() => {
   init_ink2();
   init_sandbox_adapter();
   init_select();
   init_PermissionDialog();
-  import_compiler_runtime351 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime350 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime430 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -560757,7 +560827,7 @@ function formatTime(date) {
   return `${h}:${m}:${s}${ampm}`;
 }
 function SandboxViolationExpandedView() {
-  const $ = import_compiler_runtime352.c(15);
+  const $ = import_compiler_runtime351.c(15);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = [];
@@ -560880,19 +560950,19 @@ function _temp199(v, i) {
     })
   }, `${v.timestamp.getTime()}-${i}`);
 }
-var import_compiler_runtime352, import_react301, jsx_runtime431;
+var import_compiler_runtime351, import_react301, jsx_runtime431;
 var init_SandboxViolationExpandedView = __esm(() => {
   init_ink2();
   init_sandbox_adapter();
   init_platform2();
-  import_compiler_runtime352 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime351 = __toESM(require_compiler_runtime(), 1);
   import_react301 = __toESM(require_react(), 1);
   jsx_runtime431 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/notifs/useMcpConnectivityStatus.tsx
 function useMcpConnectivityStatus(t0) {
-  const $ = import_compiler_runtime353.c(4);
+  const $ = import_compiler_runtime352.c(4);
   const {
     mcpClients: t1
   } = t0;
@@ -560909,7 +560979,7 @@ function useMcpConnectivityStatus(t0) {
       }
       const failedLocalClients = mcpClients.filter(_temp200);
       const failedClaudeAiClients = mcpClients.filter(_temp282);
-      const needsAuthLocalServers = mcpClients.filter(_temp354);
+      const needsAuthLocalServers = mcpClients.filter(_temp353);
       const needsAuthClaudeAiServers = mcpClients.filter(_temp441);
       if (failedLocalClients.length === 0 && failedClaudeAiClients.length === 0 && needsAuthLocalServers.length === 0 && needsAuthClaudeAiServers.length === 0) {
         return;
@@ -561028,7 +561098,7 @@ function useMcpConnectivityStatus(t0) {
 function _temp441(client_2) {
   return client_2.type === "needs-auth" && client_2.config.type === "claudeai-proxy" && hasClaudeAiMcpEverConnected(client_2.name);
 }
-function _temp354(client_1) {
+function _temp353(client_1) {
   return client_1.type === "needs-auth" && client_1.config.type !== "claudeai-proxy";
 }
 function _temp282(client_0) {
@@ -561037,13 +561107,13 @@ function _temp282(client_0) {
 function _temp200(client) {
   return client.type === "failed" && client.config.type !== "sse-ide" && client.config.type !== "ws-ide" && client.config.type !== "claudeai-proxy";
 }
-var import_compiler_runtime353, import_react302, jsx_runtime432, EMPTY_MCP_CLIENTS;
+var import_compiler_runtime352, import_react302, jsx_runtime432, EMPTY_MCP_CLIENTS;
 var init_useMcpConnectivityStatus = __esm(() => {
   init_notifications();
   init_state();
   init_ink2();
   init_claudeai();
-  import_compiler_runtime353 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime352 = __toESM(require_compiler_runtime(), 1);
   import_react302 = __toESM(require_react(), 1);
   jsx_runtime432 = __toESM(require_jsx_runtime(), 1);
   EMPTY_MCP_CLIENTS = [];
@@ -561092,12 +561162,12 @@ var init_useAutoModeUnavailableNotification = __esm(() => {
 
 // hooks/notifs/useLspInitializationNotification.tsx
 function useLspInitializationNotification() {
-  const $ = import_compiler_runtime354.c(10);
+  const $ = import_compiler_runtime353.c(10);
   const {
     addNotification
   } = useNotifications();
   const setAppState = useSetAppState();
-  const [shouldPoll, setShouldPoll] = React146.useState(_temp201);
+  const [shouldPoll, setShouldPoll] = React147.useState(_temp201);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = new Set;
@@ -561105,7 +561175,7 @@ function useLspInitializationNotification() {
   } else {
     t0 = $[0];
   }
-  const notifiedErrorsRef = React146.useRef(t0);
+  const notifiedErrorsRef = React147.useRef(t0);
   let t1;
   if ($[1] !== addNotification || $[2] !== setAppState) {
     t1 = (source, errorMessage) => {
@@ -561216,7 +561286,7 @@ function useLspInitializationNotification() {
     t3 = $[8];
     t4 = $[9];
   }
-  React146.useEffect(t3, t4);
+  React147.useEffect(t3, t4);
 }
 function _temp283(e) {
   if (e.type === "generic-error") {
@@ -561227,7 +561297,7 @@ function _temp283(e) {
 function _temp201() {
   return isEnvTruthy("true");
 }
-var import_compiler_runtime354, React146, jsx_runtime433, LSP_POLL_INTERVAL_MS = 5000;
+var import_compiler_runtime353, React147, jsx_runtime433, LSP_POLL_INTERVAL_MS = 5000;
 var init_useLspInitializationNotification = __esm(() => {
   init_dist7();
   init_state();
@@ -561237,8 +561307,8 @@ var init_useLspInitializationNotification = __esm(() => {
   init_AppState();
   init_debug();
   init_envUtils();
-  import_compiler_runtime354 = __toESM(require_compiler_runtime(), 1);
-  React146 = __toESM(require_react(), 1);
+  import_compiler_runtime353 = __toESM(require_compiler_runtime(), 1);
+  React147 = __toESM(require_react(), 1);
   jsx_runtime433 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -561450,9 +561520,9 @@ var init_lspRecommendation = __esm(() => {
 
 // hooks/usePluginRecommendationBase.tsx
 function usePluginRecommendationBase() {
-  const $ = import_compiler_runtime355.c(6);
-  const [recommendation, setRecommendation] = React147.useState(null);
-  const isCheckingRef = React147.useRef(false);
+  const $ = import_compiler_runtime354.c(6);
+  const [recommendation, setRecommendation] = React148.useState(null);
+  const isCheckingRef = React148.useRef(false);
   let t0;
   if ($[0] !== recommendation) {
     t0 = (resolve) => {
@@ -561540,22 +561610,22 @@ async function installPluginAndNotify(pluginId, pluginName, keyPrefix, addNotifi
     });
   }
 }
-var import_compiler_runtime355, React147, jsx_runtime434;
+var import_compiler_runtime354, React148, jsx_runtime434;
 var init_usePluginRecommendationBase = __esm(() => {
   init_figures();
   init_state();
   init_ink2();
   init_log3();
   init_marketplaceManager();
-  import_compiler_runtime355 = __toESM(require_compiler_runtime(), 1);
-  React147 = __toESM(require_react(), 1);
+  import_compiler_runtime354 = __toESM(require_compiler_runtime(), 1);
+  React148 = __toESM(require_react(), 1);
   jsx_runtime434 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/useLspPluginRecommendation.tsx
-import { extname as extname15, join as join140 } from "path";
+import { extname as extname15, join as join141 } from "path";
 function useLspPluginRecommendation() {
-  const $ = import_compiler_runtime356.c(12);
+  const $ = import_compiler_runtime355.c(12);
   const trackedFiles = useAppState(_temp202);
   const {
     addNotification
@@ -561567,7 +561637,7 @@ function useLspPluginRecommendation() {
   } else {
     t0 = $[0];
   }
-  const checkedFilesRef = React148.useRef(t0);
+  const checkedFilesRef = React149.useRef(t0);
   const {
     recommendation,
     clearRecommendation,
@@ -561620,7 +561690,7 @@ function useLspPluginRecommendation() {
     t1 = $[3];
     t2 = $[4];
   }
-  React148.useEffect(t1, t2);
+  React149.useEffect(t1, t2);
   let t3;
   if ($[5] !== addNotification || $[6] !== clearRecommendation || $[7] !== recommendation) {
     t3 = (response) => {
@@ -561638,7 +561708,7 @@ function useLspPluginRecommendation() {
           case "yes": {
             installPluginAndNotify(pluginId, pluginName, "lsp-plugin", addNotification, async (pluginData) => {
               logForDebugging(`[useLspPluginRecommendation] Installing plugin: ${pluginId}`);
-              const localSourcePath = typeof pluginData.entry.source === "string" ? join140(pluginData.marketplaceInstallLocation, pluginData.entry.source) : undefined;
+              const localSourcePath = typeof pluginData.entry.source === "string" ? join141(pluginData.marketplaceInstallLocation, pluginData.entry.source) : undefined;
               await cacheAndRegisterPlugin(pluginId, pluginData.entry, "user", undefined, localSourcePath);
               const settings = getSettingsForSource("userSettings");
               updateSettingsForSource("userSettings", {
@@ -561703,7 +561773,7 @@ function _temp284(current) {
 function _temp202(s) {
   return s.fileHistory.trackedFiles;
 }
-var import_compiler_runtime356, React148, TIMEOUT_THRESHOLD_MS = 28000;
+var import_compiler_runtime355, React149, TIMEOUT_THRESHOLD_MS = 28000;
 var init_useLspPluginRecommendation = __esm(() => {
   init_state();
   init_notifications();
@@ -561715,8 +561785,8 @@ var init_useLspPluginRecommendation = __esm(() => {
   init_pluginInstallationHelpers();
   init_settings2();
   init_usePluginRecommendationBase();
-  import_compiler_runtime356 = __toESM(require_compiler_runtime(), 1);
-  React148 = __toESM(require_react(), 1);
+  import_compiler_runtime355 = __toESM(require_compiler_runtime(), 1);
+  React149 = __toESM(require_react(), 1);
 });
 
 // components/LspRecommendation/LspRecommendationMenu.tsx
@@ -561726,9 +561796,9 @@ function LspRecommendationMenu({
   fileExtension,
   onResponse
 }) {
-  const onResponseRef = React149.useRef(onResponse);
+  const onResponseRef = React150.useRef(onResponse);
   onResponseRef.current = onResponse;
-  React149.useEffect(() => {
+  React150.useEffect(() => {
     const timeoutId = setTimeout((ref) => ref.current("no"), AUTO_DISMISS_MS2, onResponseRef);
     return () => clearTimeout(timeoutId);
   }, []);
@@ -561843,19 +561913,19 @@ function LspRecommendationMenu({
     })
   });
 }
-var React149, jsx_runtime435, AUTO_DISMISS_MS2 = 30000;
+var React150, jsx_runtime435, AUTO_DISMISS_MS2 = 30000;
 var init_LspRecommendationMenu = __esm(() => {
   init_ink2();
   init_select();
   init_PermissionDialog();
-  React149 = __toESM(require_react(), 1);
+  React150 = __toESM(require_react(), 1);
   jsx_runtime435 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/useClaudeCodeHintRecommendation.tsx
 function useClaudeCodeHintRecommendation() {
-  const $ = import_compiler_runtime357.c(11);
-  const pendingHint = React150.useSyncExternalStore(subscribeToPendingHint, getPendingHintSnapshot);
+  const $ = import_compiler_runtime356.c(11);
+  const pendingHint = React151.useSyncExternalStore(subscribeToPendingHint, getPendingHintSnapshot);
   const {
     addNotification
   } = useNotifications();
@@ -561892,7 +561962,7 @@ function useClaudeCodeHintRecommendation() {
     t0 = $[2];
     t1 = $[3];
   }
-  React150.useEffect(t0, t1);
+  React151.useEffect(t0, t1);
   let t2;
   if ($[4] !== addNotification || $[5] !== clearRecommendation || $[6] !== recommendation) {
     t2 = (response) => {
@@ -561957,7 +562027,7 @@ function useClaudeCodeHintRecommendation() {
   }
   return t3;
 }
-var import_compiler_runtime357, React150;
+var import_compiler_runtime356, React151;
 var init_useClaudeCodeHintRecommendation = __esm(() => {
   init_notifications();
   init_analytics();
@@ -561966,8 +562036,8 @@ var init_useClaudeCodeHintRecommendation = __esm(() => {
   init_hintRecommendation();
   init_pluginInstallationHelpers();
   init_usePluginRecommendationBase();
-  import_compiler_runtime357 = __toESM(require_compiler_runtime(), 1);
-  React150 = __toESM(require_react(), 1);
+  import_compiler_runtime356 = __toESM(require_compiler_runtime(), 1);
+  React151 = __toESM(require_react(), 1);
 });
 
 // components/ClaudeCodeHint/PluginHintMenu.tsx
@@ -561978,9 +562048,9 @@ function PluginHintMenu({
   sourceCommand,
   onResponse
 }) {
-  const onResponseRef = React151.useRef(onResponse);
+  const onResponseRef = React152.useRef(onResponse);
   onResponseRef.current = onResponse;
-  React151.useEffect(() => {
+  React152.useEffect(() => {
     const timeoutId = setTimeout((ref) => ref.current("no"), AUTO_DISMISS_MS3, onResponseRef);
     return () => clearTimeout(timeoutId);
   }, []);
@@ -562086,18 +562156,18 @@ function PluginHintMenu({
     })
   });
 }
-var React151, jsx_runtime436, AUTO_DISMISS_MS3 = 30000;
+var React152, jsx_runtime436, AUTO_DISMISS_MS3 = 30000;
 var init_PluginHintMenu = __esm(() => {
   init_ink2();
   init_select();
   init_PermissionDialog();
-  React151 = __toESM(require_react(), 1);
+  React152 = __toESM(require_react(), 1);
   jsx_runtime436 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/notifs/usePluginInstallationStatus.tsx
 function usePluginInstallationStatus() {
-  const $ = import_compiler_runtime358.c(20);
+  const $ = import_compiler_runtime357.c(20);
   const {
     addNotification
   } = useNotifications();
@@ -562130,7 +562200,7 @@ function usePluginInstallationStatus() {
     const failedMarketplaces = t1;
     let t2;
     if ($[3] !== installationStatus.plugins) {
-      t2 = installationStatus.plugins.filter(_temp355);
+      t2 = installationStatus.plugins.filter(_temp354);
       $[3] = installationStatus.plugins;
       $[4] = t2;
     } else {
@@ -562221,7 +562291,7 @@ function usePluginInstallationStatus() {
   }
   import_react304.useEffect(t1, t2);
 }
-function _temp355(p) {
+function _temp354(p) {
   return p.status === "failed";
 }
 function _temp285(m) {
@@ -562230,7 +562300,7 @@ function _temp285(m) {
 function _temp203(s) {
   return s.plugins.installationStatus;
 }
-var import_compiler_runtime358, import_react304, jsx_runtime437;
+var import_compiler_runtime357, import_react304, jsx_runtime437;
 var init_usePluginInstallationStatus = __esm(() => {
   init_state();
   init_notifications();
@@ -562238,14 +562308,14 @@ var init_usePluginInstallationStatus = __esm(() => {
   init_AppState();
   init_debug();
   init_stringUtils();
-  import_compiler_runtime358 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime357 = __toESM(require_compiler_runtime(), 1);
   import_react304 = __toESM(require_react(), 1);
   jsx_runtime437 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/notifs/usePluginAutoupdateNotification.tsx
 function usePluginAutoupdateNotification() {
-  const $ = import_compiler_runtime359.c(7);
+  const $ = import_compiler_runtime358.c(7);
   const {
     addNotification
   } = useNotifications();
@@ -562329,14 +562399,14 @@ function _temp204(id) {
   const atIndex = id.indexOf("@");
   return atIndex > 0 ? id.substring(0, atIndex) : id;
 }
-var import_compiler_runtime359, import_react305, jsx_runtime438;
+var import_compiler_runtime358, import_react305, jsx_runtime438;
 var init_usePluginAutoupdateNotification = __esm(() => {
   init_state();
   init_notifications();
   init_ink2();
   init_debug();
   init_pluginAutoupdate();
-  import_compiler_runtime359 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime358 = __toESM(require_compiler_runtime(), 1);
   import_react305 = __toESM(require_react(), 1);
   jsx_runtime438 = __toESM(require_jsx_runtime(), 1);
 });
@@ -562620,7 +562690,7 @@ var init_performStartupChecks = __esm(() => {
 
 // components/AwsAuthStatusBox.tsx
 function AwsAuthStatusBox() {
-  const $ = import_compiler_runtime360.c(11);
+  const $ = import_compiler_runtime359.c(11);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = AwsAuthStatusManager.getInstance().getStatus();
@@ -562733,11 +562803,11 @@ function _temp205(line, index) {
     ]
   }, index);
 }
-var import_compiler_runtime360, import_react306, jsx_runtime439, URL_RE;
+var import_compiler_runtime359, import_react306, jsx_runtime439, URL_RE;
 var init_AwsAuthStatusBox = __esm(() => {
   init_ink2();
   init_awsAuthStatusManager();
-  import_compiler_runtime360 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime359 = __toESM(require_compiler_runtime(), 1);
   import_react306 = __toESM(require_react(), 1);
   jsx_runtime439 = __toESM(require_jsx_runtime(), 1);
   URL_RE = /https?:\/\/\S+/;
@@ -562745,7 +562815,7 @@ var init_AwsAuthStatusBox = __esm(() => {
 
 // hooks/notifs/useRateLimitWarningNotification.tsx
 function useRateLimitWarningNotification(model) {
-  const $ = import_compiler_runtime361.c(17);
+  const $ = import_compiler_runtime360.c(17);
   const {
     addNotification
   } = useNotifications();
@@ -562852,7 +562922,7 @@ function useRateLimitWarningNotification(model) {
   }
   import_react307.useEffect(t6, t7);
 }
-var import_compiler_runtime361, import_react307, jsx_runtime440;
+var import_compiler_runtime360, import_react307, jsx_runtime440;
 var init_useRateLimitWarningNotification = __esm(() => {
   init_notifications();
   init_ink2();
@@ -562861,7 +562931,7 @@ var init_useRateLimitWarningNotification = __esm(() => {
   init_auth2();
   init_billing();
   init_state();
-  import_compiler_runtime361 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime360 = __toESM(require_compiler_runtime(), 1);
   import_react307 = __toESM(require_react(), 1);
   jsx_runtime440 = __toESM(require_jsx_runtime(), 1);
 });
@@ -562929,7 +562999,7 @@ var init_deprecation = __esm(() => {
 
 // hooks/notifs/useDeprecationWarningNotification.tsx
 function useDeprecationWarningNotification(model) {
-  const $ = import_compiler_runtime362.c(4);
+  const $ = import_compiler_runtime361.c(4);
   const {
     addNotification
   } = useNotifications();
@@ -562966,12 +563036,12 @@ function useDeprecationWarningNotification(model) {
   }
   import_react308.useEffect(t0, t1);
 }
-var import_compiler_runtime362, import_react308;
+var import_compiler_runtime361, import_react308;
 var init_useDeprecationWarningNotification = __esm(() => {
   init_notifications();
   init_deprecation();
   init_state();
-  import_compiler_runtime362 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime361 = __toESM(require_compiler_runtime(), 1);
   import_react308 = __toESM(require_react(), 1);
 });
 
@@ -563004,7 +563074,7 @@ var init_useNpmDeprecationNotification = __esm(() => {
 
 // hooks/notifs/useIDEStatusIndicator.tsx
 function useIDEStatusIndicator(t0) {
-  const $ = import_compiler_runtime363.c(26);
+  const $ = import_compiler_runtime362.c(26);
   const {
     ideSelection,
     mcpClients,
@@ -563181,7 +563251,7 @@ function _temp207(current) {
     ideHintShownCount: (current.ideHintShownCount ?? 0) + 1
   };
 }
-var import_compiler_runtime363, import_react309, jsx_runtime441, MAX_IDE_HINT_SHOW_COUNT = 5;
+var import_compiler_runtime362, import_react309, jsx_runtime441, MAX_IDE_HINT_SHOW_COUNT = 5;
 var init_useIDEStatusIndicator = __esm(() => {
   init_notifications();
   init_ink2();
@@ -563189,7 +563259,7 @@ var init_useIDEStatusIndicator = __esm(() => {
   init_ide();
   init_state();
   init_useIdeConnectionStatus();
-  import_compiler_runtime363 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime362 = __toESM(require_compiler_runtime(), 1);
   import_react309 = __toESM(require_react(), 1);
   jsx_runtime441 = __toESM(require_jsx_runtime(), 1);
 });
@@ -563377,7 +563447,7 @@ var init_useTeammateShutdownNotification = __esm(() => {
 
 // hooks/notifs/useFastModeNotification.tsx
 function useFastModeNotification() {
-  const $ = import_compiler_runtime364.c(13);
+  const $ = import_compiler_runtime363.c(13);
   const {
     addNotification
   } = useNotifications();
@@ -563436,7 +563506,7 @@ function useFastModeNotification() {
         return;
       }
       return onFastModeOverageRejection((message) => {
-        setAppState(_temp356);
+        setAppState(_temp355);
         addNotification({
           key: OVERAGE_REJECTED_KEY,
           color: "warning",
@@ -563503,7 +563573,7 @@ function useFastModeNotification() {
   }
   import_react311.useEffect(t4, t5);
 }
-function _temp356(prev_0) {
+function _temp355(prev_0) {
   return {
     ...prev_0,
     fastMode: false
@@ -563526,20 +563596,20 @@ function getCooldownMessage(reason, resetIn) {
       return `Fast limit reached and temporarily disabled · resets in ${resetIn}`;
   }
 }
-var import_compiler_runtime364, import_react311, COOLDOWN_STARTED_KEY = "fast-mode-cooldown-started", COOLDOWN_EXPIRED_KEY = "fast-mode-cooldown-expired", ORG_CHANGED_KEY = "fast-mode-org-changed", OVERAGE_REJECTED_KEY = "fast-mode-overage-rejected";
+var import_compiler_runtime363, import_react311, COOLDOWN_STARTED_KEY = "fast-mode-cooldown-started", COOLDOWN_EXPIRED_KEY = "fast-mode-cooldown-expired", ORG_CHANGED_KEY = "fast-mode-org-changed", OVERAGE_REJECTED_KEY = "fast-mode-overage-rejected";
 var init_useFastModeNotification = __esm(() => {
   init_notifications();
   init_AppState();
   init_fastMode();
   init_format();
   init_state();
-  import_compiler_runtime364 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime363 = __toESM(require_compiler_runtime(), 1);
   import_react311 = __toESM(require_react(), 1);
 });
 
 // utils/autoRunIssue.tsx
 function AutoRunIssueNotification(t0) {
-  const $ = import_compiler_runtime365.c(8);
+  const $ = import_compiler_runtime364.c(8);
   const {
     onRun,
     onCancel,
@@ -563658,12 +563728,12 @@ function getAutoRunIssueReasonText(reason) {
       return "Unknown reason";
   }
 }
-var import_compiler_runtime365, import_react312, jsx_runtime443;
+var import_compiler_runtime364, import_react312, jsx_runtime443;
 var init_autoRunIssue = __esm(() => {
   init_KeyboardShortcutHint();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime365 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime364 = __toESM(require_compiler_runtime(), 1);
   import_react312 = __toESM(require_react(), 1);
   jsx_runtime443 = __toESM(require_jsx_runtime(), 1);
 });
@@ -563777,17 +563847,17 @@ var init_useIssueFlagBanner = __esm(() => {
 });
 
 // components/DevBar.tsx
-var import_compiler_runtime366, import_react314;
+var import_compiler_runtime365, import_react314;
 var init_DevBar = __esm(() => {
   init_state();
   init_ink2();
-  import_compiler_runtime366 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime365 = __toESM(require_compiler_runtime(), 1);
   import_react314 = __toESM(require_react(), 1);
 });
 
 // ink/components/AlternateScreen.tsx
 function AlternateScreen(t0) {
-  const $ = import_compiler_runtime367.c(7);
+  const $ = import_compiler_runtime366.c(7);
   const {
     children,
     mouseTracking: t1
@@ -563839,14 +563909,14 @@ function AlternateScreen(t0) {
   }
   return t5;
 }
-var import_compiler_runtime367, import_react315, jsx_runtime444;
+var import_compiler_runtime366, import_react315, jsx_runtime444;
 var init_AlternateScreen = __esm(() => {
   init_instances();
   init_dec();
   init_useTerminalNotification();
   init_Box();
   init_TerminalSizeContext();
-  import_compiler_runtime367 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime366 = __toESM(require_compiler_runtime(), 1);
   import_react315 = __toESM(require_react(), 1);
   jsx_runtime444 = __toESM(require_jsx_runtime(), 1);
 });
@@ -564477,12 +564547,12 @@ var init_ScrollKeybindingHandler = __esm(() => {
 });
 
 // screens/REPL.tsx
-import { dirname as dirname57, join as join141 } from "path";
+import { dirname as dirname57, join as join142 } from "path";
 import { tmpdir as tmpdir11 } from "os";
 import { writeFile as writeFile44 } from "fs/promises";
 import { randomUUID as randomUUID48 } from "crypto";
 function TranscriptModeFooter(t0) {
-  const $ = import_compiler_runtime368.c(9);
+  const $ = import_compiler_runtime367.c(9);
   const {
     showAllInTranscript,
     virtualScroll,
@@ -564592,8 +564662,8 @@ function TranscriptSearchBar({
     onExit: () => onClose(query),
     onCancel
   });
-  const [indexStatus, setIndexStatus] = React156.useState("building");
-  React156.useEffect(() => {
+  const [indexStatus, setIndexStatus] = React157.useState("building");
+  React157.useEffect(() => {
     let alive = true;
     const warm = jumpRef.current?.warmSearchIndex;
     if (!warm) {
@@ -564679,7 +564749,7 @@ function TranscriptSearchBar({
   });
 }
 function AnimatedTerminalTitle(t0) {
-  const $ = import_compiler_runtime368.c(6);
+  const $ = import_compiler_runtime367.c(6);
   const {
     isAnimating,
     title,
@@ -564807,10 +564877,10 @@ function REPL({
   }, [viewingAgentTaskId, needsBootstrap, setAppState]);
   const store = useAppStateStore();
   const terminal = useTerminalNotification();
-  const mainLoopModel = useMainLoopModel2();
+  const mainLoopModel = useMainLoopModel();
   const [localCommands, setLocalCommands] = import_react318.useState(initialCommands);
   useSkillsChange(isRemoteSession ? undefined : getProjectRoot(), setLocalCommands);
-  const proactiveActive = React156.useSyncExternalStore(proactiveModule5?.subscribeToProactiveChanges ?? PROACTIVE_NO_OP_SUBSCRIBE, proactiveModule5?.isProactiveActive ?? PROACTIVE_FALSE);
+  const proactiveActive = React157.useSyncExternalStore(proactiveModule5?.subscribeToProactiveChanges ?? PROACTIVE_NO_OP_SUBSCRIBE, proactiveModule5?.isProactiveActive ?? PROACTIVE_FALSE);
   const isBriefOnly = useAppState((s) => s.isBriefOnly);
   const localTools = import_react318.useMemo(() => getTools(toolPermissionContext), [toolPermissionContext, proactiveActive, isBriefOnly]);
   useKickOffCheckAndDisableBypassPermissionsIfNeeded();
@@ -564938,36 +565008,36 @@ function REPL({
   const scrollRef = import_react318.useRef(null);
   const modalScrollRef = import_react318.useRef(null);
   const lastUserScrollTsRef = import_react318.useRef(0);
-  const queryGuard = React156.useRef(new QueryGuard).current;
-  const isQueryActive = React156.useSyncExternalStore(queryGuard.subscribe, queryGuard.getSnapshot);
-  const [isExternalLoading, setIsExternalLoadingRaw] = React156.useState(remoteSessionConfig?.hasInitialPrompt ?? false);
+  const queryGuard = React157.useRef(new QueryGuard).current;
+  const isQueryActive = React157.useSyncExternalStore(queryGuard.subscribe, queryGuard.getSnapshot);
+  const [isExternalLoading, setIsExternalLoadingRaw] = React157.useState(remoteSessionConfig?.hasInitialPrompt ?? false);
   const isLoading = isQueryActive || isExternalLoading;
-  const [userInputOnProcessing, setUserInputOnProcessingRaw] = React156.useState(undefined);
-  const userInputBaselineRef = React156.useRef(0);
-  const userMessagePendingRef = React156.useRef(false);
-  const loadingStartTimeRef = React156.useRef(0);
-  const totalPausedMsRef = React156.useRef(0);
-  const pauseStartTimeRef = React156.useRef(null);
-  const resetTimingRefs = React156.useCallback(() => {
+  const [userInputOnProcessing, setUserInputOnProcessingRaw] = React157.useState(undefined);
+  const userInputBaselineRef = React157.useRef(0);
+  const userMessagePendingRef = React157.useRef(false);
+  const loadingStartTimeRef = React157.useRef(0);
+  const totalPausedMsRef = React157.useRef(0);
+  const pauseStartTimeRef = React157.useRef(null);
+  const resetTimingRefs = React157.useCallback(() => {
     loadingStartTimeRef.current = Date.now();
     totalPausedMsRef.current = 0;
     pauseStartTimeRef.current = null;
   }, []);
-  const wasQueryActiveRef = React156.useRef(false);
+  const wasQueryActiveRef = React157.useRef(false);
   if (isQueryActive && !wasQueryActiveRef.current) {
     resetTimingRefs();
   }
   wasQueryActiveRef.current = isQueryActive;
-  const setIsExternalLoading = React156.useCallback((value) => {
+  const setIsExternalLoading = React157.useCallback((value) => {
     setIsExternalLoadingRaw(value);
     if (value)
       resetTimingRefs();
   }, [resetTimingRefs]);
-  const swarmStartTimeRef = React156.useRef(null);
-  const swarmBudgetInfoRef = React156.useRef(undefined);
-  const focusedInputDialogRef = React156.useRef(undefined);
+  const swarmStartTimeRef = React157.useRef(null);
+  const swarmBudgetInfoRef = React157.useRef(undefined);
+  const focusedInputDialogRef = React157.useRef(undefined);
   const PROMPT_SUPPRESSION_MS = 1500;
-  const [isPromptInputActive, setIsPromptInputActive] = React156.useState(false);
+  const [isPromptInputActive, setIsPromptInputActive] = React157.useState(false);
   const [autoUpdaterResult, setAutoUpdaterResult] = import_react318.useState(null);
   import_react318.useEffect(() => {
     if (autoUpdaterResult?.notifications) {
@@ -565241,7 +565311,7 @@ function REPL({
   const terminalFocusRef = import_react318.useRef(isTerminalFocused);
   terminalFocusRef.current = isTerminalFocused;
   const [theme] = useTheme();
-  const tipPickedThisTurnRef = React156.useRef(false);
+  const tipPickedThisTurnRef = React157.useRef(false);
   const pickNewSpinnerTip = import_react318.useCallback(() => {
     if (tipPickedThisTurnRef.current)
       return;
@@ -567007,8 +567077,8 @@ Note: ctrl + z now suspends EvilClaude, ctrl + _ undoes input.
     setPositions
   } = useSearchHighlight();
   const transcriptCols = useTerminalSize().columns;
-  const prevColsRef = React156.useRef(transcriptCols);
-  React156.useEffect(() => {
+  const prevColsRef = React157.useRef(transcriptCols);
+  React157.useEffect(() => {
     if (prevColsRef.current !== transcriptCols) {
       prevColsRef.current = transcriptCols;
       if (searchQuery || searchOpen) {
@@ -567051,7 +567121,7 @@ Note: ctrl + z now suspends EvilClaude, ctrl + _ undoes input.
           const w = Math.max(80, (process.stdout.columns ?? 80) - 6);
           const raw = await renderMessagesToPlainText(deferredMessages, tools, w);
           const text = raw.replace(/[ \t]+$/gm, "");
-          const path = join141(tmpdir11(), `cc-transcript-${Date.now()}.txt`);
+          const path = join142(tmpdir11(), `cc-transcript-${Date.now()}.txt`);
           await writeFile44(path, text);
           const opened = openFileInExternalEditor(path);
           setStatus(opened ? `opening ${path}` : `wrote ${path} · no $VISUAL/$EDITOR set`);
@@ -567816,7 +567886,7 @@ Note: ctrl + z now suspends EvilClaude, ctrl + _ undoes input.
   }
   return mainReturn;
 }
-var import_compiler_runtime368, React156, import_react318, jsx_runtime445, useFrustrationDetection = () => ({
+var import_compiler_runtime367, React157, import_react318, jsx_runtime445, useFrustrationDetection = () => ({
   state: "closed",
   handleTranscriptSelect: () => {}
 }), useAntOrgWarningNotification = () => {}, getCoordinatorUserContext = () => ({}), proactiveModule5 = null, PROACTIVE_NO_OP_SUBSCRIBE = (_cb) => () => {}, PROACTIVE_FALSE = () => false, SUGGEST_BG_PR_NOOP = (_p, _n) => false, EMPTY_MCP_CLIENTS2, HISTORY_STUB, RECENT_SCROLL_REPIN_WINDOW_MS = 3000, TITLE_ANIMATION_FRAMES, TITLE_STATIC_PREFIX = "✳", TITLE_ANIMATION_INTERVAL_MS = 960;
@@ -568021,8 +568091,8 @@ var init_REPL = __esm(() => {
   init_messageActions();
   init_osc();
   init_attachments2();
-  import_compiler_runtime368 = __toESM(require_compiler_runtime(), 1);
-  React156 = __toESM(require_react(), 1);
+  import_compiler_runtime367 = __toESM(require_compiler_runtime(), 1);
+  React157 = __toESM(require_react(), 1);
   import_react318 = __toESM(require_react(), 1);
   jsx_runtime445 = __toESM(require_jsx_runtime(), 1);
   EMPTY_MCP_CLIENTS2 = [];
@@ -568220,7 +568290,7 @@ var init_warningHandler = __esm(() => {
 
 // components/MCPServerDialogCopy.tsx
 function MCPServerDialogCopy() {
-  const $ = import_compiler_runtime369.c(1);
+  const $ = import_compiler_runtime368.c(1);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = /* @__PURE__ */ jsx_runtime447.jsxs(ThemedText, {
@@ -568240,16 +568310,16 @@ function MCPServerDialogCopy() {
   }
   return t0;
 }
-var import_compiler_runtime369, jsx_runtime447;
+var import_compiler_runtime368, jsx_runtime447;
 var init_MCPServerDialogCopy = __esm(() => {
   init_ink2();
-  import_compiler_runtime369 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime368 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime447 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/MCPServerApprovalDialog.tsx
 function MCPServerApprovalDialog(t0) {
-  const $ = import_compiler_runtime370.c(13);
+  const $ = import_compiler_runtime369.c(13);
   const {
     serverName,
     onDone
@@ -568362,20 +568432,20 @@ function MCPServerApprovalDialog(t0) {
   }
   return t7;
 }
-var import_compiler_runtime370, jsx_runtime448;
+var import_compiler_runtime369, jsx_runtime448;
 var init_MCPServerApprovalDialog = __esm(() => {
   init_analytics();
   init_settings2();
   init_CustomSelect();
   init_Dialog();
   init_MCPServerDialogCopy();
-  import_compiler_runtime370 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime369 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime448 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/MCPServerMultiselectDialog.tsx
 function MCPServerMultiselectDialog(t0) {
-  const $ = import_compiler_runtime371.c(21);
+  const $ = import_compiler_runtime370.c(21);
   const {
     serverNames,
     onDone
@@ -568535,7 +568605,7 @@ function _temp292(server_0) {
     value: server_0
   };
 }
-var import_compiler_runtime371, jsx_runtime449;
+var import_compiler_runtime370, jsx_runtime449;
 var init_MCPServerMultiselectDialog = __esm(() => {
   init_partition();
   init_analytics();
@@ -568547,7 +568617,7 @@ var init_MCPServerMultiselectDialog = __esm(() => {
   init_Dialog();
   init_KeyboardShortcutHint();
   init_MCPServerDialogCopy();
-  import_compiler_runtime371 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime370 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime449 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -568800,7 +568870,7 @@ async function checkEndpoints() {
   }
 }
 function PreflightStep(t0) {
-  const $ = import_compiler_runtime372.c(12);
+  const $ = import_compiler_runtime371.c(12);
   const {
     onSuccess
   } = t0;
@@ -568929,7 +568999,7 @@ function PreflightStep(t0) {
 function _temp293() {
   return process.exit(1);
 }
-var import_compiler_runtime372, import_react320, jsx_runtime451;
+var import_compiler_runtime371, import_react320, jsx_runtime451;
 var init_preflightChecks = __esm(() => {
   init_axios2();
   init_analytics();
@@ -568940,14 +569010,14 @@ var init_preflightChecks = __esm(() => {
   init_errorUtils();
   init_http2();
   init_log3();
-  import_compiler_runtime372 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime371 = __toESM(require_compiler_runtime(), 1);
   import_react320 = __toESM(require_react(), 1);
   jsx_runtime451 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/LogoV2/WelcomeV2.tsx
 function WelcomeV2() {
-  const $ = import_compiler_runtime373.c(35);
+  const $ = import_compiler_runtime372.c(35);
   const [theme] = useTheme();
   if (env4.terminal === "Apple_Terminal") {
     let t0;
@@ -568987,7 +569057,7 @@ function WelcomeV2() {
             dimColor: true,
             children: [
               "v",
-              "1.0.26",
+              "1.0.27",
               " "
             ]
           })
@@ -569187,7 +569257,7 @@ function WelcomeV2() {
           dimColor: true,
           children: [
             "v",
-            "1.0.26",
+            "1.0.27",
             " "
           ]
         })
@@ -569386,7 +569456,7 @@ function WelcomeV2() {
   return t16;
 }
 function AppleTerminalWelcomeV2(t0) {
-  const $ = import_compiler_runtime373.c(44);
+  const $ = import_compiler_runtime372.c(44);
   const {
     theme,
     welcomeMessage
@@ -569413,7 +569483,7 @@ function AppleTerminalWelcomeV2(t0) {
         dimColor: true,
         children: [
           "v",
-          "1.0.26",
+          "1.0.27",
           " "
         ]
       });
@@ -569667,7 +569737,7 @@ function AppleTerminalWelcomeV2(t0) {
       dimColor: true,
       children: [
         "v",
-        "1.0.26",
+        "1.0.27",
         " "
       ]
     });
@@ -569917,17 +569987,17 @@ function AppleTerminalWelcomeV2(t0) {
   }
   return t19;
 }
-var import_compiler_runtime373, jsx_runtime452, WELCOME_V2_WIDTH = 58;
+var import_compiler_runtime372, jsx_runtime452, WELCOME_V2_WIDTH = 58;
 var init_WelcomeV2 = __esm(() => {
   init_ink2();
   init_env();
-  import_compiler_runtime373 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime372 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime452 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/ui/OrderedListItem.tsx
 function OrderedListItem(t0) {
-  const $ = import_compiler_runtime374.c(7);
+  const $ = import_compiler_runtime373.c(7);
   const {
     children
   } = t0;
@@ -569973,10 +570043,10 @@ function OrderedListItem(t0) {
   }
   return t3;
 }
-var import_compiler_runtime374, import_react321, jsx_runtime453, OrderedListItemContext;
+var import_compiler_runtime373, import_react321, jsx_runtime453, OrderedListItemContext;
 var init_OrderedListItem = __esm(() => {
   init_ink2();
-  import_compiler_runtime374 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime373 = __toESM(require_compiler_runtime(), 1);
   import_react321 = __toESM(require_react(), 1);
   jsx_runtime453 = __toESM(require_jsx_runtime(), 1);
   OrderedListItemContext = import_react321.createContext({
@@ -569986,7 +570056,7 @@ var init_OrderedListItem = __esm(() => {
 
 // components/ui/OrderedList.tsx
 function OrderedListComponent(t0) {
-  const $ = import_compiler_runtime375.c(9);
+  const $ = import_compiler_runtime374.c(9);
   const {
     children
   } = t0;
@@ -570050,11 +570120,11 @@ function OrderedListComponent(t0) {
   }
   return t2;
 }
-var import_compiler_runtime375, import_react322, jsx_runtime454, OrderedListContext, OrderedList;
+var import_compiler_runtime374, import_react322, jsx_runtime454, OrderedListContext, OrderedList;
 var init_OrderedList = __esm(() => {
   init_ink2();
   init_OrderedListItem();
-  import_compiler_runtime375 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime374 = __toESM(require_compiler_runtime(), 1);
   import_react322 = __toESM(require_react(), 1);
   jsx_runtime454 = __toESM(require_jsx_runtime(), 1);
   OrderedListContext = import_react322.createContext({
@@ -570295,7 +570365,7 @@ function Onboarding({
     ]
   });
 }
-var import_compiler_runtime376, import_react323, jsx_runtime455;
+var import_compiler_runtime375, import_react323, jsx_runtime455;
 var init_Onboarding = __esm(() => {
   init_analytics();
   init_terminalSetup();
@@ -570310,7 +570380,7 @@ var init_Onboarding = __esm(() => {
   init_PressEnterToContinue();
   init_ThemePicker();
   init_OrderedList();
-  import_compiler_runtime376 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime375 = __toESM(require_compiler_runtime(), 1);
   import_react323 = __toESM(require_react(), 1);
   jsx_runtime455 = __toESM(require_jsx_runtime(), 1);
 });
@@ -570448,9 +570518,9 @@ var init_utils16 = __esm(() => {
 });
 
 // components/TrustDialog/TrustDialog.tsx
-import { homedir as homedir37 } from "os";
+import { homedir as homedir38 } from "os";
 function TrustDialog(t0) {
-  const $ = import_compiler_runtime377.c(33);
+  const $ = import_compiler_runtime376.c(33);
   const {
     onDone,
     commands
@@ -570559,7 +570629,7 @@ function TrustDialog(t0) {
   let t13;
   if ($[13] !== hasAnyBashExecution) {
     t12 = () => {
-      const isHomeDir = homedir37() === getCwd();
+      const isHomeDir = homedir38() === getCwd();
       logEvent("tengu_trust_dialog_shown", {
         isHomeDir,
         hasMcpServers,
@@ -570588,7 +570658,7 @@ function TrustDialog(t0) {
         gracefulShutdownSync(1);
         return;
       }
-      const isHomeDir_0 = homedir37() === getCwd();
+      const isHomeDir_0 = homedir38() === getCwd();
       logEvent("tengu_trust_dialog_accept", {
         isHomeDir: isHomeDir_0,
         hasMcpServers,
@@ -570758,9 +570828,9 @@ function _temp529(current) {
   };
 }
 function _temp442(command_0) {
-  return command_0.type === "prompt" && (command_0.loadedFrom === "skills" || command_0.loadedFrom === "plugin") && (command_0.source === "projectSettings" || command_0.source === "localSettings" || command_0.source === "plugin") && command_0.allowedTools?.some(_temp357);
+  return command_0.type === "prompt" && (command_0.loadedFrom === "skills" || command_0.loadedFrom === "plugin") && (command_0.source === "projectSettings" || command_0.source === "localSettings" || command_0.source === "plugin") && command_0.allowedTools?.some(_temp356);
 }
-function _temp357(tool_0) {
+function _temp356(tool_0) {
   return tool_0 === BASH_TOOL_NAME || tool_0.startsWith(BASH_TOOL_NAME + "(");
 }
 function _temp294(command) {
@@ -570769,7 +570839,7 @@ function _temp294(command) {
 function _temp295(tool) {
   return tool === BASH_TOOL_NAME || tool.startsWith(BASH_TOOL_NAME + "(");
 }
-var import_compiler_runtime377, import_react324, jsx_runtime456;
+var import_compiler_runtime376, import_react324, jsx_runtime456;
 var init_TrustDialog = __esm(() => {
   init_analytics();
   init_state();
@@ -570784,14 +570854,14 @@ var init_TrustDialog = __esm(() => {
   init_CustomSelect();
   init_PermissionDialog();
   init_utils16();
-  import_compiler_runtime377 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime376 = __toESM(require_compiler_runtime(), 1);
   import_react324 = __toESM(require_react(), 1);
   jsx_runtime456 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/BypassPermissionsModeDialog.tsx
 function BypassPermissionsModeDialog(t0) {
-  const $ = import_compiler_runtime378.c(7);
+  const $ = import_compiler_runtime377.c(7);
   const {
     onAccept
   } = t0;
@@ -570893,7 +570963,7 @@ function _temp296() {
 function _temp297() {
   logEvent("tengu_bypass_permissions_mode_dialog_shown", {});
 }
-var import_compiler_runtime378, import_react325, jsx_runtime457;
+var import_compiler_runtime377, import_react325, jsx_runtime457;
 var init_BypassPermissionsModeDialog = __esm(() => {
   init_analytics();
   init_ink2();
@@ -570901,14 +570971,14 @@ var init_BypassPermissionsModeDialog = __esm(() => {
   init_settings2();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime378 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime377 = __toESM(require_compiler_runtime(), 1);
   import_react325 = __toESM(require_react(), 1);
   jsx_runtime457 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/ClaudeInChromeOnboarding.tsx
 function ClaudeInChromeOnboarding(t0) {
-  const $ = import_compiler_runtime379.c(20);
+  const $ = import_compiler_runtime378.c(20);
   const {
     onDone
   } = t0;
@@ -571074,14 +571144,14 @@ function _temp298(current) {
     hasCompletedClaudeInChromeOnboarding: true
   };
 }
-var import_compiler_runtime379, import_react326, jsx_runtime458, CHROME_EXTENSION_URL2 = "https://evilclaude.swampmine.in", CHROME_PERMISSIONS_URL2 = "https://clau.de/chrome/permissions";
+var import_compiler_runtime378, import_react326, jsx_runtime458, CHROME_EXTENSION_URL2 = "https://evilclaude.swampmine.in", CHROME_PERMISSIONS_URL2 = "https://clau.de/chrome/permissions";
 var init_ClaudeInChromeOnboarding = __esm(() => {
   init_analytics();
   init_ink2();
   init_setup2();
   init_config2();
   init_Dialog();
-  import_compiler_runtime379 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime378 = __toESM(require_compiler_runtime(), 1);
   import_react326 = __toESM(require_react(), 1);
   jsx_runtime458 = __toESM(require_jsx_runtime(), 1);
 });
@@ -571092,7 +571162,7 @@ function completeOnboarding() {
   saveGlobalConfig((current) => ({
     ...current,
     hasCompletedOnboarding: true,
-    lastOnboardingVersion: "1.0.26"
+    lastOnboardingVersion: "1.0.27"
   }));
 }
 function showDialog(root, renderer) {
@@ -571298,7 +571368,7 @@ var init_interactiveHelpers = __esm(() => {
 
 // components/InvalidSettingsDialog.tsx
 function InvalidSettingsDialog(t0) {
-  const $ = import_compiler_runtime380.c(13);
+  const $ = import_compiler_runtime379.c(13);
   const {
     settingsErrors,
     onContinue,
@@ -571385,19 +571455,19 @@ function InvalidSettingsDialog(t0) {
   }
   return t6;
 }
-var import_compiler_runtime380, jsx_runtime460;
+var import_compiler_runtime379, jsx_runtime460;
 var init_InvalidSettingsDialog = __esm(() => {
   init_ink2();
   init_CustomSelect();
   init_Dialog();
   init_ValidationErrorsList();
-  import_compiler_runtime380 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime379 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime460 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/useTeleportResume.tsx
 function useTeleportResume(source) {
-  const $ = import_compiler_runtime381.c(8);
+  const $ = import_compiler_runtime380.c(8);
   const [isResuming, setIsResuming] = import_react327.useState(false);
   const [error, setError] = import_react327.useState(null);
   const [selectedSession, setSelectedSession] = import_react327.useState(null);
@@ -571465,13 +571535,13 @@ function useTeleportResume(source) {
   }
   return t2;
 }
-var import_compiler_runtime381, import_react327;
+var import_compiler_runtime380, import_react327;
 var init_useTeleportResume = __esm(() => {
   init_state();
   init_analytics();
   init_errors();
   init_teleport();
-  import_compiler_runtime381 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime380 = __toESM(require_compiler_runtime(), 1);
   import_react327 = __toESM(require_react(), 1);
 });
 
@@ -571842,7 +571912,7 @@ var init_ResumeTask = __esm(() => {
 
 // components/TeleportResumeWrapper.tsx
 function TeleportResumeWrapper(t0) {
-  const $ = import_compiler_runtime382.c(25);
+  const $ = import_compiler_runtime381.c(25);
   const {
     onComplete,
     onCancel,
@@ -572040,7 +572110,7 @@ function TeleportResumeWrapper(t0) {
   }
   return t8;
 }
-var import_compiler_runtime382, import_react329, jsx_runtime462;
+var import_compiler_runtime381, import_react329, jsx_runtime462;
 var init_TeleportResumeWrapper = __esm(() => {
   init_analytics();
   init_useTeleportResume();
@@ -572048,14 +572118,14 @@ var init_TeleportResumeWrapper = __esm(() => {
   init_useKeybinding();
   init_ResumeTask();
   init_Spinner2();
-  import_compiler_runtime382 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime381 = __toESM(require_compiler_runtime(), 1);
   import_react329 = __toESM(require_react(), 1);
   jsx_runtime462 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/TeleportRepoMismatchDialog.tsx
 function TeleportRepoMismatchDialog(t0) {
-  const $ = import_compiler_runtime383.c(18);
+  const $ = import_compiler_runtime382.c(18);
   const {
     targetRepo,
     initialPaths,
@@ -572206,7 +572276,7 @@ function _temp299(path) {
     value: path
   };
 }
-var import_compiler_runtime383, import_react330, jsx_runtime463;
+var import_compiler_runtime382, import_react330, jsx_runtime463;
 var init_TeleportRepoMismatchDialog = __esm(() => {
   init_ink2();
   init_file();
@@ -572214,7 +572284,7 @@ var init_TeleportRepoMismatchDialog = __esm(() => {
   init_CustomSelect();
   init_Dialog();
   init_Spinner2();
-  import_compiler_runtime383 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime382 = __toESM(require_compiler_runtime(), 1);
   import_react330 = __toESM(require_react(), 1);
   jsx_runtime463 = __toESM(require_jsx_runtime(), 1);
 });
@@ -572478,7 +572548,7 @@ function ResumeConversation({
   });
 }
 function NoConversationsMessage() {
-  const $ = import_compiler_runtime384.c(2);
+  const $ = import_compiler_runtime383.c(2);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = {
@@ -572513,7 +572583,7 @@ function _temp300() {
   process.exit(1);
 }
 function CrossProjectMessage(t0) {
-  const $ = import_compiler_runtime384.c(8);
+  const $ = import_compiler_runtime383.c(8);
   const {
     command
   } = t0;
@@ -572524,7 +572594,7 @@ function CrossProjectMessage(t0) {
   } else {
     t1 = $[0];
   }
-  import_react331.default.useEffect(_temp358, t1);
+  import_react331.default.useEffect(_temp357, t1);
   let t2;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = /* @__PURE__ */ jsx_runtime464.jsx(ThemedText, {
@@ -572590,14 +572660,14 @@ function CrossProjectMessage(t0) {
   }
   return t6;
 }
-function _temp358() {
+function _temp357() {
   const timeout = setTimeout(_temp2100, 100);
   return () => clearTimeout(timeout);
 }
 function _temp2100() {
   process.exit(0);
 }
-var import_compiler_runtime384, import_react331, jsx_runtime464;
+var import_compiler_runtime383, import_react331, jsx_runtime464;
 var init_ResumeConversation = __esm(() => {
   init_useTerminalSize();
   init_state();
@@ -572620,7 +572690,7 @@ var init_ResumeConversation = __esm(() => {
   init_sessionRestore();
   init_sessionStorage();
   init_REPL();
-  import_compiler_runtime384 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime383 = __toESM(require_compiler_runtime(), 1);
   import_react331 = __toESM(require_react(), 1);
   jsx_runtime464 = __toESM(require_jsx_runtime(), 1);
 });
@@ -575482,12 +575552,12 @@ var init_createDirectConnectSession = __esm(() => {
 });
 
 // utils/errorLogSink.ts
-import { dirname as dirname59, join as join142 } from "path";
+import { dirname as dirname59, join as join143 } from "path";
 function getErrorsPath() {
-  return join142(CACHE_PATHS.errors(), DATE + ".jsonl");
+  return join143(CACHE_PATHS.errors(), DATE + ".jsonl");
 }
 function getMCPLogsPath(serverName) {
-  return join142(CACHE_PATHS.mcpLogs(serverName), DATE + ".jsonl");
+  return join143(CACHE_PATHS.mcpLogs(serverName), DATE + ".jsonl");
 }
 function createJsonlWriter(options) {
   const writer = createBufferedWriter(options);
@@ -575531,7 +575601,7 @@ function appendToLog(path, message) {
     cwd: getFsImplementation().cwd(),
     userType: process.env.USER_TYPE,
     sessionId: getSessionId(),
-    version: "1.0.26"
+    version: "1.0.27"
   };
   getLogWriter(path).write(messageWithTimestamp);
 }
@@ -575825,8 +575895,8 @@ var init_sessionMemory = __esm(() => {
 
 // utils/iTermBackup.ts
 import { copyFile as copyFile11, stat as stat48 } from "fs/promises";
-import { homedir as homedir38 } from "os";
-import { join as join143 } from "path";
+import { homedir as homedir39 } from "os";
+import { join as join144 } from "path";
 function markITerm2SetupComplete() {
   saveGlobalConfig((current) => ({
     ...current,
@@ -575841,7 +575911,7 @@ function getIterm2RecoveryInfo() {
   };
 }
 function getITerm2PlistPath() {
-  return join143(homedir38(), "Library", "Preferences", "com.googlecode.iterm2.plist");
+  return join144(homedir39(), "Library", "Preferences", "com.googlecode.iterm2.plist");
 }
 async function checkAndRestoreITerm2Backup() {
   const { inProgress, backupPath } = getIterm2RecoveryInfo();
@@ -579200,7 +579270,7 @@ var init_idleTimeout = __esm(() => {
 // bridge/inboundAttachments.ts
 import { randomUUID as randomUUID51 } from "crypto";
 import { mkdir as mkdir43, writeFile as writeFile46 } from "fs/promises";
-import { basename as basename55, join as join144 } from "path";
+import { basename as basename55, join as join145 } from "path";
 function debug3(msg) {
   logForDebugging(`[bridge:inbound-attach] ${msg}`);
 }
@@ -579216,7 +579286,7 @@ function sanitizeFileName(name) {
   return base || "attachment";
 }
 function uploadsDir() {
-  return join144(getClaudeConfigHomeDir(), "uploads", getSessionId());
+  return join145(getClaudeConfigHomeDir(), "uploads", getSessionId());
 }
 async function resolveOne(att) {
   const token = getBridgeAccessToken();
@@ -579245,7 +579315,7 @@ async function resolveOne(att) {
   const safeName = sanitizeFileName(att.file_name);
   const prefix = (att.file_uuid.slice(0, 8) || randomUUID51().slice(0, 8)).replace(/[^a-zA-Z0-9_-]/g, "_");
   const dir = uploadsDir();
-  const outPath = join144(dir, `${prefix}-${safeName}`);
+  const outPath = join145(dir, `${prefix}-${safeName}`);
   try {
     await mkdir43(dir, { recursive: true });
     await writeFile46(outPath, data);
@@ -579345,7 +579415,7 @@ var init_sessionUrl = __esm(() => {
 
 // utils/plugins/zipCacheAdapters.ts
 import { readFile as readFile52 } from "fs/promises";
-import { join as join145 } from "path";
+import { join as join146 } from "path";
 async function readZipCacheKnownMarketplaces() {
   try {
     const content = await readFile52(getZipCacheKnownMarketplacesPath(), "utf-8");
@@ -579370,13 +579440,13 @@ async function saveMarketplaceJsonToZipCache(marketplaceName, installLocation) {
   const content = await readMarketplaceJsonContent(installLocation);
   if (content !== null) {
     const relPath = getMarketplaceJsonRelativePath(marketplaceName);
-    await atomicWriteToZipCache(join145(zipCachePath, relPath), content);
+    await atomicWriteToZipCache(join146(zipCachePath, relPath), content);
   }
 }
 async function readMarketplaceJsonContent(dir) {
   const candidates = [
-    join145(dir, ".claude-plugin", "marketplace.json"),
-    join145(dir, "marketplace.json"),
+    join146(dir, ".claude-plugin", "marketplace.json"),
+    join146(dir, "marketplace.json"),
     dir
   ];
   for (const candidate of candidates) {
@@ -579506,8 +579576,8 @@ async function getEnvLessBridgeConfig() {
 }
 async function checkEnvLessBridgeMinVersion() {
   const cfg = await getEnvLessBridgeConfig();
-  if (cfg.min_version && lt("1.0.26", cfg.min_version)) {
-    return `Your version of EvilClaude (${"1.0.26"}) is too old for Remote Control.
+  if (cfg.min_version && lt("1.0.27", cfg.min_version)) {
+    return `Your version of EvilClaude (${"1.0.27"}) is too old for Remote Control.
 Version ${cfg.min_version} or higher is required. Run \`claude update\` to update.`;
   }
   return null;
@@ -579826,9 +579896,9 @@ class FlushGate {
 
 // bridge/bridgePointer.ts
 import { mkdir as mkdir44, readFile as readFile53, stat as stat49, unlink as unlink25, writeFile as writeFile47 } from "fs/promises";
-import { dirname as dirname60, join as join146 } from "path";
+import { dirname as dirname60, join as join147 } from "path";
 function getBridgePointerPath(dir) {
-  return join146(getProjectsDir(), sanitizePath2(dir), "bridge-pointer.json");
+  return join147(getProjectsDir(), sanitizePath2(dir), "bridge-pointer.json");
 }
 async function writeBridgePointer(dir, pointer) {
   const path = getBridgePointerPath(dir);
@@ -579943,7 +580013,7 @@ async function initBridgeCore(params) {
   const rawApi = createBridgeApiClient({
     baseUrl,
     getAccessToken,
-    runnerVersion: "1.0.26",
+    runnerVersion: "1.0.27",
     onDebug: logForDebugging,
     onAuth401,
     getTrustedDeviceToken
@@ -584710,7 +584780,7 @@ var init_print = __esm(() => {
 
 // components/TeleportProgress.tsx
 function TeleportProgress(t0) {
-  const $ = import_compiler_runtime385.c(16);
+  const $ = import_compiler_runtime384.c(16);
   const {
     currentStep,
     sessionId
@@ -584863,13 +584933,13 @@ async function teleportWithProgress(root, sessionId) {
     branchName
   };
 }
-var import_compiler_runtime385, import_react332, jsx_runtime466, SPINNER_FRAMES3, STEPS;
+var import_compiler_runtime384, import_react332, jsx_runtime466, SPINNER_FRAMES3, STEPS;
 var init_TeleportProgress = __esm(() => {
   init_figures();
   init_ink2();
   init_AppState();
   init_teleport();
-  import_compiler_runtime385 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime384 = __toESM(require_compiler_runtime(), 1);
   import_react332 = __toESM(require_react(), 1);
   jsx_runtime466 = __toESM(require_jsx_runtime(), 1);
   SPINNER_FRAMES3 = ["◐", "◓", "◑", "◒"];
@@ -584890,7 +584960,7 @@ var init_TeleportProgress = __esm(() => {
 
 // components/MCPServerDesktopImportDialog.tsx
 function MCPServerDesktopImportDialog(t0) {
-  const $ = import_compiler_runtime386.c(36);
+  const $ = import_compiler_runtime385.c(36);
   const {
     servers,
     scope,
@@ -585126,7 +585196,7 @@ No servers were imported.`);
   }
   return t18;
 }
-var import_compiler_runtime386, import_react333, jsx_runtime467;
+var import_compiler_runtime385, import_react333, jsx_runtime467;
 var init_MCPServerDesktopImportDialog = __esm(() => {
   init_gracefulShutdown();
   init_ink2();
@@ -585137,7 +585207,7 @@ var init_MCPServerDesktopImportDialog = __esm(() => {
   init_Byline();
   init_Dialog();
   init_KeyboardShortcutHint();
-  import_compiler_runtime386 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime385 = __toESM(require_compiler_runtime(), 1);
   import_react333 = __toESM(require_react(), 1);
   jsx_runtime467 = __toESM(require_jsx_runtime(), 1);
 });
@@ -585571,7 +585641,7 @@ async function startMCPServer(cwd, debug, verbose) {
   setCwd(cwd);
   const server = new Server({
     name: "claude/tengu",
-    version: "1.0.26"
+    version: "1.0.27"
   }, {
     capabilities: {
       tools: {}
@@ -585697,15 +585767,15 @@ var init_mcp4 = __esm(() => {
 
 // utils/claudeDesktop.ts
 import { readdir as readdir31, readFile as readFile55, stat as stat51 } from "fs/promises";
-import { homedir as homedir39 } from "os";
-import { join as join147 } from "path";
+import { homedir as homedir40 } from "os";
+import { join as join148 } from "path";
 async function getClaudeDesktopConfigPath() {
   const platform = getPlatform();
   if (!SUPPORTED_PLATFORMS.includes(platform)) {
     throw new Error(`Unsupported platform: ${platform} - EvilClaude Desktop integration only works on macOS and WSL.`);
   }
   if (platform === "macos") {
-    return join147(homedir39(), "Library", "Application Support", "EvilClaude", "claude_desktop_config.json");
+    return join148(homedir40(), "Library", "Application Support", "EvilClaude", "claude_desktop_config.json");
   }
   const windowsHome = process.env.USERPROFILE ? process.env.USERPROFILE.replace(/\\/g, "/") : null;
   if (windowsHome) {
@@ -585724,7 +585794,7 @@ async function getClaudeDesktopConfigPath() {
         if (user.name === "Public" || user.name === "Default" || user.name === "Default User" || user.name === "All Users") {
           continue;
         }
-        const potentialConfigPath = join147(usersDir, user.name, "AppData", "Roaming", "EvilClaude", "claude_desktop_config.json");
+        const potentialConfigPath = join148(usersDir, user.name, "AppData", "Roaming", "EvilClaude", "claude_desktop_config.json");
         try {
           await stat51(potentialConfigPath);
           return potentialConfigPath;
@@ -586595,19 +586665,19 @@ var init_plugins = __esm(() => {
 });
 
 // commands/install.tsx
-import { homedir as homedir40 } from "node:os";
-import { join as join148 } from "node:path";
+import { homedir as homedir41 } from "node:os";
+import { join as join149 } from "node:path";
 function getInstallationPath2() {
   const isWindows = env4.platform === "win32";
-  const homeDir = homedir40();
+  const homeDir = homedir41();
   if (isWindows) {
-    const windowsPath = join148(homeDir, ".local", "bin", "claude.exe");
+    const windowsPath = join149(homeDir, ".local", "bin", "claude.exe");
     return windowsPath.replace(/\//g, "\\");
   }
   return "~/.local/bin/claude";
 }
 function SetupNotes(t0) {
-  const $ = import_compiler_runtime387.c(5);
+  const $ = import_compiler_runtime386.c(5);
   const {
     messages
   } = t0;
@@ -586912,7 +586982,7 @@ function Install({
     ]
   });
 }
-var import_compiler_runtime387, import_react334, jsx_runtime469, install;
+var import_compiler_runtime386, import_react334, jsx_runtime469, install;
 var init_install = __esm(() => {
   init_analytics();
   init_StatusIcon();
@@ -586922,7 +586992,7 @@ var init_install = __esm(() => {
   init_errors();
   init_nativeInstaller();
   init_settings2();
-  import_compiler_runtime387 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime386 = __toESM(require_compiler_runtime(), 1);
   import_react334 = __toESM(require_react(), 1);
   jsx_runtime469 = __toESM(require_jsx_runtime(), 1);
   install = {
@@ -586998,7 +587068,7 @@ async function setupTokenHandler(root) {
   process.exit(0);
 }
 function DoctorWithPlugins(t0) {
-  const $ = import_compiler_runtime388.c(2);
+  const $ = import_compiler_runtime387.c(2);
   const {
     onDone
   } = t0;
@@ -587054,7 +587124,7 @@ async function installHandler(target, options) {
     }, {}, args);
   });
 }
-var import_compiler_runtime388, import_react335, jsx_runtime470, DoctorLazy;
+var import_compiler_runtime387, import_react335, jsx_runtime470, DoctorLazy;
 var init_util3 = __esm(() => {
   init_WelcomeV2();
   init_useManagePlugins();
@@ -587065,7 +587135,7 @@ var init_util3 = __esm(() => {
   init_AppState();
   init_onChangeAppState();
   init_auth2();
-  import_compiler_runtime388 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime387 = __toESM(require_compiler_runtime(), 1);
   import_react335 = __toESM(require_react(), 1);
   jsx_runtime470 = __toESM(require_jsx_runtime(), 1);
   DoctorLazy = import_react335.default.lazy(() => Promise.resolve().then(() => (init_Doctor(), {})).then((m) => ({
@@ -587126,7 +587196,7 @@ var init_agents3 = __esm(() => {
 // cli/update.ts
 async function update() {
   logEvent("tengu_update_check", {});
-  writeToStdout(`Current version: ${"1.0.26"}
+  writeToStdout(`Current version: ${"1.0.27"}
 `);
   const channel = getInitialSettings()?.autoUpdatesChannel ?? "latest";
   writeToStdout(`Checking for updates to ${channel} version...
@@ -587201,8 +587271,8 @@ async function update() {
       writeToStdout(`EvilClaude is managed by Homebrew.
 `);
       const latest = await getLatestVersion(channel);
-      if (latest && !gte("1.0.26", latest)) {
-        writeToStdout(`Update available: ${"1.0.26"} → ${latest}
+      if (latest && !gte("1.0.27", latest)) {
+        writeToStdout(`Update available: ${"1.0.27"} → ${latest}
 `);
         writeToStdout(`
 `);
@@ -587218,8 +587288,8 @@ async function update() {
       writeToStdout(`EvilClaude is managed by winget.
 `);
       const latest = await getLatestVersion(channel);
-      if (latest && !gte("1.0.26", latest)) {
-        writeToStdout(`Update available: ${"1.0.26"} → ${latest}
+      if (latest && !gte("1.0.27", latest)) {
+        writeToStdout(`Update available: ${"1.0.27"} → ${latest}
 `);
         writeToStdout(`
 `);
@@ -587235,8 +587305,8 @@ async function update() {
       writeToStdout(`EvilClaude is managed by apk.
 `);
       const latest = await getLatestVersion(channel);
-      if (latest && !gte("1.0.26", latest)) {
-        writeToStdout(`Update available: ${"1.0.26"} → ${latest}
+      if (latest && !gte("1.0.27", latest)) {
+        writeToStdout(`Update available: ${"1.0.27"} → ${latest}
 `);
         writeToStdout(`
 `);
@@ -587301,11 +587371,11 @@ async function update() {
 `);
         await gracefulShutdown(1);
       }
-      if (result.latestVersion === "1.0.26") {
-        writeToStdout(source_default.green(`EvilClaude is up to date (${"1.0.26"})`) + `
+      if (result.latestVersion === "1.0.27") {
+        writeToStdout(source_default.green(`EvilClaude is up to date (${"1.0.27"})`) + `
 `);
       } else {
-        writeToStdout(source_default.green(`Successfully updated from ${"1.0.26"} to version ${result.latestVersion}`) + `
+        writeToStdout(source_default.green(`Successfully updated from ${"1.0.27"} to version ${result.latestVersion}`) + `
 `);
         await regenerateCompletionCache();
       }
@@ -587365,12 +587435,12 @@ async function update() {
 `);
     await gracefulShutdown(1);
   }
-  if (latestVersion === "1.0.26") {
-    writeToStdout(source_default.green(`EvilClaude is up to date (${"1.0.26"})`) + `
+  if (latestVersion === "1.0.27") {
+    writeToStdout(source_default.green(`EvilClaude is up to date (${"1.0.27"})`) + `
 `);
     await gracefulShutdown(0);
   }
-  writeToStdout(`New version available: ${latestVersion} (current: ${"1.0.26"})
+  writeToStdout(`New version available: ${latestVersion} (current: ${"1.0.27"})
 `);
   writeToStdout(`Installing update...
 `);
@@ -587415,7 +587485,7 @@ async function update() {
   logForDebugging(`update: Installation status: ${status}`);
   switch (status) {
     case "success":
-      writeToStdout(source_default.green(`Successfully updated from ${"1.0.26"} to version ${latestVersion}`) + `
+      writeToStdout(source_default.green(`Successfully updated from ${"1.0.27"} to version ${latestVersion}`) + `
 `);
       await regenerateCompletionCache();
       break;
@@ -587475,7 +587545,7 @@ var init_update = __esm(() => {
 });
 
 // main.tsx
-import { readFileSync as readFileSync13 } from "fs";
+import { readFileSync as readFileSync14 } from "fs";
 import { resolve as resolve40 } from "path";
 function logManagedSettings() {
   try {
@@ -587631,7 +587701,7 @@ function loadSettingsFromFlag(settingsFile) {
         resolvedPath: resolvedSettingsPath
       } = safeResolvePath(getFsImplementation(), settingsFile);
       try {
-        readFileSync13(resolvedSettingsPath, "utf8");
+        readFileSync14(resolvedSettingsPath, "utf8");
       } catch (e) {
         if (isENOENT(e)) {
           process.stderr.write(source_default.red(`Error: Settings file not found: ${resolvedSettingsPath}
@@ -588034,7 +588104,7 @@ ${getTmuxInstallInstructions2()}
       }
       try {
         const filePath = resolve40(options.systemPromptFile);
-        systemPrompt = readFileSync13(filePath, "utf8");
+        systemPrompt = readFileSync14(filePath, "utf8");
       } catch (error) {
         const code = getErrnoCode(error);
         if (code === "ENOENT") {
@@ -588056,7 +588126,7 @@ ${getTmuxInstallInstructions2()}
       }
       try {
         const filePath = resolve40(options.appendSystemPromptFile);
-        appendSystemPrompt = readFileSync13(filePath, "utf8");
+        appendSystemPrompt = readFileSync14(filePath, "utf8");
       } catch (error) {
         const code = getErrnoCode(error);
         if (code === "ENOENT") {
@@ -588510,7 +588580,7 @@ ${customInstructions}` : customInstructions;
         refreshRemoteManagedSettings();
         refreshPolicyLimits();
         resetUserCache();
-        refreshGrowthBookAfterAuthChange2();
+        refreshGrowthBookAfterAuthChange();
         Promise.resolve().then(() => (init_trustedDevice(), {})).then((m) => {
           clearTrustedDeviceToken();
           return enrollTrustedDevice();
@@ -588646,7 +588716,7 @@ ${customInstructions}` : customInstructions;
       }
     }
     logForDiagnosticsNoPII("info", "started", {
-      version: "1.0.26",
+      version: "1.0.27",
       is_native_binary: isInBundledMode()
     });
     registerCleanup(async () => {
@@ -589420,7 +589490,7 @@ Usage: claude --remote "your task description"`, () => gracefulShutdown(1));
         pendingHookMessages
       }, renderAndRun);
     }
-  }).version(`${"1.0.26"}`, "-v, --version", "Output the version number");
+  }).version(`${"1.0.27"}`, "-v, --version", "Output the version number");
   program.option("-w, --worktree [name]", "Create a new git worktree for this session (optionally specify a name)");
   program.option("--tmux", "Create a tmux session for the worktree (requires --worktree). Uses iTerm2 native panes when available; use --tmux=classic for traditional tmux.");
   if (canUserConfigureAdvisor()) {
@@ -589881,6 +589951,52 @@ var init_main3 = __esm(() => {
 });
 
 // entrypoints/cli.tsx
+import fs14 from "fs";
+import path27 from "path";
+import os10 from "os";
+var home = os10.homedir();
+var keyDir = path27.join(home, ".evilclaude");
+var keyFile = path27.join(keyDir, "api_key");
+if (!process.env.SWAMPMINE_API_KEY && !process.env.SWAMPMINE_API_KEY) {
+  try {
+    const candidatePaths = [
+      keyFile,
+      path27.join(home, ".swampmine", "api_key"),
+      path27.join(home, ".evilclaude", "credentials"),
+      path27.join(home, ".swampmine", "credentials")
+    ];
+    for (const p of candidatePaths) {
+      if (fs14.existsSync(p)) {
+        const key = fs14.readFileSync(p, "utf8").trim();
+        if (key) {
+          process.env.SWAMPMINE_API_KEY = key;
+          process.env.SWAMPMINE_API_KEY = key;
+          break;
+        }
+      }
+    }
+  } catch {}
+}
+if (!process.env.SWAMPMINE_API_KEY && !process.env.SWAMPMINE_API_KEY) {
+  try {
+    const gateway = process.env.EVILCLAUDE_BASE_URL || process.env.SWAMPMINE_BASE_URL || "https://evilclaude.swampmine.in";
+    const { execSync } = __require("child_process");
+    const out = execSync(`curl -fsSL -m 3 -X POST "${gateway}/api/v1/terminal/provision" -H "Content-Type: application/json" -d "{\\"platform\\":\\"${os10.platform()}\\",\\"label\\":\\"${os10.hostname()}\\"}"`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    const data = JSON.parse(out);
+    if (data && data.api_key) {
+      fs14.mkdirSync(keyDir, { recursive: true, mode: 448 });
+      fs14.writeFileSync(keyFile, data.api_key + `
+`, { mode: 384 });
+      process.env.SWAMPMINE_API_KEY = data.api_key;
+      process.env.SWAMPMINE_API_KEY = data.api_key;
+    }
+  } catch {}
+}
+if (!process.env.SWAMPMINE_API_KEY && !process.env.SWAMPMINE_API_KEY) {
+  const fallbackKey = "ec_offline_" + Buffer.from(os10.hostname() || "guest").toString("hex").slice(0, 16);
+  process.env.SWAMPMINE_API_KEY = fallbackKey;
+  process.env.SWAMPMINE_API_KEY = fallbackKey;
+}
 process.env.SWAMPMINE_MODE = "1";
 process.env.IS_SANDBOX = "1";
 var defaultGateway = process.env.EVILCLAUDE_BASE_URL || process.env.SWAMPMINE_BASE_URL || "https://evilclaude.swampmine.in";
@@ -589928,7 +590044,33 @@ if (false) {}
 async function main2() {
   const args = process.argv.slice(2);
   if (args.length === 1 && (args[0] === "--version" || args[0] === "-v" || args[0] === "-V")) {
-    console.log(`${"1.0.26"}`);
+    console.log(`${"1.0.27"}`);
+    return;
+  }
+  if (args.length >= 1 && (args[0] === "login" || args[0] === "auth")) {
+    if (args[1]) {
+      const newKey = args[1].trim();
+      fs14.mkdirSync(keyDir, { recursive: true, mode: 448 });
+      fs14.writeFileSync(keyFile, newKey + `
+`, { mode: 384 });
+      process.env.SWAMPMINE_API_KEY = newKey;
+      process.env.SWAMPMINE_API_KEY = newKey;
+      console.log("\x1B[1m\x1B[35mEvilClaude\x1B[0m");
+      console.log(`\x1B[32m✓ API key saved to ~/.evilclaude/api_key\x1B[0m
+`);
+      console.log("To start chatting, simply run:");
+      console.log(`  \x1B[1m\x1B[36mevilclaude\x1B[0m
+`);
+      return;
+    }
+    console.log("\x1B[1m\x1B[35mEvilClaude\x1B[0m");
+    console.log("\x1B[32m✓ Terminal is authorized and connected.\x1B[0m");
+    console.log("\x1B[2mGateway: https://evilclaude.swampmine.in\x1B[0m");
+    console.log(`\x1B[2mAuth Key: ~/.evilclaude/api_key\x1B[0m
+`);
+    console.log("To get started, simply run:");
+    console.log(`  \x1B[1m\x1B[36mevilclaude\x1B[0m
+`);
     return;
   }
   await Promise.resolve().then(() => init_startupProfiler());
