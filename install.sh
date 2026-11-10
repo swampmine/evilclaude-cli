@@ -116,20 +116,28 @@ ensure_bun() {
 }
 
 # ---- LOCAL OR REMOTE -------------------------------------------------------
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCRIPT_DIR=""
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+  SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+fi
 
 resolve_cli() {
   if [ -n "$LOCAL_CLI" ] && [ -f "$LOCAL_CLI" ]; then
     ok "using local cli.js: $LOCAL_CLI"
     SRC_CLI="$LOCAL_CLI"; SRC_KIND="local"; return
   fi
-  for c in "$SCRIPT_DIR/cli.js" "$PWD/cli.js" "$PWD/public/cli.js" "$SCRIPT_DIR/../public/cli.js"; do
+  local search_paths=()
+  if [ -n "$SCRIPT_DIR" ]; then
+    search_paths+=("$SCRIPT_DIR/cli.js" "$SCRIPT_DIR/../public/cli.js")
+  fi
+  search_paths+=("$PWD/cli.js" "$PWD/public/cli.js")
+  for c in "${search_paths[@]}"; do
     if [ -f "$c" ]; then
       ok "found local cli.js: $c"
       SRC_CLI="$c"; SRC_KIND="local"; return
     fi
   done
-  warn "no local cli.js — will download from GitHub"
+  warn "no local cli.js — will download from remote"
   SRC_CLI="$REMOTE_CLI_URL"; SRC_KIND="remote"
 }
 
@@ -203,15 +211,13 @@ check_path() {
 done_banner() {
   printf '\n'
   printf '%s┌─────────────────────────────────────────────────────────────┐%s\n' "${MAG}" "${R}"
-  printf '%s│%s   %s🔥 EvilClaude v1.0 is ready.%s                               %s│%s\n' "${MAG}" "${R}" "${B}${RED}" "${R}" "${MAG}" "${R}"
+  printf '%s│%s   %s🔥 EvilClaude v1.0.25 is ready.%s                              %s│%s\n' "${MAG}" "${R}" "${B}${RED}" "${R}" "${MAG}" "${R}"
   printf '%s├─────────────────────────────────────────────────────────────┤%s\n' "${MAG}" "${R}"
-  printf '%s│%s   1. Log in or create account via Web UI:                   %s│%s\n' "${MAG}" "${R}" "${MAG}" "${R}"
-  printf '%s│%s      %shttps://evilclaude.swampmine.in/login%s               %s│%s\n' "${MAG}" "${R}" "${CYN}" "${R}" "${MAG}" "${R}"
+  printf '%s│%s   1. Log in to connect your terminal:                       %s│%s\n' "${MAG}" "${R}" "${MAG}" "${R}"
+  printf '%s│%s      %sevilclaude login%s                                     %s│%s\n' "${MAG}" "${R}" "${CYN}" "${R}" "${MAG}" "${R}"
+  printf '%s│%s      Or get API key: %shttps://evilclaude.swampmine.in/login%s   %s│%s\n' "${MAG}" "${R}" "${D}" "${R}" "${MAG}" "${R}"
   printf '%s│%s                                                             %s│%s\n' "${MAG}" "${R}" "${MAG}" "${R}"
-  printf '%s│%s   2. Set your SWAMPMINE_API_KEY:                            %s│%s\n' "${MAG}" "${R}" "${MAG}" "${R}"
-  printf '%s│%s      %sexport SWAMPMINE_API_KEY="ec_..."%s                    %s│%s\n' "${MAG}" "${R}" "${YLW}" "${R}" "${MAG}" "${R}"
-  printf '%s│%s                                                             %s│%s\n' "${MAG}" "${R}" "${MAG}" "${R}"
-  printf '%s│%s   3. Launch:                                                %s│%s\n' "${MAG}" "${R}" "${MAG}" "${R}"
+  printf '%s│%s   2. Launch:                                                %s│%s\n' "${MAG}" "${R}" "${MAG}" "${R}"
   printf '%s│%s      %sevilclaude%s                                           %s│%s\n' "${MAG}" "${R}" "${GRN}" "${R}" "${MAG}" "${R}"
   printf '%s└─────────────────────────────────────────────────────────────┘%s\n\n' "${MAG}" "${R}"
 }
