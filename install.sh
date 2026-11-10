@@ -150,12 +150,16 @@ download_cli() {
     error "failed to download EvilClaude CLI from all endpoints. Please check internet connectivity."
   fi
 
-  # Wrap with runtime shebang
-  local shebang="#!/usr/bin/env $RUNTIME"
-  {
-    echo "$shebang"
-    cat "$tmp_file"
-  } > "$target_path"
+  # Ensure executable with runtime shebang
+  if head -1 "$tmp_file" | grep -q '^#!'; then
+    cp "$tmp_file" "$target_path"
+  else
+    local shebang="#!/usr/bin/env $RUNTIME"
+    {
+      echo "$shebang"
+      cat "$tmp_file"
+    } > "$target_path"
+  fi
   rm -f "$tmp_file"
   chmod +x "$target_path"
 }
