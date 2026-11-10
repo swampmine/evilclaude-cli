@@ -7,7 +7,7 @@ set -euo pipefail
 
 # Configuration
 GATEWAY_URL="${EVILCLAUDE_GATEWAY_URL:-https://evilclaude.swampmine.in}"
-VERSION="${EVILCLAUDE_VERSION:-1.0.28}"
+VERSION="${EVILCLAUDE_VERSION:-1.0.29}"
 INSTALL_DIR="${EVILCLAUDE_INSTALL_DIR:-$HOME/.local/bin}"
 CONFIG_DIR="${EVILCLAUDE_CONFIG_DIR:-$HOME/.evilclaude}"
 BIN_NAME="evilclaude"

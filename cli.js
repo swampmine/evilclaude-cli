@@ -167033,7 +167033,7 @@ var init_auth2 = __esm(() => {
 
 // utils/userAgent.ts
 function getClaudeCodeUserAgent() {
-  return `claude-code/${"1.0.28"}`;
+  return `claude-code/${"1.0.29"}`;
 }
 
 // utils/workloadContext.ts
@@ -167055,7 +167055,7 @@ function getUserAgent() {
   const clientApp = process.env.CLAUDE_AGENT_SDK_CLIENT_APP ? `, client-app/${process.env.CLAUDE_AGENT_SDK_CLIENT_APP}` : "";
   const workload = getWorkload();
   const workloadSuffix = workload ? `, workload/${workload}` : "";
-  return `claude-cli/${"1.0.28"} (${process.env.USER_TYPE}, ${process.env.CLAUDE_CODE_ENTRYPOINT ?? "cli"}${agentSdkVersion}${clientApp}${workloadSuffix})`;
+  return `claude-cli/${"1.0.29"} (${process.env.USER_TYPE}, ${process.env.CLAUDE_CODE_ENTRYPOINT ?? "cli"}${agentSdkVersion}${clientApp}${workloadSuffix})`;
 }
 function getMCPUserAgent() {
   const parts = [];
@@ -167069,7 +167069,7 @@ function getMCPUserAgent() {
     parts.push(`client-app/${process.env.CLAUDE_AGENT_SDK_CLIENT_APP}`);
   }
   const suffix = parts.length > 0 ? ` (${parts.join(", ")})` : "";
-  return `claude-code/${"1.0.28"}${suffix}`;
+  return `claude-code/${"1.0.29"}${suffix}`;
 }
 function getWebFetchUserAgent() {
   return `EvilClaude-User (${getClaudeCodeUserAgent()}; +https://evilclaude.swampmine.in/)`;
@@ -167207,7 +167207,7 @@ var init_user = __esm(() => {
       deviceId,
       sessionId: getSessionId(),
       email: getEmail(),
-      appVersion: "1.0.28",
+      appVersion: "1.0.29",
       platform: getHostPlatformForAnalytics(),
       organizationUuid,
       accountUuid,
@@ -176904,7 +176904,7 @@ var init_metadata = __esm(() => {
   COMPOUND_OPERATOR_REGEX = /\s*(?:&&|\|\||[;|])\s*/;
   WHITESPACE_REGEX = /\s+/;
   getVersionBase = memoize_default(() => {
-    const match = "1.0.28".match(/^\d+\.\d+\.\d+(?:-[a-z]+)?/);
+    const match = "1.0.29".match(/^\d+\.\d+\.\d+(?:-[a-z]+)?/);
     return match ? match[0] : undefined;
   });
   buildEnvContext = memoize_default(async () => {
@@ -176944,9 +176944,9 @@ var init_metadata = __esm(() => {
       isGithubAction: isEnvTruthy(process.env.GITHUB_ACTIONS),
       isClaudeCodeAction: isEnvTruthy(process.env.CLAUDE_CODE_ACTION),
       isClaudeAiAuth: isClaudeAISubscriber(),
-      version: "1.0.28",
+      version: "1.0.29",
       versionBase: getVersionBase(),
-      buildTime: "2026-11-10T13:04:27.861Z",
+      buildTime: "2026-11-10T13:44:54.983Z",
       deploymentEnvironment: env4.detectDeploymentEnvironment(),
       ...isEnvTruthy(process.env.GITHUB_ACTIONS) && {
         githubEventName: process.env.GITHUB_EVENT_NAME,
@@ -177601,7 +177601,7 @@ function initialize1PEventLogging() {
   const platform = getPlatform();
   const attributes = {
     [import_semantic_conventions.ATTR_SERVICE_NAME]: "claude-code",
-    [import_semantic_conventions.ATTR_SERVICE_VERSION]: "1.0.28"
+    [import_semantic_conventions.ATTR_SERVICE_VERSION]: "1.0.29"
   };
   if (platform === "wsl") {
     const wslVersion = getWslVersion();
@@ -177628,7 +177628,7 @@ function initialize1PEventLogging() {
       })
     ]
   });
-  firstPartyEventLogger = firstPartyEventLoggerProvider.getLogger("com.anthropic.claude_code.events", "1.0.28");
+  firstPartyEventLogger = firstPartyEventLoggerProvider.getLogger("com.anthropic.claude_code.events", "1.0.29");
 }
 async function reinitialize1PEventLoggingIfConfigChanged() {
   if (!is1PEventLoggingEnabled() || !firstPartyEventLoggerProvider) {
@@ -179707,7 +179707,7 @@ function getAttributionHeader(fingerprint) {
   if (!isAttributionHeaderEnabled()) {
     return "";
   }
-  const version = `${"1.0.28"}.${fingerprint}`;
+  const version = `${"1.0.29"}.${fingerprint}`;
   const entrypoint = process.env.CLAUDE_CODE_ENTRYPOINT ?? "unknown";
   const cch = "";
   const workload = getWorkload();
@@ -226256,7 +226256,11 @@ function formatAPIError(error) {
     return extractNestedErrorMessage(error) ?? `API error (status ${error.status ?? "unknown"})`;
   }
   const sanitizedMessage = sanitizeAPIError(error);
-  return sanitizedMessage !== error.message && sanitizedMessage.length > 0 ? sanitizedMessage : error.message;
+  const rawMsg = sanitizedMessage !== error.message && sanitizedMessage.length > 0 ? sanitizedMessage : error.message;
+  if (/evilclaude gateway/i.test(rawMsg) || /key limit exceeded/i.test(rawMsg)) {
+    return "EvilClaude Service Notice: High demand or capacity limit reached. Please try again shortly or check https://evilclaude.swampmine.in/status";
+  }
+  return rawMsg;
 }
 var SSL_ERROR_CODES;
 var init_errorUtils = __esm(() => {
@@ -227993,7 +227997,7 @@ function getTelemetryAttributes() {
     attributes["session.id"] = sessionId;
   }
   if (shouldIncludeAttribute("OTEL_METRICS_INCLUDE_VERSION")) {
-    attributes["app.version"] = "1.0.28";
+    attributes["app.version"] = "1.0.29";
   }
   const oauthAccount = getOauthAccountInfo();
   if (oauthAccount) {
@@ -259445,7 +259449,7 @@ function getInstallationEnv() {
   return;
 }
 function getClaudeCodeVersion() {
-  return "1.0.28";
+  return "1.0.29";
 }
 async function getInstalledVSCodeExtensionVersion(command) {
   const { stdout } = await execFileNoThrow(command, ["--list-extensions", "--show-versions"], {
@@ -265033,7 +265037,7 @@ async function setupSdkMcpClients(sdkMcpConfigs, sendMcpMessage) {
     const client = new Client({
       name: "claude-code",
       title: "EvilClaude",
-      version: "1.0.28" ?? "unknown",
+      version: "1.0.29" ?? "unknown",
       description: "Anthropic's agentic coding tool",
       websiteUrl: PRODUCT_URL
     }, {
@@ -265387,7 +265391,7 @@ var init_client9 = __esm(() => {
       const client = new Client({
         name: "claude-code",
         title: "EvilClaude",
-        version: "1.0.28" ?? "unknown",
+        version: "1.0.29" ?? "unknown",
         description: "Anthropic's agentic coding tool",
         websiteUrl: PRODUCT_URL
       }, {
@@ -316653,7 +316657,7 @@ async function initializeBetaTracing(resource) {
   });
   import_api_logs.logs.setGlobalLoggerProvider(loggerProvider);
   setLoggerProvider(loggerProvider);
-  const eventLogger = import_api_logs.logs.getLogger("com.anthropic.claude_code.events", "1.0.28");
+  const eventLogger = import_api_logs.logs.getLogger("com.anthropic.claude_code.events", "1.0.29");
   setEventLogger(eventLogger);
   process.on("beforeExit", async () => {
     await loggerProvider?.forceFlush();
@@ -316693,7 +316697,7 @@ async function initializeTelemetry() {
   const platform = getPlatform();
   const baseAttributes = {
     [import_semantic_conventions2.ATTR_SERVICE_NAME]: "claude-code",
-    [import_semantic_conventions2.ATTR_SERVICE_VERSION]: "1.0.28"
+    [import_semantic_conventions2.ATTR_SERVICE_VERSION]: "1.0.29"
   };
   if (platform === "wsl") {
     const wslVersion = getWslVersion();
@@ -316738,7 +316742,7 @@ async function initializeTelemetry() {
       } catch {}
     };
     registerCleanup(shutdownTelemetry);
-    return meterProvider.getMeter("com.anthropic.claude_code", "1.0.28");
+    return meterProvider.getMeter("com.anthropic.claude_code", "1.0.29");
   }
   const meterProvider = new import_sdk_metrics2.MeterProvider({
     resource,
@@ -316758,7 +316762,7 @@ async function initializeTelemetry() {
       });
       import_api_logs.logs.setGlobalLoggerProvider(loggerProvider);
       setLoggerProvider(loggerProvider);
-      const eventLogger = import_api_logs.logs.getLogger("com.anthropic.claude_code.events", "1.0.28");
+      const eventLogger = import_api_logs.logs.getLogger("com.anthropic.claude_code.events", "1.0.29");
       setEventLogger(eventLogger);
       logForDebugging("[3P telemetry] Event logger set successfully");
       process.on("beforeExit", async () => {
@@ -316820,7 +316824,7 @@ Current timeout: ${timeoutMs}ms
     }
   };
   registerCleanup(shutdownTelemetry);
-  return meterProvider.getMeter("com.anthropic.claude_code", "1.0.28");
+  return meterProvider.getMeter("com.anthropic.claude_code", "1.0.29");
 }
 async function flushTelemetry() {
   const meterProvider = getMeterProvider();
@@ -317453,7 +317457,7 @@ async function installGlobalPackage(specificVersion) {
     logError2(new AutoUpdaterError("Another process is currently installing an update"));
     logEvent("tengu_auto_updater_lock_contention", {
       pid: process.pid,
-      currentVersion: "1.0.28"
+      currentVersion: "1.0.29"
     });
     return "in_progress";
   }
@@ -317462,7 +317466,7 @@ async function installGlobalPackage(specificVersion) {
     if (!env4.isRunningWithBun() && env4.isNpmFromWindowsPath()) {
       logError2(new Error("Windows NPM detected in WSL environment"));
       logEvent("tengu_auto_updater_windows_npm_in_wsl", {
-        currentVersion: "1.0.28"
+        currentVersion: "1.0.29"
       });
       console.error(`
 Error: Windows NPM detected in WSL
@@ -317995,7 +317999,7 @@ function detectLinuxGlobPatternWarnings() {
 }
 async function getDoctorDiagnostic() {
   const installationType = await getCurrentInstallationType();
-  const version = typeof MACRO !== "undefined" && "1.0.28" ? "1.0.28" : "unknown";
+  const version = typeof MACRO !== "undefined" && "1.0.29" ? "1.0.29" : "unknown";
   const installationPath = await getInstallationPath();
   const invokedBinary = getInvokedBinary();
   const multipleInstallations = await detectMultipleInstallations();
@@ -318930,8 +318934,8 @@ async function updateLatest(channelOrVersion, forceReinstall = false) {
     const maxVersion = await getMaxVersion();
     if (maxVersion && gt(version, maxVersion)) {
       logForDebugging(`Native installer: maxVersion ${maxVersion} is set, capping update from ${version} to ${maxVersion}`);
-      if (gte("1.0.28", maxVersion)) {
-        logForDebugging(`Native installer: current version ${"1.0.28"} is already at or above maxVersion ${maxVersion}, skipping update`);
+      if (gte("1.0.29", maxVersion)) {
+        logForDebugging(`Native installer: current version ${"1.0.29"} is already at or above maxVersion ${maxVersion}, skipping update`);
         logEvent("tengu_native_update_skipped_max_version", {
           latency_ms: Date.now() - startTime,
           max_version: maxVersion,
@@ -318942,7 +318946,7 @@ async function updateLatest(channelOrVersion, forceReinstall = false) {
       version = maxVersion;
     }
   }
-  if (!forceReinstall && version === "1.0.28" && await versionIsAvailable(version) && await isPossibleClaudeBinary(executablePath)) {
+  if (!forceReinstall && version === "1.0.29" && await versionIsAvailable(version) && await isPossibleClaudeBinary(executablePath)) {
     logForDebugging(`Found ${version} at ${executablePath}, skipping install`);
     logEvent("tengu_native_update_complete", {
       latency_ms: Date.now() - startTime,
@@ -403379,9 +403383,9 @@ function getAnthropicEnvMetadata() {
   };
 }
 function getBuildAgeMinutes() {
-  if (!"2026-11-10T13:04:27.861Z")
+  if (!"2026-11-10T13:44:54.983Z")
     return;
-  const buildTime = new Date("2026-11-10T13:04:27.861Z").getTime();
+  const buildTime = new Date("2026-11-10T13:44:54.983Z").getTime();
   if (isNaN(buildTime))
     return;
   return Math.floor((Date.now() - buildTime) / 60000);
@@ -427028,7 +427032,7 @@ function Feedback({
       platform: env4.platform,
       gitRepo: envInfo.isGit,
       terminal: env4.terminal,
-      version: "1.0.28",
+      version: "1.0.29",
       transcript: normalizeMessagesForAPI(messages),
       errors: sanitizedErrors,
       lastApiRequest: getLastAPIRequest(),
@@ -427220,7 +427224,7 @@ function Feedback({
                       ", ",
                       env4.terminal,
                       ", v",
-                      "1.0.28"
+                      "1.0.29"
                     ]
                   })
                 ]
@@ -427326,7 +427330,7 @@ ${sanitizedDescription}
 ` + `**Environment Info**
 ` + `- Platform: ${env4.platform}
 ` + `- Terminal: ${env4.terminal}
-` + `- Version: ${"1.0.28" || "unknown"}
+` + `- Version: ${"1.0.29" || "unknown"}
 ` + `- Feedback ID: ${feedbackId}
 ` + `
 **Errors**
@@ -430447,7 +430451,7 @@ function buildPrimarySection() {
   });
   return [{
     label: "Version",
-    value: "1.0.28"
+    value: "1.0.29"
   }, {
     label: "Session name",
     value: nameValue
@@ -434194,7 +434198,7 @@ function Config({
         }
       })
     }) : showSubmenu === "ChannelDowngrade" ? /* @__PURE__ */ jsx_runtime174.jsx(ChannelDowngradeDialog, {
-      currentVersion: "1.0.28",
+      currentVersion: "1.0.29",
       onChoice: (choice) => {
         setShowSubmenu(null);
         setTabsHidden(false);
@@ -434206,7 +434210,7 @@ function Config({
           autoUpdatesChannel: "stable"
         };
         if (choice === "stay") {
-          newSettings.minimumVersion = "1.0.28";
+          newSettings.minimumVersion = "1.0.29";
         }
         updateSettingsForSource("userSettings", newSettings);
         setSettingsData((prev_27) => ({
@@ -442281,7 +442285,7 @@ function HelpV2(t0) {
   let t6;
   if ($[31] !== tabs) {
     t6 = /* @__PURE__ */ jsx_runtime200.jsx(Tabs, {
-      title: `EvilClaude v${"1.0.28"}`,
+      title: `EvilClaude v${"1.0.29"}`,
       color: "professionalBlue",
       defaultTab: "general",
       children: tabs
@@ -466418,7 +466422,7 @@ function getAllReleaseNotes(changelogContent = getStoredChangelogFromMemory()) {
     return [];
   }
 }
-function checkForReleaseNotesSync(lastSeenVersion, currentVersion = "1.0.28") {
+function checkForReleaseNotesSync(lastSeenVersion, currentVersion = "1.0.29") {
   if (process.env.USER_TYPE === "ant") {
     const changelog = undefined;
     if (changelog) {
@@ -467544,7 +467548,7 @@ function getRecentActivitySync() {
   return cachedActivity;
 }
 function getLogoDisplayData() {
-  const version = process.env.DEMO_VERSION ?? "1.0.28";
+  const version = process.env.DEMO_VERSION ?? "1.0.29";
   const serverUrl = getDirectConnectServerUrl();
   const displayPath = process.env.DEMO_VERSION ? "/code/claude" : getDisplayPath(getCwd());
   const cwd = serverUrl ? `${displayPath} in ${serverUrl.replace(/^https?:\/\//, "")}` : displayPath;
@@ -468737,7 +468741,7 @@ function LogoV2() {
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = () => {
       const currentConfig = getGlobalConfig();
-      if (currentConfig.lastReleaseNotesSeen === "1.0.28") {
+      if (currentConfig.lastReleaseNotesSeen === "1.0.29") {
         return;
       }
       saveGlobalConfig(_temp327);
@@ -469281,12 +469285,12 @@ function LogoV2() {
   return t41;
 }
 function _temp327(current) {
-  if (current.lastReleaseNotesSeen === "1.0.28") {
+  if (current.lastReleaseNotesSeen === "1.0.29") {
     return current;
   }
   return {
     ...current,
-    lastReleaseNotesSeen: "1.0.28"
+    lastReleaseNotesSeen: "1.0.29"
   };
 }
 function _temp240(s_0) {
@@ -495579,7 +495583,7 @@ async function captureMemoryDiagnostics(trigger, dumpNumber = 0) {
     smapsRollup,
     platform: process.platform,
     nodeVersion: process.version,
-    ccVersion: "1.0.28"
+    ccVersion: "1.0.29"
   };
 }
 async function performHeapDump(trigger = "manual", dumpNumber = 0) {
@@ -496165,7 +496169,7 @@ var init_bridge_kick = __esm(() => {
 var call56 = async () => {
   return {
     type: "text",
-    value: "2026-11-10T13:04:27.861Z" ? `${"1.0.28"} (built ${"2026-11-10T13:04:27.861Z"})` : "1.0.28"
+    value: "2026-11-10T13:44:54.983Z" ? `${"1.0.29"} (built ${"2026-11-10T13:44:54.983Z"})` : "1.0.29"
   };
 }, version6, version_default;
 var init_version = __esm(() => {
@@ -510917,7 +510921,7 @@ var init_sessionStorage = __esm(() => {
   init_settings2();
   init_slowOperations();
   init_uuid();
-  VERSION5 = typeof MACRO !== "undefined" ? "1.0.28" : "unknown";
+  VERSION5 = typeof MACRO !== "undefined" ? "1.0.29" : "unknown";
   MAX_TOMBSTONE_REWRITE_BYTES = 50 * 1024 * 1024;
   SKIP_FIRST_PROMPT_PATTERN = /^(?:\s*<[a-z][\w-]*[\s>]|\[Request interrupted by user[^\]]*\])/;
   EPHEMERAL_PROGRESS_TYPES = new Set([
@@ -512122,7 +512126,7 @@ var init_filesystem = __esm(() => {
   });
   getBundledSkillsRoot = memoize_default(function getBundledSkillsRoot() {
     const nonce = randomBytes18(16).toString("hex");
-    return join130(getClaudeTempDir(), "bundled-skills", "1.0.28", nonce);
+    return join130(getClaudeTempDir(), "bundled-skills", "1.0.29", nonce);
   });
   getResolvedWorkingDirPaths = memoize_default(getPathsForPermissionCheck);
 });
@@ -518024,7 +518028,7 @@ function computeFingerprint(messageText, version) {
 }
 function computeFingerprintFromMessages(messages) {
   const firstMessageText = extractFirstMessageText(messages);
-  return computeFingerprint(firstMessageText, "1.0.28");
+  return computeFingerprint(firstMessageText, "1.0.29");
 }
 var FINGERPRINT_SALT = "59cf53e54c78";
 var init_fingerprint = () => {};
@@ -519882,7 +519886,7 @@ async function sideQuery(opts) {
     betas.push(STRUCTURED_OUTPUTS_BETA_HEADER);
   }
   const messageText = extractFirstUserMessageText(messages);
-  const fingerprint = computeFingerprint(messageText, "1.0.28");
+  const fingerprint = computeFingerprint(messageText, "1.0.29");
   const attributionHeader = getAttributionHeader(fingerprint);
   const systemBlocks = [
     attributionHeader ? { type: "text", text: attributionHeader } : null,
@@ -522550,7 +522554,7 @@ function buildSystemInitMessage(inputs) {
     slash_commands: inputs.commands.filter((c) => c.userInvocable !== false).map((c) => c.name),
     apiKeySource: getAnthropicApiKeyWithSource().source,
     betas: getSdkBetas(),
-    claude_code_version: "1.0.28",
+    claude_code_version: "1.0.29",
     output_style: outputStyle,
     agents: inputs.agents.map((agent) => agent.agentType),
     skills: inputs.skills.filter((s) => s.userInvocable !== false).map((skill) => skill.name),
@@ -537176,7 +537180,7 @@ var init_useVoiceEnabled = __esm(() => {
 function getSemverPart(version) {
   return `${import_semver13.major(version, { loose: true })}.${import_semver13.minor(version, { loose: true })}.${import_semver13.patch(version, { loose: true })}`;
 }
-function useUpdateNotification(updatedVersion, initialVersion = "1.0.28") {
+function useUpdateNotification(updatedVersion, initialVersion = "1.0.29") {
   const [lastNotifiedSemver, setLastNotifiedSemver] = import_react227.useState(() => getSemverPart(initialVersion));
   if (!updatedVersion) {
     return null;
@@ -537216,7 +537220,7 @@ function AutoUpdater({
       return;
     }
     if (false) {}
-    const currentVersion = "1.0.28";
+    const currentVersion = "1.0.29";
     const channel = getInitialSettings()?.autoUpdatesChannel ?? "latest";
     let latestVersion = await getLatestVersion(channel);
     const isDisabled = isAutoUpdaterDisabled();
@@ -537429,12 +537433,12 @@ function NativeAutoUpdater({
     logEvent("tengu_native_auto_updater_start", {});
     try {
       const maxVersion = await getMaxVersion();
-      if (maxVersion && gt("1.0.28", maxVersion)) {
+      if (maxVersion && gt("1.0.29", maxVersion)) {
         const msg = await getMaxVersionMessage();
         setMaxVersionIssue(msg ?? "affects your version");
       }
       const result = await installLatest(channel);
-      const currentVersion = "1.0.28";
+      const currentVersion = "1.0.29";
       const latencyMs = Date.now() - startTime;
       if (result.lockFailed) {
         logEvent("tengu_native_auto_updater_lock_contention", {
@@ -537571,17 +537575,17 @@ function PackageManagerAutoUpdater(t0) {
       const maxVersion = await getMaxVersion();
       if (maxVersion && latest && gt(latest, maxVersion)) {
         logForDebugging(`PackageManagerAutoUpdater: maxVersion ${maxVersion} is set, capping update from ${latest} to ${maxVersion}`);
-        if (gte("1.0.28", maxVersion)) {
-          logForDebugging(`PackageManagerAutoUpdater: current version ${"1.0.28"} is already at or above maxVersion ${maxVersion}, skipping update`);
+        if (gte("1.0.29", maxVersion)) {
+          logForDebugging(`PackageManagerAutoUpdater: current version ${"1.0.29"} is already at or above maxVersion ${maxVersion}, skipping update`);
           setUpdateAvailable(false);
           return;
         }
         latest = maxVersion;
       }
-      const hasUpdate = latest && !gte("1.0.28", latest) && !shouldSkipVersion(latest);
+      const hasUpdate = latest && !gte("1.0.29", latest) && !shouldSkipVersion(latest);
       setUpdateAvailable(!!hasUpdate);
       if (hasUpdate) {
-        logForDebugging(`PackageManagerAutoUpdater: Update available ${"1.0.28"} -> ${latest}`);
+        logForDebugging(`PackageManagerAutoUpdater: Update available ${"1.0.29"} -> ${latest}`);
       }
     };
     $[0] = t1;
@@ -537615,7 +537619,7 @@ function PackageManagerAutoUpdater(t0) {
       wrap: "truncate",
       children: [
         "currentVersion: ",
-        "1.0.28"
+        "1.0.29"
       ]
     });
     $[3] = verbose;
@@ -545731,7 +545735,7 @@ function buildStatusLineCommandInput(permissionMode, exceeds200kTokens, settings
       project_dir: getOriginalCwd(),
       added_dirs: addedDirs
     },
-    version: "1.0.28",
+    version: "1.0.29",
     output_style: {
       name: outputStyleName
     },
@@ -557094,7 +557098,7 @@ async function submitTranscriptShare(messages, trigger, appearanceId) {
     } catch {}
     const data = {
       trigger,
-      version: "1.0.28",
+      version: "1.0.29",
       platform: process.platform,
       transcript,
       subagentTranscripts: Object.keys(subagentTranscripts).length > 0 ? subagentTranscripts : undefined,
@@ -568920,7 +568924,7 @@ function WelcomeV2() {
             dimColor: true,
             children: [
               "v",
-              "1.0.28",
+              "1.0.29",
               " "
             ]
           })
@@ -569120,7 +569124,7 @@ function WelcomeV2() {
           dimColor: true,
           children: [
             "v",
-            "1.0.28",
+            "1.0.29",
             " "
           ]
         })
@@ -569346,7 +569350,7 @@ function AppleTerminalWelcomeV2(t0) {
         dimColor: true,
         children: [
           "v",
-          "1.0.28",
+          "1.0.29",
           " "
         ]
       });
@@ -569600,7 +569604,7 @@ function AppleTerminalWelcomeV2(t0) {
       dimColor: true,
       children: [
         "v",
-        "1.0.28",
+        "1.0.29",
         " "
       ]
     });
@@ -571025,7 +571029,7 @@ function completeOnboarding() {
   saveGlobalConfig((current) => ({
     ...current,
     hasCompletedOnboarding: true,
-    lastOnboardingVersion: "1.0.28"
+    lastOnboardingVersion: "1.0.29"
   }));
 }
 function showDialog(root, renderer) {
@@ -575464,7 +575468,7 @@ function appendToLog(path, message) {
     cwd: getFsImplementation().cwd(),
     userType: process.env.USER_TYPE,
     sessionId: getSessionId(),
-    version: "1.0.28"
+    version: "1.0.29"
   };
   getLogWriter(path).write(messageWithTimestamp);
 }
@@ -579439,8 +579443,8 @@ async function getEnvLessBridgeConfig() {
 }
 async function checkEnvLessBridgeMinVersion() {
   const cfg = await getEnvLessBridgeConfig();
-  if (cfg.min_version && lt("1.0.28", cfg.min_version)) {
-    return `Your version of EvilClaude (${"1.0.28"}) is too old for Remote Control.
+  if (cfg.min_version && lt("1.0.29", cfg.min_version)) {
+    return `Your version of EvilClaude (${"1.0.29"}) is too old for Remote Control.
 Version ${cfg.min_version} or higher is required. Run \`claude update\` to update.`;
   }
   return null;
@@ -579876,7 +579880,7 @@ async function initBridgeCore(params) {
   const rawApi = createBridgeApiClient({
     baseUrl,
     getAccessToken,
-    runnerVersion: "1.0.28",
+    runnerVersion: "1.0.29",
     onDebug: logForDebugging,
     onAuth401,
     getTrustedDeviceToken
@@ -585504,7 +585508,7 @@ async function startMCPServer(cwd, debug, verbose) {
   setCwd(cwd);
   const server = new Server({
     name: "claude/tengu",
-    version: "1.0.28"
+    version: "1.0.29"
   }, {
     capabilities: {
       tools: {}
@@ -587059,7 +587063,7 @@ var init_agents3 = __esm(() => {
 // cli/update.ts
 async function update() {
   logEvent("tengu_update_check", {});
-  writeToStdout(`Current version: ${"1.0.28"}
+  writeToStdout(`Current version: ${"1.0.29"}
 `);
   const channel = getInitialSettings()?.autoUpdatesChannel ?? "latest";
   writeToStdout(`Checking for updates to ${channel} version...
@@ -587134,8 +587138,8 @@ async function update() {
       writeToStdout(`EvilClaude is managed by Homebrew.
 `);
       const latest = await getLatestVersion(channel);
-      if (latest && !gte("1.0.28", latest)) {
-        writeToStdout(`Update available: ${"1.0.28"} → ${latest}
+      if (latest && !gte("1.0.29", latest)) {
+        writeToStdout(`Update available: ${"1.0.29"} → ${latest}
 `);
         writeToStdout(`
 `);
@@ -587151,8 +587155,8 @@ async function update() {
       writeToStdout(`EvilClaude is managed by winget.
 `);
       const latest = await getLatestVersion(channel);
-      if (latest && !gte("1.0.28", latest)) {
-        writeToStdout(`Update available: ${"1.0.28"} → ${latest}
+      if (latest && !gte("1.0.29", latest)) {
+        writeToStdout(`Update available: ${"1.0.29"} → ${latest}
 `);
         writeToStdout(`
 `);
@@ -587168,8 +587172,8 @@ async function update() {
       writeToStdout(`EvilClaude is managed by apk.
 `);
       const latest = await getLatestVersion(channel);
-      if (latest && !gte("1.0.28", latest)) {
-        writeToStdout(`Update available: ${"1.0.28"} → ${latest}
+      if (latest && !gte("1.0.29", latest)) {
+        writeToStdout(`Update available: ${"1.0.29"} → ${latest}
 `);
         writeToStdout(`
 `);
@@ -587234,11 +587238,11 @@ async function update() {
 `);
         await gracefulShutdown(1);
       }
-      if (result.latestVersion === "1.0.28") {
-        writeToStdout(source_default.green(`EvilClaude is up to date (${"1.0.28"})`) + `
+      if (result.latestVersion === "1.0.29") {
+        writeToStdout(source_default.green(`EvilClaude is up to date (${"1.0.29"})`) + `
 `);
       } else {
-        writeToStdout(source_default.green(`Successfully updated from ${"1.0.28"} to version ${result.latestVersion}`) + `
+        writeToStdout(source_default.green(`Successfully updated from ${"1.0.29"} to version ${result.latestVersion}`) + `
 `);
         await regenerateCompletionCache();
       }
@@ -587298,12 +587302,12 @@ async function update() {
 `);
     await gracefulShutdown(1);
   }
-  if (latestVersion === "1.0.28") {
-    writeToStdout(source_default.green(`EvilClaude is up to date (${"1.0.28"})`) + `
+  if (latestVersion === "1.0.29") {
+    writeToStdout(source_default.green(`EvilClaude is up to date (${"1.0.29"})`) + `
 `);
     await gracefulShutdown(0);
   }
-  writeToStdout(`New version available: ${latestVersion} (current: ${"1.0.28"})
+  writeToStdout(`New version available: ${latestVersion} (current: ${"1.0.29"})
 `);
   writeToStdout(`Installing update...
 `);
@@ -587348,7 +587352,7 @@ async function update() {
   logForDebugging(`update: Installation status: ${status}`);
   switch (status) {
     case "success":
-      writeToStdout(source_default.green(`Successfully updated from ${"1.0.28"} to version ${latestVersion}`) + `
+      writeToStdout(source_default.green(`Successfully updated from ${"1.0.29"} to version ${latestVersion}`) + `
 `);
       await regenerateCompletionCache();
       break;
@@ -588579,7 +588583,7 @@ ${customInstructions}` : customInstructions;
       }
     }
     logForDiagnosticsNoPII("info", "started", {
-      version: "1.0.28",
+      version: "1.0.29",
       is_native_binary: isInBundledMode()
     });
     registerCleanup(async () => {
@@ -589353,7 +589357,7 @@ Usage: claude --remote "your task description"`, () => gracefulShutdown(1));
         pendingHookMessages
       }, renderAndRun);
     }
-  }).version(`${"1.0.28"}`, "-v, --version", "Output the version number");
+  }).version(`${"1.0.29"}`, "-v, --version", "Output the version number");
   program.option("-w, --worktree [name]", "Create a new git worktree for this session (optionally specify a name)");
   program.option("--tmux", "Create a tmux session for the worktree (requires --worktree). Uses iTerm2 native panes when available; use --tmux=classic for traditional tmux.");
   if (canUserConfigureAdvisor()) {
@@ -589907,7 +589911,7 @@ if (false) {}
 async function main2() {
   const args = process.argv.slice(2);
   if (args.length === 1 && (args[0] === "--version" || args[0] === "-v" || args[0] === "-V")) {
-    console.log(`${"1.0.28"}`);
+    console.log(`${"1.0.29"}`);
     return;
   }
   if (args.length >= 1 && (args[0] === "login" || args[0] === "auth")) {
