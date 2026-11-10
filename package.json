@@ -1,0 +1,37 @@
+{
+  "name": "evilclaude",
+  "version": "1.0.25",
+  "description": "EvilClaude — The unleashed AI coding agent CLI routed through SwampMine",
+  "bin": {
+    "evilclaude": "./cli.js"
+  },
+  "files": [
+    "cli.js",
+    "README.md",
+    "version.json",
+    "VERSION"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": ">=1.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/swampmine/evilclaude-cli.git"
+  },
+  "homepage": "https://evilclaude.swampmine.in",
+  "bugs": {
+    "url": "https://github.com/swampmine/evilclaude-cli/issues"
+  },
+  "keywords": [
+    "evilclaude",
+    "claude-code",
+    "swampmine",
+    "wormgpt",
+    "ai-agent",
+    "cli",
+    "coding-assistant"
+  ],
+  "type": "module",
+  "license": "MIT"
+}
