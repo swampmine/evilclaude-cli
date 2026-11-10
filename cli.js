@@ -176946,7 +176946,7 @@ var init_metadata = __esm(() => {
       isClaudeAiAuth: isClaudeAISubscriber(),
       version: "1.0.29",
       versionBase: getVersionBase(),
-      buildTime: "2026-11-10T13:44:54.983Z",
+      buildTime: "2026-11-10T14:03:40.263Z",
       deploymentEnvironment: env4.detectDeploymentEnvironment(),
       ...isEnvTruthy(process.env.GITHUB_ACTIONS) && {
         githubEventName: process.env.GITHUB_EVENT_NAME,
@@ -330138,9 +330138,6 @@ var init_overageCreditGrant = __esm(() => {
 
 // services/api/usage.ts
 async function fetchUtilization() {
-  if (!isClaudeAISubscriber() || !hasProfileScope()) {
-    return {};
-  }
   const tokens = getClaudeAIOAuthTokens();
   if (tokens && isOAuthTokenExpired(tokens.expiresAt)) {
     return null;
@@ -330157,7 +330154,7 @@ async function fetchUtilization() {
   const url = `${getOauthConfig().BASE_API_URL}/api/oauth/usage`;
   const response = await axios_default.get(url, {
     headers,
-    timeout: 5000
+    timeout: 7000
   });
   return response.data;
 }
@@ -403383,9 +403380,9 @@ function getAnthropicEnvMetadata() {
   };
 }
 function getBuildAgeMinutes() {
-  if (!"2026-11-10T13:44:54.983Z")
+  if (!"2026-11-10T14:03:40.263Z")
     return;
-  const buildTime = new Date("2026-11-10T13:44:54.983Z").getTime();
+  const buildTime = new Date("2026-11-10T14:03:40.263Z").getTime();
   if (isNaN(buildTime))
     return;
   return Math.floor((Date.now() - buildTime) / 60000);
@@ -482272,8 +482269,7 @@ var init_usage3 = __esm(() => {
   usage_default = {
     type: "local-jsx",
     name: "usage",
-    description: "Show plan usage limits",
-    availability: ["claude-ai"],
+    description: "Show plan usage limits, balance, and account quotas",
     load: () => Promise.resolve().then(() => (init_usage2(), exports_usage))
   };
 });
@@ -496169,7 +496165,7 @@ var init_bridge_kick = __esm(() => {
 var call56 = async () => {
   return {
     type: "text",
-    value: "2026-11-10T13:44:54.983Z" ? `${"1.0.29"} (built ${"2026-11-10T13:44:54.983Z"})` : "1.0.29"
+    value: "2026-11-10T14:03:40.263Z" ? `${"1.0.29"} (built ${"2026-11-10T14:03:40.263Z"})` : "1.0.29"
   };
 }, version6, version_default;
 var init_version = __esm(() => {
