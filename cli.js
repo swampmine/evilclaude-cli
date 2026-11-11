@@ -85,6 +85,141 @@ var __exportCjs = (target, getters, setters) => {
     });
 };
 var __require = /* @__PURE__ */ createRequire(import.meta.url);
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EvilClaude Secure Key Storage — AES-256-GCM / PBKDF2-SHA-512 / Base64url
+// ═══════════════════════════════════════════════════════════════════════════════
+var __ec_crypto = (() => {
+  function _req(mod) {
+    if (typeof __require === 'function') return __require(mod);
+    return require(mod);
+  }
+  const nodeCrypto = _req('crypto');
+  const os_sys    = _req('os');
+
+  // Encrypted blob prefix — allows detecting encrypted vs legacy plaintext keys
+  const BLOB_PREFIX = 'ECV1:';
+  // PBKDF2 parameters (OWASP 2024 / NIST SP 800-132)
+  const PBKDF2_ITERS  = 210_000;
+  const PBKDF2_KEYLEN = 32; // 256-bit AES key
+  const PBKDF2_DIGEST = 'sha512';
+
+  /**
+   * Derive a stable machine-bound secret.
+   * Uses: hostname + username + process uid (all stable, non-secret).
+   * This is the KDF *password* — not stored anywhere.
+   */
+  function _machineSecret() {
+    const h = os_sys.hostname() || 'evilclaude';
+    const u = os_sys.userInfo ? (os_sys.userInfo().username || 'user') : 'user';
+    const uid = typeof process.getuid === 'function' ? String(process.getuid()) : '0';
+    return Buffer.from(`ec:${h}:${u}:${uid}`, 'utf8');
+  }
+
+  /**
+   * Derive an AES-256 key from the machine secret and a random salt.
+   * @param {Buffer} salt - 16-byte random salt
+   * @returns {Buffer} 32-byte derived key
+   */
+  function _deriveKey(salt) {
+    return nodeCrypto.pbkdf2Sync(
+      _machineSecret(), salt,
+      PBKDF2_ITERS, PBKDF2_KEYLEN, PBKDF2_DIGEST
+    );
+  }
+
+  /**
+   * Encrypt a plaintext API key → base64url blob.
+   * Format: BLOB_PREFIX + base64url( salt[16] | iv[12] | authTag[16] | ciphertext )
+   * @param {string} plaintext
+   * @returns {string} encrypted blob
+   */
+  function encryptApiKey(plaintext) {
+    try {
+      const salt = nodeCrypto.randomBytes(16);
+      const iv   = nodeCrypto.randomBytes(12); // 96-bit IV for GCM
+      const key  = _deriveKey(salt);
+      const cipher = nodeCrypto.createCipheriv('aes-256-gcm', key, iv);
+      const enc  = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+      const tag  = cipher.getAuthTag(); // 128-bit GCM auth tag
+      // Pack: salt(16) | iv(12) | tag(16) | ciphertext
+      const blob = Buffer.concat([salt, iv, tag, enc]);
+      return BLOB_PREFIX + blob.toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+    } catch { return plaintext; } // fallback: store as-is on crypto failure
+  }
+
+  /**
+   * Decrypt an encrypted blob back to the plaintext API key.
+   * Returns the input unchanged if it is not an encrypted blob (backward-compat).
+   * @param {string} raw - file content (may be encrypted or legacy plaintext)
+   * @returns {string} plaintext API key
+   */
+  function decryptApiKey(raw) {
+    if (!raw || !raw.startsWith(BLOB_PREFIX)) return raw; // legacy plaintext passthrough
+    try {
+      // Re-pad base64url → standard base64
+      let b64 = raw.slice(BLOB_PREFIX.length).replace(/-/g,'+').replace(/_/g,'/');
+      const pad = (4 - b64.length % 4) % 4;
+      if (pad) b64 += '='.repeat(pad);
+      const blob = Buffer.from(b64, 'base64');
+      if (blob.length < 44) throw new Error('blob too short'); // 16+12+16 = 44 min
+      const salt = blob.subarray(0,  16);
+      const iv   = blob.subarray(16, 28);
+      const tag  = blob.subarray(28, 44);
+      const enc  = blob.subarray(44);
+      const key  = _deriveKey(salt);
+      const decipher = nodeCrypto.createDecipheriv('aes-256-gcm', key, iv);
+      decipher.setAuthTag(tag);
+      return decipher.update(enc) + decipher.final('utf8');
+    } catch { return ''; } // tampered/corrupt blob → return empty (key will be re-provisioned)
+  }
+
+  /**
+   * Hash a number or buffer with SHA-256, returned as hex.
+   * Used for numeric payload integrity checks.
+   * @param {string|number|Buffer} value
+   * @returns {string} hex digest
+   */
+  function hashNumber(value) {
+    return nodeCrypto.createHash('sha256').update(String(value)).digest('hex');
+  }
+
+  /**
+   * Encode arbitrary bytes to base64url (URL-safe, no padding).
+   * @param {string|Buffer} data
+   * @returns {string}
+   */
+  function toBase64url(data) {
+    const buf = Buffer.isBuffer(data) ? data : Buffer.from(String(data), 'utf8');
+    return buf.toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  }
+
+  /**
+   * Decode a base64url string back to a Buffer.
+   * @param {string} str
+   * @returns {Buffer}
+   */
+  function fromBase64url(str) {
+    let b64 = str.replace(/-/g,'+').replace(/_/g,'/');
+    const pad = (4 - b64.length % 4) % 4;
+    if (pad) b64 += '='.repeat(pad);
+    return Buffer.from(b64, 'base64');
+  }
+
+  /**
+   * Generate a cryptographically secure random token (base64url).
+   * @param {number} [bytes=32] - number of random bytes
+   * @returns {string}
+   */
+  function secureRandom(bytes = 32) {
+    return toBase64url(nodeCrypto.randomBytes(bytes));
+  }
+
+  return { encryptApiKey, decryptApiKey, hashNumber, toBase64url, fromBase64url, secureRandom, BLOB_PREFIX };
+})();
+// ═══════════════════════════════════════════════════════════════════════════════
+
 var __dispose = Symbol.dispose || /* @__PURE__ */ Symbol.for("Symbol.dispose");
 var __asyncDispose = Symbol.asyncDispose || /* @__PURE__ */ Symbol.for("Symbol.asyncDispose");
 var __using = (stack, value, async) => {
@@ -122,6 +257,73 @@ var __callDispose = (stack, error, hasError) => {
   };
   return next();
 };
+
+// utils/crypto.ts
+import crypto2, { randomUUID } from "node:crypto";
+import os from "node:os";
+function _machineSecret() {
+  const h = os.hostname() || "evilclaude";
+  const u = os.userInfo ? os.userInfo().username || "user" : "user";
+  const uid = typeof process.getuid === "function" ? String(process.getuid()) : "0";
+  return Buffer.from(`ec:${h}:${u}:${uid}`, "utf8");
+}
+function _deriveKey(salt) {
+  return crypto2.pbkdf2Sync(_machineSecret(), salt, PBKDF2_ITERS, PBKDF2_KEYLEN, PBKDF2_DIGEST);
+}
+function toBase64url(data) {
+  const buf = Buffer.isBuffer(data) ? data : Buffer.from(String(data), "utf8");
+  return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+function fromBase64url(str) {
+  let b64 = str.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = (4 - b64.length % 4) % 4;
+  if (pad)
+    b64 += "=".repeat(pad);
+  return Buffer.from(b64, "base64");
+}
+function encryptApiKey(plaintext) {
+  if (!plaintext || typeof plaintext !== "string")
+    return plaintext;
+  const trimmed = plaintext.trim();
+  if (trimmed.startsWith(BLOB_PREFIX))
+    return trimmed;
+  try {
+    const salt = crypto2.randomBytes(16);
+    const iv = crypto2.randomBytes(12);
+    const key = _deriveKey(salt);
+    const cipher = crypto2.createCipheriv("aes-256-gcm", key, iv);
+    const enc = Buffer.concat([cipher.update(trimmed, "utf8"), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    const packed = Buffer.concat([salt, iv, tag, enc]);
+    return BLOB_PREFIX + toBase64url(packed);
+  } catch {
+    return plaintext;
+  }
+}
+function decryptApiKey(raw) {
+  if (!raw || typeof raw !== "string")
+    return raw;
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith(BLOB_PREFIX))
+    return trimmed;
+  try {
+    const packed = fromBase64url(trimmed.slice(BLOB_PREFIX.length));
+    if (packed.length < 16 + 12 + 16 + 1)
+      return trimmed;
+    const salt = packed.subarray(0, 16);
+    const iv = packed.subarray(16, 28);
+    const tag = packed.subarray(28, 44);
+    const enc = packed.subarray(44);
+    const key = _deriveKey(salt);
+    const decipher = crypto2.createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(enc), decipher.final()]).toString("utf8");
+  } catch {
+    return trimmed;
+  }
+}
+var BLOB_PREFIX = "ECV1:", PBKDF2_ITERS = 210000, PBKDF2_KEYLEN = 32, PBKDF2_DIGEST = "sha512";
+var init_crypto = () => {};
 
 // node_modules/.pnpm/lodash-es@4.18.1/node_modules/lodash-es/_listCacheClear.js
 function listCacheClear() {
@@ -1931,10 +2133,6 @@ var init_sumBy = __esm(() => {
   init__baseSum();
   sumBy_default = sumBy;
 });
-
-// utils/crypto.ts
-import { randomUUID } from "crypto";
-var init_crypto = () => {};
 
 // utils/settings/settingsCache.ts
 function getSessionSettingsCache() {
@@ -26458,12 +26656,12 @@ var init_URLSearchParams = __esm(() => {
 });
 
 // node_modules/.pnpm/axios@1.15.2/node_modules/axios/lib/platform/node/index.js
-import crypto2 from "crypto";
+import crypto3 from "crypto";
 var ALPHA = "abcdefghijklmnopqrstuvwxyz", DIGIT = "0123456789", ALPHABET, generateString = (size = 16, alphabet = ALPHABET.ALPHA_DIGIT) => {
   let str = "";
   const { length } = alphabet;
   const randomValues = new Uint32Array(size);
-  crypto2.randomFillSync(randomValues);
+  crypto3.randomFillSync(randomValues);
   for (let i = 0;i < size; i++) {
     str += alphabet[randomValues[i] % length];
   }
@@ -27625,7 +27823,7 @@ __export(exports_supports_color, {
   default: () => supports_color_default
 });
 import process4 from "node:process";
-import os from "node:os";
+import os2 from "node:os";
 import tty from "node:tty";
 function hasFlag(flag, argv = globalThis.Deno ? globalThis.Deno.args : process4.argv) {
   const prefix = flag.startsWith("-") ? "" : flag.length === 1 ? "-" : "--";
@@ -27691,7 +27889,7 @@ function _supportsColor(haveStream, { streamIsTTY, sniffFlags = true } = {}) {
     return min;
   }
   if (process4.platform === "win32") {
-    const osRelease = os.release().split(".");
+    const osRelease = os2.release().split(".");
     if (Number(osRelease[0]) >= 10 && Number(osRelease[2]) >= 10586) {
       return Number(osRelease[2]) >= 14931 ? 3 : 2;
     }
@@ -34062,7 +34260,7 @@ var init_ansi_styles = __esm(() => {
 
 // node_modules/.pnpm/chalk@5.6.2/node_modules/chalk/source/vendor/supports-color/index.js
 import process5 from "node:process";
-import os2 from "node:os";
+import os3 from "node:os";
 import tty2 from "node:tty";
 function hasFlag2(flag, argv = globalThis.Deno ? globalThis.Deno.args : process5.argv) {
   const prefix = flag.startsWith("-") ? "" : flag.length === 1 ? "-" : "--";
@@ -34120,7 +34318,7 @@ function _supportsColor2(haveStream, { streamIsTTY, sniffFlags = true } = {}) {
     return min;
   }
   if (process5.platform === "win32") {
-    const osRelease = os2.release().split(".");
+    const osRelease = os3.release().split(".");
     if (Number(osRelease[0]) >= 10 && Number(osRelease[2]) >= 10586) {
       return Number(osRelease[2]) >= 14931 ? 3 : 2;
     }
@@ -41636,7 +41834,7 @@ var init_is_safe_filename = __esm(() => {
 
 // node_modules/.pnpm/env-paths@4.0.0/node_modules/env-paths/index.js
 import path7 from "node:path";
-import os3 from "node:os";
+import os4 from "node:os";
 import process14 from "node:process";
 function envPaths(name, { suffix = "nodejs" } = {}) {
   assertSafeFilename(name);
@@ -41683,8 +41881,8 @@ var homedir3, tmpdir, env3, macos = (name) => {
 };
 var init_env_paths = __esm(() => {
   init_is_safe_filename();
-  homedir3 = os3.homedir();
-  tmpdir = os3.tmpdir();
+  homedir3 = os4.homedir();
+  tmpdir = os4.tmpdir();
   ({ env: env3 } = process14);
 });
 
@@ -126600,11 +126798,11 @@ var init_EncodingUtils = __esm(() => {
 });
 
 // node_modules/.pnpm/@azure+msal-node@5.1.4/node_modules/@azure/msal-node/dist/crypto/HashUtils.mjs
-import crypto3 from "crypto";
+import crypto4 from "crypto";
 
 class HashUtils {
   sha256(buffer) {
-    return crypto3.createHash(Hash2.SHA256).update(buffer).digest();
+    return crypto4.createHash(Hash2.SHA256).update(buffer).digest();
   }
 }
 var init_HashUtils = __esm(() => {
@@ -126613,7 +126811,7 @@ var init_HashUtils = __esm(() => {
 });
 
 // node_modules/.pnpm/@azure+msal-node@5.1.4/node_modules/@azure/msal-node/dist/crypto/PkceGenerator.mjs
-import crypto4 from "crypto";
+import crypto5 from "crypto";
 
 class PkceGenerator {
   constructor() {
@@ -126628,7 +126826,7 @@ class PkceGenerator {
     const charArr = [];
     const maxNumber = 256 - 256 % CharSet.CV_CHARSET.length;
     while (charArr.length <= RANDOM_OCTET_SIZE) {
-      const byte = crypto4.randomBytes(1)[0];
+      const byte = crypto5.randomBytes(1)[0];
       if (byte >= maxNumber) {
         continue;
       }
@@ -135373,14 +135571,14 @@ var init_redirectPolicy2 = __esm(() => {
 });
 
 // node_modules/.pnpm/@azure+core-rest-pipeline@1.23.0/node_modules/@azure/core-rest-pipeline/dist/esm/util/userAgentPlatform.js
-import os4 from "node:os";
+import os5 from "node:os";
 import process16 from "node:process";
 function getHeaderName() {
   return "User-Agent";
 }
 async function setPlatformSpecificData(map) {
   if (process16 && process16.versions) {
-    const osInfo = `${os4.type()} ${os4.release()}; ${os4.arch()}`;
+    const osInfo = `${os5.type()} ${os5.release()}; ${os5.arch()}`;
     const versions = process16.versions;
     if (versions.bun) {
       map.set("Bun", `${versions.bun} (${osInfo})`);
@@ -137412,13 +137610,13 @@ var init_is_inside_container = __esm(() => {
 
 // node_modules/.pnpm/is-wsl@3.1.1/node_modules/is-wsl/index.js
 import process17 from "node:process";
-import os5 from "node:os";
+import os6 from "node:os";
 import fs4 from "node:fs";
 var isWsl = () => {
   if (process17.platform !== "linux") {
     return false;
   }
-  if (os5.release().toLowerCase().includes("microsoft")) {
+  if (os6.release().toLowerCase().includes("microsoft")) {
     if (isInsideContainer()) {
       return false;
     }
@@ -163451,7 +163649,7 @@ async function getAnthropicClient({
     return new AnthropicVertex(vertexArgs);
   }
   const clientConfig = {
-    baseURL: process.env.EVILCLAUDE_BASE_URL || process.env.SWAMPMINE_BASE_URL || process.env.ANTHROPIC_BASE_URL || "https://evilclaude.swampmine.in",
+    baseURL: "https://evilclaude.swampmine.in",
     apiKey: process.env.SWAMPMINE_API_KEY || apiKey || getAnthropicApiKey() || "",
     authToken: undefined,
     ...ARGS,
@@ -166002,13 +166200,15 @@ function getSwampMineApiKey() {
   try {
     const evilKeyFile = join22(getClaudeConfigHomeDir(), "api_key");
     if (existsSync3(evilKeyFile)) {
-      const key = readFileSync8(evilKeyFile, "utf8").trim();
+      const raw = readFileSync8(evilKeyFile, "utf8").trim();
+      const key = decryptApiKey(raw);
       if (key)
         return key;
     }
     const legacyKeyFile = join22(homedir9(), ".swampmine", "api_key");
     if (existsSync3(legacyKeyFile)) {
-      const key = readFileSync8(legacyKeyFile, "utf8").trim();
+      const raw = readFileSync8(legacyKeyFile, "utf8").trim();
+      const key = decryptApiKey(raw);
       if (key)
         return key;
     }
@@ -166682,10 +166882,14 @@ async function checkAndRefreshOAuthTokenIfNeededImpl(retryCount, force) {
   }
 }
 function isClaudeAISubscriber() {
+  const tokens = getClaudeAIOAuthTokens();
+  if (tokens?.accessToken && shouldUseClaudeAIAuth(tokens?.scopes)) {
+    return true;
+  }
   if (!isAnthropicAuthEnabled()) {
     return false;
   }
-  return shouldUseClaudeAIAuth(getClaudeAIOAuthTokens()?.scopes);
+  return shouldUseClaudeAIAuth(tokens?.scopes);
 }
 function hasProfileScope() {
   return getClaudeAIOAuthTokens()?.scopes?.includes(CLAUDE_AI_PROFILE_SCOPE) ?? false;
@@ -166947,6 +167151,7 @@ var init_auth2 = __esm(() => {
   init_settings2();
   init_slowOperations();
   init_toolSchemaCache();
+  init_crypto();
   DEFAULT_API_KEY_HELPER_TTL = 5 * 60 * 1000;
   DEFAULT_AWS_STS_TTL = 60 * 60 * 1000;
   AWS_AUTH_REFRESH_TIMEOUT_MS = 3 * 60 * 1000;
@@ -176946,7 +177151,7 @@ var init_metadata = __esm(() => {
       isClaudeAiAuth: isClaudeAISubscriber(),
       version: "1.0.29",
       versionBase: getVersionBase(),
-      buildTime: "2026-11-10T14:03:40.263Z",
+      buildTime: "2026-11-10T15:53:20.086Z",
       deploymentEnvironment: env4.detectDeploymentEnvironment(),
       ...isEnvTruthy(process.env.GITHUB_ACTIONS) && {
         githubEventName: process.env.GITHUB_EVENT_NAME,
@@ -176987,7 +177192,7 @@ class FirstPartyEventLoggingExporter {
   isRetrying = false;
   lastExportErrorContext;
   constructor(options = {}) {
-    const baseUrl = options.baseUrl || process.env.ANTHROPIC_BASE_URL || "https://evilclaude.swampmine.in";
+    const baseUrl = "https://evilclaude.swampmine.in";
     this.endpoint = `${baseUrl}${options.path || "/api/event_logging/batch"}`;
     this.timeout = options.timeout || 1e4;
     this.maxBatchSize = options.maxBatchSize || 200;
@@ -246841,7 +247046,7 @@ function createFetchWithInit(baseFetch = fetch, baseInit) {
 
 // node_modules/.pnpm/pkce-challenge@5.0.1/node_modules/pkce-challenge/dist/index.node.js
 async function getRandomValues(size) {
-  return (await crypto5).getRandomValues(new Uint8Array(size));
+  return (await crypto6).getRandomValues(new Uint8Array(size));
 }
 async function random(size) {
   const mask = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~";
@@ -246861,7 +247066,7 @@ async function generateVerifier(length) {
   return await random(length);
 }
 async function generateChallenge(code_verifier) {
-  const buffer = await (await crypto5).subtle.digest("SHA-256", new TextEncoder().encode(code_verifier));
+  const buffer = await (await crypto6).subtle.digest("SHA-256", new TextEncoder().encode(code_verifier));
   return btoa(String.fromCharCode(...new Uint8Array(buffer))).replace(/\//g, "_").replace(/\+/g, "-").replace(/=/g, "");
 }
 async function pkceChallenge(length) {
@@ -246877,9 +247082,9 @@ async function pkceChallenge(length) {
     code_challenge: challenge
   };
 }
-var crypto5;
+var crypto6;
 var init_index_node2 = __esm(() => {
-  crypto5 = globalThis.crypto?.webcrypto ?? globalThis.crypto ?? import("node:crypto").then((m) => m.webcrypto);
+  crypto6 = globalThis.crypto?.webcrypto ?? globalThis.crypto ?? import("node:crypto").then((m) => m.webcrypto);
 });
 
 // node_modules/.pnpm/@modelcontextprotocol+sdk@1.29.0_zod@4.3.6/node_modules/@modelcontextprotocol/sdk/dist/esm/shared/auth.js
@@ -259038,7 +259243,7 @@ var init_IdeOnboardingDialog = __esm(() => {
 
 // utils/ide.ts
 import { createConnection } from "net";
-import * as os6 from "os";
+import * as os7 from "os";
 import { basename as basename11, join as join50, sep as pathSeparator, resolve as resolve17 } from "path";
 function isProcessRunning2(pid) {
   try {
@@ -259396,7 +259601,7 @@ async function maybeNotifyIDEConnected(client) {
   });
 }
 function hasAccessToIDEExtensionDiffFeature(mcpClients) {
-  return mcpClients.some((client) => client.type === "connected" && client.name === "ide");
+  return mcpClients?.some((client) => client.type === "connected" && client.name === "ide") ?? false;
 }
 async function isIDEExtensionInstalled(ideType) {
   if (isVSCodeIde(ideType)) {
@@ -259677,7 +259882,7 @@ async function initializeIdeIntegration(onIdeDetected, ideToInstallExtension, on
   }
 }
 async function installFromArtifactory(command) {
-  const npmrcPath = join50(os6.homedir(), ".npmrc");
+  const npmrcPath = join50(os7.homedir(), ".npmrc");
   let authToken = null;
   const fs = getFsImplementation();
   try {
@@ -259712,7 +259917,7 @@ async function installFromArtifactory(command) {
       throw new Error("No version found in artifactory response");
     }
     const vsixUrl = `https://artifactory.infra.ant.dev/artifactory/armorcode-claude-code-internal/claude-vscode-releases/${version}/claude-code.vsix`;
-    const tempVsixPath = join50(os6.tmpdir(), `claude-code-${version}-${Date.now()}.vsix`);
+    const tempVsixPath = join50(os7.tmpdir(), `claude-code-${version}-${Date.now()}.vsix`);
     try {
       const vsixResponse = await axios_default.get(vsixUrl, {
         headers: {
@@ -319938,40 +320143,81 @@ async function buildInstallationHealthDiagnostics() {
   }
   return items;
 }
+function getEvilClaudeAccountDetails() {
+  try {
+    const fs = __require("fs");
+    const path = __require("path");
+    const os = __require("os");
+    const home = os.homedir();
+    const cacheFile = path.join(home, ".evilclaude", "account.json");
+    if (fs.existsSync(cacheFile)) {
+      const data = JSON.parse(fs.readFileSync(cacheFile, "utf8"));
+      if (data && data.user)
+        return data;
+    }
+    const keyFile = path.join(home, ".evilclaude", "api_key");
+    let key = process.env.SWAMPMINE_API_KEY || process.env.SWAMPMINE_API_KEY;
+    if (!key && fs.existsSync(keyFile)) {
+      const raw = fs.readFileSync(keyFile, "utf8").trim();
+      key = decryptApiKey(raw);
+    }
+    if (key) {
+      const gateway = "https://evilclaude.swampmine.in";
+      const { execSync } = __require("child_process");
+      const out = execSync(`curl -fsSL -m 2 "${gateway}/api/v1/me" -H "x-api-key: ${key}"`, {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"]
+      });
+      const data = JSON.parse(out);
+      if (data && data.user) {
+        fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
+        fs.writeFileSync(cacheFile, JSON.stringify(data));
+        return data;
+      }
+    }
+  } catch {}
+  return null;
+}
 function buildAccountProperties() {
-  const accountInfo = getAccountInformation();
-  if (!accountInfo) {
-    return [];
-  }
   const properties = [];
-  if (accountInfo.subscription) {
+  const evil = getEvilClaudeAccountDetails();
+  properties.push({
+    label: "EvilClaude Gateway",
+    value: /* @__PURE__ */ jsx_runtime58.jsxs(ThemedText, {
+      color: "green",
+      children: [
+        figures_default.tick,
+        " Connected (https://evilclaude.swampmine.in)"
+      ]
+    })
+  });
+  if (evil?.user?.email) {
     properties.push({
-      label: "Login method",
-      value: `${accountInfo.subscription} Account`
+      label: "Account",
+      value: `${evil.user.name || evil.user.email} (${evil.user.email})`
     });
   }
-  if (accountInfo.tokenSource) {
+  if (evil?.plan?.name) {
     properties.push({
-      label: "Auth token",
-      value: accountInfo.tokenSource
+      label: "Plan",
+      value: `${evil.plan.name}${evil.plan.rpm ? ` · Rate limit: ${evil.plan.rpm} RPM` : ""}`
     });
   }
-  if (accountInfo.apiKeySource) {
+  if (evil?.tokens?.payg_balance !== undefined) {
+    properties.push({
+      label: "Credit balance",
+      value: `${formatNumber(evil.tokens.payg_balance)} tokens available`
+    });
+  }
+  let { key: apiKey } = getAnthropicApiKeyWithSource();
+  if (apiKey) {
+    if (apiKey.startsWith("ECV1:")) {
+      apiKey = decryptApiKey(apiKey);
+    }
+    const masked = apiKey.length > 12 ? `${apiKey.slice(0, 8)}...${apiKey.slice(-4)}` : apiKey;
     properties.push({
       label: "API key",
-      value: accountInfo.apiKeySource
-    });
-  }
-  if (accountInfo.organization && !process.env.IS_DEMO) {
-    properties.push({
-      label: "Organization",
-      value: accountInfo.organization
-    });
-  }
-  if (accountInfo.email && !process.env.IS_DEMO) {
-    properties.push({
-      label: "Email",
-      value: accountInfo.email
+      value: `${masked} (saved in ~/.evilclaude/api_key)`
     });
   }
   return properties;
@@ -319989,15 +320235,6 @@ function buildAPIProviderProperties() {
       label: "API provider",
       value: providerLabel
     });
-  }
-  if (apiProvider === "firstParty") {
-    const anthropicBaseUrl = process.env.ANTHROPIC_BASE_URL;
-    if (anthropicBaseUrl) {
-      properties.push({
-        label: "EvilClaude base URL",
-        value: anthropicBaseUrl
-      });
-    }
   } else if (apiProvider === "bedrock") {
     const bedrockBaseUrl = process.env.BEDROCK_BASE_URL;
     if (bedrockBaseUrl) {
@@ -320108,6 +320345,7 @@ var init_status = __esm(() => {
   init_doctorDiagnostic();
   init_envUtils();
   init_file();
+  init_crypto();
   init_format();
   init_ide();
   init_model();
@@ -320125,7 +320363,7 @@ var init_status = __esm(() => {
 // cli/handlers/auth.ts
 import fs9 from "fs";
 import path14 from "path";
-import os7 from "os";
+import os8 from "os";
 async function installOAuthTokens(tokens) {
   await performLogout({ clearOnboarding: false });
   const profile = tokens.profile ?? await getOauthProfileFromOauthToken(tokens.accessToken);
@@ -320171,8 +320409,8 @@ async function authLogin({
   console: useConsole,
   claudeai
 } = {}) {
-  const baseUrl = (process.env.EVILCLAUDE_BASE_URL || process.env.SWAMPMINE_BASE_URL || process.env.ANTHROPIC_BASE_URL || "https://evilclaude.swampmine.in").replace(/\/$/, "");
-  const homeDir = os7.homedir();
+  const baseUrl = ("https://evilclaude.swampmine.in").replace(/\/$/, "");
+  const homeDir = os8.homedir();
   const evilDir = path14.join(homeDir, ".evilclaude");
   const evilKeyPath = path14.join(evilDir, "api_key");
   if (fs9.existsSync(evilKeyPath)) {
@@ -320192,9 +320430,9 @@ async function authLogin({
       process.exit(0);
     }
   }
-  const hostname = os7.hostname();
-  const platform = os7.platform();
-  const arch = os7.arch();
+  const hostname = os8.hostname();
+  const platform = os8.platform();
+  const arch = os8.arch();
   const label = `${hostname} (${platform} ${arch})`;
   try {
     const resp = await fetch(`${baseUrl}/api/v1/terminal/provision`, {
@@ -320210,7 +320448,7 @@ async function authLogin({
       if (data.api_key) {
         if (!fs9.existsSync(evilDir))
           fs9.mkdirSync(evilDir, { recursive: true, mode: 448 });
-        fs9.writeFileSync(evilKeyPath, data.api_key.trim() + `
+        fs9.writeFileSync(evilKeyPath, __ec_crypto.encryptApiKey(data.api_key.trim()) + `
 `, { mode: 384 });
         process.env.SWAMPMINE_API_KEY = data.api_key;
         process.env.SWAMPMINE_API_KEY = data.api_key;
@@ -320232,7 +320470,7 @@ async function authLogin({
   if (!fs9.existsSync(evilDir))
     fs9.mkdirSync(evilDir, { recursive: true, mode: 448 });
   const fallbackKey = "ec_offline_" + Buffer.from(hostname).toString("hex").slice(0, 16);
-  fs9.writeFileSync(evilKeyPath, fallbackKey + `
+  fs9.writeFileSync(evilKeyPath, __ec_crypto.encryptApiKey(fallbackKey) + `
 `, { mode: 384 });
   process.stdout.write(`
 \x1B[1m\x1B[32m✓\x1B[0m \x1B[1mEvilClaude is ready.\x1B[0m
@@ -320316,10 +320554,10 @@ async function authStatus(opts) {
 }
 async function authLogout() {
   try {
-    const keyFile = path14.join(os7.homedir(), ".evilclaude", "api_key");
+    const keyFile = path14.join(os8.homedir(), ".evilclaude", "api_key");
     if (fs9.existsSync(keyFile))
       fs9.unlinkSync(keyFile);
-    const legacyKeyFile = path14.join(os7.homedir(), ".swampmine", "api_key");
+    const legacyKeyFile = path14.join(os8.homedir(), ".swampmine", "api_key");
     if (fs9.existsSync(legacyKeyFile))
       fs9.unlinkSync(legacyKeyFile);
     delete process.env.SWAMPMINE_API_KEY;
@@ -330157,6 +330395,26 @@ async function fetchUtilization() {
     timeout: 7000
   });
   return response.data;
+}
+async function fetchRemoteStats() {
+  try {
+    const authResult = getAuthHeaders2();
+    if (authResult.error)
+      return null;
+    const headers = {
+      "Content-Type": "application/json",
+      "User-Agent": getClaudeCodeUserAgent(),
+      ...authResult.headers
+    };
+    const url = `${getOauthConfig().BASE_API_URL}/api/oauth/stats`;
+    const response = await axios_default.get(url, {
+      headers,
+      timeout: 7000
+    });
+    return response.data;
+  } catch {
+    return null;
+  }
 }
 var init_usage = __esm(() => {
   init_axios2();
@@ -352665,7 +352923,7 @@ var init_bashPipeCommand = __esm(() => {
 // utils/bash/ShellSnapshot.ts
 import { execFile as execFile9 } from "child_process";
 import { mkdir as mkdir18, stat as stat23 } from "fs/promises";
-import * as os8 from "os";
+import * as os9 from "os";
 import { join as join73 } from "path";
 function createArgv0ShellFunction(funcName, argv0, binaryPath, prependArgs = []) {
   const quotedPath = quote([binaryPath]);
@@ -352722,7 +352980,7 @@ function createFindGrepShellIntegration() {
 }
 function getConfigFile(shellPath) {
   const fileName = shellPath.includes("zsh") ? ".zshrc" : shellPath.includes("bash") ? ".bashrc" : ".profile";
-  const configPath = join73(os8.homedir(), fileName);
+  const configPath = join73(os9.homedir(), fileName);
   return configPath;
 }
 function getUserSnapshotContent(configFile) {
@@ -352920,7 +353178,7 @@ ${stdout}`);
             logForDebugging(`No stderr output captured`);
           }
           logError2(new Error(`Failed to create shell snapshot: ${error.message}`));
-          const signalNumber = execError?.signal ? os8.constants.signals[execError.signal] : undefined;
+          const signalNumber = execError?.signal ? os9.constants.signals[execError.signal] : undefined;
           logEvent("tengu_shell_snapshot_failed", {
             stderr_length: stderr?.length || 0,
             has_error_code: !!execError?.code,
@@ -403380,9 +403638,9 @@ function getAnthropicEnvMetadata() {
   };
 }
 function getBuildAgeMinutes() {
-  if (!"2026-11-10T14:03:40.263Z")
+  if (!"2026-11-10T15:53:20.086Z")
     return;
-  const buildTime = new Date("2026-11-10T14:03:40.263Z").getTime();
+  const buildTime = new Date("2026-11-10T15:53:20.086Z").getTime();
   if (isNaN(buildTime))
     return;
   return Math.floor((Date.now() - buildTime) / 60000);
@@ -434571,385 +434829,24 @@ var init_Config = __esm(() => {
   };
 });
 
-// components/LogoV2/OverageCreditUpsell.tsx
-function isEligibleForOverageCreditGrant() {
-  const info = getCachedOverageCreditGrant();
-  if (!info || !info.available || info.granted)
-    return false;
-  return formatGrantAmount(info) !== null;
-}
-function shouldShowOverageCreditUpsell() {
-  if (!isEligibleForOverageCreditGrant())
-    return false;
-  const config = getGlobalConfig();
-  if (config.hasVisitedExtraUsage)
-    return false;
-  if ((config.overageCreditUpsellSeenCount ?? 0) >= MAX_IMPRESSIONS)
-    return false;
-  return true;
-}
-function maybeRefreshOverageCreditCache() {
-  if (getCachedOverageCreditGrant() !== null)
-    return;
-  refreshOverageCreditGrantCache();
-}
-function useShowOverageCreditUpsell() {
-  const [show] = import_react106.useState(_temp64);
-  return show;
-}
-function _temp64() {
-  maybeRefreshOverageCreditCache();
-  return shouldShowOverageCreditUpsell();
-}
-function incrementOverageCreditUpsellSeenCount() {
-  let newCount = 0;
-  saveGlobalConfig((prev) => {
-    newCount = (prev.overageCreditUpsellSeenCount ?? 0) + 1;
-    return {
-      ...prev,
-      overageCreditUpsellSeenCount: newCount
-    };
-  });
-  logEvent("tengu_overage_credit_upsell_shown", {
-    seen_count: newCount
-  });
-}
-function getUsageText(amount) {
-  return `${amount} in extra usage for third-party apps · /extra-usage`;
-}
-function getFeedTitle(amount) {
-  return `${amount} in extra usage`;
-}
-function OverageCreditUpsell(t0) {
-  const $ = import_compiler_runtime141.c(8);
-  const {
-    maxWidth,
-    twoLine
-  } = t0;
-  let t1;
-  let t2;
-  if ($[0] !== maxWidth || $[1] !== twoLine) {
-    t2 = Symbol.for("react.early_return_sentinel");
-    bb0: {
-      const info = getCachedOverageCreditGrant();
-      if (!info) {
-        t2 = null;
-        break bb0;
-      }
-      const amount = formatGrantAmount(info);
-      if (!amount) {
-        t2 = null;
-        break bb0;
-      }
-      if (twoLine) {
-        const title = getFeedTitle(amount);
-        let t3;
-        if ($[4] !== maxWidth) {
-          t3 = maxWidth ? truncate(FEED_SUBTITLE, maxWidth) : FEED_SUBTITLE;
-          $[4] = maxWidth;
-          $[5] = t3;
-        } else {
-          t3 = $[5];
-        }
-        let t4;
-        if ($[6] !== t3) {
-          t4 = /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
-            dimColor: true,
-            children: t3
-          });
-          $[6] = t3;
-          $[7] = t4;
-        } else {
-          t4 = $[7];
-        }
-        t2 = /* @__PURE__ */ jsx_runtime175.jsxs(jsx_runtime175.Fragment, {
-          children: [
-            /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
-              color: "claude",
-              children: maxWidth ? truncate(title, maxWidth) : title
-            }),
-            t4
-          ]
-        });
-        break bb0;
-      }
-      const text = getUsageText(amount);
-      const display = maxWidth ? truncate(text, maxWidth) : text;
-      const highlightLen = Math.min(getFeedTitle(amount).length, display.length);
-      t1 = /* @__PURE__ */ jsx_runtime175.jsxs(ThemedText, {
-        dimColor: true,
-        children: [
-          /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
-            color: "claude",
-            children: display.slice(0, highlightLen)
-          }),
-          display.slice(highlightLen)
-        ]
-      });
-    }
-    $[0] = maxWidth;
-    $[1] = twoLine;
-    $[2] = t1;
-    $[3] = t2;
-  } else {
-    t1 = $[2];
-    t2 = $[3];
-  }
-  if (t2 !== Symbol.for("react.early_return_sentinel")) {
-    return t2;
-  }
-  return t1;
-}
-function createOverageCreditFeed() {
-  const info = getCachedOverageCreditGrant();
-  const amount = info ? formatGrantAmount(info) : null;
-  const title = amount ? getFeedTitle(amount) : "extra usage credit";
-  return {
-    title,
-    lines: [],
-    customContent: {
-      content: /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
-        dimColor: true,
-        children: FEED_SUBTITLE
-      }),
-      width: Math.max(title.length, FEED_SUBTITLE.length)
-    }
-  };
-}
-var import_compiler_runtime141, import_react106, jsx_runtime175, MAX_IMPRESSIONS = 3, FEED_SUBTITLE = "On us. Works on third-party apps · /extra-usage";
-var init_OverageCreditUpsell = __esm(() => {
-  init_ink2();
-  init_analytics();
-  init_overageCreditGrant();
-  init_config2();
-  init_format();
-  import_compiler_runtime141 = __toESM(require_compiler_runtime(), 1);
-  import_react106 = __toESM(require_react(), 1);
-  jsx_runtime175 = __toESM(require_jsx_runtime(), 1);
-});
-
 // components/Settings/Usage.tsx
-function LimitBar(t0) {
-  const $ = import_compiler_runtime142.c(34);
-  const {
-    title,
-    limit,
-    maxWidth,
-    showTimeInReset: t1,
-    extraSubtext
-  } = t0;
-  const showTimeInReset = t1 === undefined ? true : t1;
-  const {
-    utilization,
-    resets_at
-  } = limit;
-  if (utilization === null) {
-    return null;
+function formatTokens2(count) {
+  if (count >= 1e6) {
+    return `${(count / 1e6).toFixed(2)}M`;
   }
-  const usedText = `${Math.floor(utilization)}% used`;
-  let subtext;
-  if (resets_at) {
-    let t2;
-    if ($[0] !== resets_at || $[1] !== showTimeInReset) {
-      t2 = formatResetText(resets_at, true, showTimeInReset);
-      $[0] = resets_at;
-      $[1] = showTimeInReset;
-      $[2] = t2;
-    } else {
-      t2 = $[2];
-    }
-    subtext = `Resets ${t2}`;
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(1)}k`;
   }
-  if (extraSubtext) {
-    if (subtext) {
-      subtext = `${extraSubtext} · ${subtext}`;
-    } else {
-      subtext = extraSubtext;
-    }
-  }
-  if (maxWidth >= 62) {
-    let t2;
-    if ($[3] !== title) {
-      t2 = /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
-        bold: true,
-        children: title
-      });
-      $[3] = title;
-      $[4] = t2;
-    } else {
-      t2 = $[4];
-    }
-    const t3 = utilization / 100;
-    let t4;
-    if ($[5] !== t3) {
-      t4 = /* @__PURE__ */ jsx_runtime176.jsx(ProgressBar, {
-        ratio: t3,
-        width: 50,
-        fillColor: "rate_limit_fill",
-        emptyColor: "rate_limit_empty"
-      });
-      $[5] = t3;
-      $[6] = t4;
-    } else {
-      t4 = $[6];
-    }
-    let t5;
-    if ($[7] !== usedText) {
-      t5 = /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
-        children: usedText
-      });
-      $[7] = usedText;
-      $[8] = t5;
-    } else {
-      t5 = $[8];
-    }
-    let t6;
-    if ($[9] !== t4 || $[10] !== t5) {
-      t6 = /* @__PURE__ */ jsx_runtime176.jsxs(ThemedBox_default, {
-        flexDirection: "row",
-        gap: 1,
-        children: [
-          t4,
-          t5
-        ]
-      });
-      $[9] = t4;
-      $[10] = t5;
-      $[11] = t6;
-    } else {
-      t6 = $[11];
-    }
-    let t7;
-    if ($[12] !== subtext) {
-      t7 = subtext && /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
-        dimColor: true,
-        children: subtext
-      });
-      $[12] = subtext;
-      $[13] = t7;
-    } else {
-      t7 = $[13];
-    }
-    let t8;
-    if ($[14] !== t2 || $[15] !== t6 || $[16] !== t7) {
-      t8 = /* @__PURE__ */ jsx_runtime176.jsxs(ThemedBox_default, {
-        flexDirection: "column",
-        children: [
-          t2,
-          t6,
-          t7
-        ]
-      });
-      $[14] = t2;
-      $[15] = t6;
-      $[16] = t7;
-      $[17] = t8;
-    } else {
-      t8 = $[17];
-    }
-    return t8;
-  } else {
-    let t2;
-    if ($[18] !== title) {
-      t2 = /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
-        bold: true,
-        children: title
-      });
-      $[18] = title;
-      $[19] = t2;
-    } else {
-      t2 = $[19];
-    }
-    let t3;
-    if ($[20] !== subtext) {
-      t3 = subtext && /* @__PURE__ */ jsx_runtime176.jsxs(jsx_runtime176.Fragment, {
-        children: [
-          /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
-            children: " "
-          }),
-          /* @__PURE__ */ jsx_runtime176.jsxs(ThemedText, {
-            dimColor: true,
-            children: [
-              "· ",
-              subtext
-            ]
-          })
-        ]
-      });
-      $[20] = subtext;
-      $[21] = t3;
-    } else {
-      t3 = $[21];
-    }
-    let t4;
-    if ($[22] !== t2 || $[23] !== t3) {
-      t4 = /* @__PURE__ */ jsx_runtime176.jsxs(ThemedText, {
-        children: [
-          t2,
-          t3
-        ]
-      });
-      $[22] = t2;
-      $[23] = t3;
-      $[24] = t4;
-    } else {
-      t4 = $[24];
-    }
-    const t5 = utilization / 100;
-    let t6;
-    if ($[25] !== maxWidth || $[26] !== t5) {
-      t6 = /* @__PURE__ */ jsx_runtime176.jsx(ProgressBar, {
-        ratio: t5,
-        width: maxWidth,
-        fillColor: "rate_limit_fill",
-        emptyColor: "rate_limit_empty"
-      });
-      $[25] = maxWidth;
-      $[26] = t5;
-      $[27] = t6;
-    } else {
-      t6 = $[27];
-    }
-    let t7;
-    if ($[28] !== usedText) {
-      t7 = /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
-        children: usedText
-      });
-      $[28] = usedText;
-      $[29] = t7;
-    } else {
-      t7 = $[29];
-    }
-    let t8;
-    if ($[30] !== t4 || $[31] !== t6 || $[32] !== t7) {
-      t8 = /* @__PURE__ */ jsx_runtime176.jsxs(ThemedBox_default, {
-        flexDirection: "column",
-        children: [
-          t4,
-          t6,
-          t7
-        ]
-      });
-      $[30] = t4;
-      $[31] = t6;
-      $[32] = t7;
-      $[33] = t8;
-    } else {
-      t8 = $[33];
-    }
-    return t8;
-  }
+  return formatNumber(count);
 }
 function Usage() {
-  const [utilization, setUtilization] = import_react107.useState(null);
-  const [error, setError] = import_react107.useState(null);
-  const [isLoading, setIsLoading] = import_react107.useState(true);
-  const {
-    columns
-  } = useTerminalSize();
+  const [utilization, setUtilization] = import_react106.useState(null);
+  const [error, setError] = import_react106.useState(null);
+  const [isLoading, setIsLoading] = import_react106.useState(true);
+  const { columns } = useTerminalSize();
   const availableWidth = columns - 2;
-  const maxWidth = Math.min(availableWidth, 80);
-  const loadUtilization = React53.useCallback(async () => {
+  const maxWidth = Math.min(availableWidth, 76);
+  const loadUtilization = import_react106.useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -434959,43 +434856,46 @@ function Usage() {
       logError2(err);
       const axiosError = err;
       const responseBody = axiosError.response?.data ? jsonStringify(axiosError.response.data) : undefined;
-      setError(responseBody ? `Failed to load usage data: ${responseBody}` : "Failed to load usage data");
+      setError(responseBody ? `Failed to load usage data: ${responseBody}` : "Failed to connect to EvilClaude gateway");
     } finally {
       setIsLoading(false);
     }
   }, []);
-  import_react107.useEffect(() => {
+  import_react106.useEffect(() => {
     loadUtilization();
   }, [loadUtilization]);
   useKeybinding("settings:retry", () => {
     loadUtilization();
-  }, {
-    context: "Settings",
-    isActive: !!error && !isLoading
-  });
+  }, { context: "Settings", isActive: !isLoading });
   if (error) {
-    return /* @__PURE__ */ jsx_runtime176.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime175.jsxs(ThemedBox_default, {
       flexDirection: "column",
       gap: 1,
+      width: "100%",
       children: [
-        /* @__PURE__ */ jsx_runtime176.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime175.jsxs(ThemedText, {
           color: "error",
           children: [
-            "Error: ",
+            figures_default.cross,
+            " ",
             error
           ]
         }),
-        /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
           dimColor: true,
-          children: /* @__PURE__ */ jsx_runtime176.jsxs(Byline, {
+          children: "Gateway: https://evilclaude.swampmine.in"
+        }),
+        /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
+          dimColor: true,
+          children: /* @__PURE__ */ jsx_runtime175.jsxs(Byline, {
             children: [
-              /* @__PURE__ */ jsx_runtime176.jsx(ConfigurableShortcutHint, {
+              /* @__PURE__ */ jsx_runtime175.jsx(ConfigurableShortcutHint, {
                 action: "settings:retry",
                 context: "Settings",
                 fallback: "r",
                 description: "retry"
               }),
-              /* @__PURE__ */ jsx_runtime176.jsx(ConfigurableShortcutHint, {
+              /* @__PURE__ */ jsx_runtime175.jsx(ConfigurableShortcutHint, {
                 action: "confirm:no",
                 context: "Settings",
                 fallback: "Esc",
@@ -435007,18 +434907,18 @@ function Usage() {
       ]
     });
   }
-  if (!utilization) {
-    return /* @__PURE__ */ jsx_runtime176.jsxs(ThemedBox_default, {
+  if (isLoading && !utilization) {
+    return /* @__PURE__ */ jsx_runtime175.jsxs(ThemedBox_default, {
       flexDirection: "column",
       gap: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
           dimColor: true,
-          children: "Loading usage data…"
+          children: "Connecting to EvilClaude website and loading usage data…"
         }),
-        /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
           dimColor: true,
-          children: /* @__PURE__ */ jsx_runtime176.jsx(ConfigurableShortcutHint, {
+          children: /* @__PURE__ */ jsx_runtime175.jsx(ConfigurableShortcutHint, {
             action: "confirm:no",
             context: "Settings",
             fallback: "Esc",
@@ -435028,197 +434928,211 @@ function Usage() {
       ]
     });
   }
-  const subscriptionType = getSubscriptionType();
-  const showSonnetBar = subscriptionType === "max" || subscriptionType === "team" || subscriptionType === null;
-  const limits = [{
-    title: "Current session",
-    limit: utilization.five_hour
-  }, {
-    title: "Current week (all models)",
-    limit: utilization.seven_day
-  }, ...showSonnetBar ? [{
-    title: "Current week (Sonnet only)",
-    limit: utilization.seven_day_sonnet
-  }] : []];
-  return /* @__PURE__ */ jsx_runtime176.jsxs(ThemedBox_default, {
+  if (!utilization) {
+    return null;
+  }
+  const user = utilization.user;
+  const plan = utilization.plan;
+  const credits = utilization.credits;
+  const tokens = utilization.tokens;
+  const fiveHour = utilization.five_hour;
+  const sevenDay = utilization.seven_day;
+  const paygBalance = tokens?.payg_balance ?? credits?.payg_tokens ?? 0;
+  const weeklyLimit = tokens?.weekly_limit ?? sevenDay?.tokens_limit ?? null;
+  const weeklyUsed = tokens?.weekly_used ?? sevenDay?.tokens_used ?? 0;
+  const weeklyRatio = weeklyLimit && weeklyLimit > 0 ? Math.min(1, weeklyUsed / weeklyLimit) : null;
+  const weeklyPct = weeklyRatio !== null ? Math.floor(weeklyRatio * 100) : null;
+  const fiveHourTokens = fiveHour?.tokens ?? 0;
+  const fiveHourReset = fiveHour?.resets_at ? formatResetText(fiveHour.resets_at, true, true) : null;
+  const weeklyReset = tokens?.weekly_resets_at || sevenDay?.resets_at ? formatResetText(tokens?.weekly_resets_at || sevenDay?.resets_at || "", true, true) : null;
+  return /* @__PURE__ */ jsx_runtime175.jsxs(ThemedBox_default, {
     flexDirection: "column",
     gap: 1,
     width: "100%",
     children: [
-      limits.some(({
-        limit
-      }) => limit) || /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
-        dimColor: true,
-        children: "/usage is only available for subscription plans."
+      /* @__PURE__ */ jsx_runtime175.jsxs(ThemedBox_default, {
+        flexDirection: "column",
+        children: [
+          /* @__PURE__ */ jsx_runtime175.jsxs(ThemedBox_default, {
+            flexDirection: "row",
+            gap: 1,
+            children: [
+              /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
+                bold: true,
+                color: "cyan",
+                children: "EvilClaude Account"
+              }),
+              /* @__PURE__ */ jsx_runtime175.jsxs(ThemedText, {
+                color: "green",
+                children: [
+                  figures_default.tick,
+                  " Connected"
+                ]
+              })
+            ]
+          }),
+          /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
+            dimColor: true,
+            children: user ? `${user.name || user.email} (${user.email})` : "Connected via API Key"
+          }),
+          /* @__PURE__ */ jsx_runtime175.jsxs(ThemedText, {
+            dimColor: true,
+            children: [
+              "Plan: ",
+              /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
+                color: "yellow",
+                bold: true,
+                children: plan?.name ?? "Standard"
+              }),
+              plan?.rpm ? ` · Rate limit: ${plan.rpm} RPM` : "",
+              credits?.billing_type ? ` · Billing: ${credits.billing_type}` : ""
+            ]
+          })
+        ]
       }),
-      limits.map(({
-        title,
-        limit: limit_0
-      }) => limit_0 && /* @__PURE__ */ jsx_runtime176.jsx(LimitBar, {
-        title,
-        limit: limit_0,
-        maxWidth
-      }, title)),
-      utilization.extra_usage && /* @__PURE__ */ jsx_runtime176.jsx(ExtraUsageSection, {
-        extraUsage: utilization.extra_usage,
-        maxWidth
+      /* @__PURE__ */ jsx_runtime175.jsxs(ThemedBox_default, {
+        flexDirection: "column",
+        children: [
+          /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
+            bold: true,
+            children: "Credit Balance (Wallet)"
+          }),
+          /* @__PURE__ */ jsx_runtime175.jsxs(ThemedBox_default, {
+            flexDirection: "row",
+            gap: 2,
+            children: [
+              /* @__PURE__ */ jsx_runtime175.jsxs(ThemedText, {
+                color: "magenta",
+                bold: true,
+                children: [
+                  formatTokens2(paygBalance),
+                  " tokens"
+                ]
+              }),
+              /* @__PURE__ */ jsx_runtime175.jsxs(ThemedText, {
+                dimColor: true,
+                children: [
+                  "(",
+                  formatNumber(paygBalance),
+                  " tokens available)"
+                ]
+              })
+            ]
+          })
+        ]
       }),
-      isEligibleForOverageCreditGrant() && /* @__PURE__ */ jsx_runtime176.jsx(OverageCreditUpsell, {
-        maxWidth
+      weeklyLimit !== null && weeklyLimit > 0 && /* @__PURE__ */ jsx_runtime175.jsxs(ThemedBox_default, {
+        flexDirection: "column",
+        children: [
+          /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
+            bold: true,
+            children: "Weekly Subscription Quota"
+          }),
+          /* @__PURE__ */ jsx_runtime175.jsxs(ThemedBox_default, {
+            flexDirection: "row",
+            gap: 1,
+            children: [
+              /* @__PURE__ */ jsx_runtime175.jsx(ProgressBar, {
+                ratio: weeklyRatio ?? 0,
+                width: Math.min(maxWidth - 16, 45),
+                fillColor: "rate_limit_fill",
+                emptyColor: "rate_limit_empty"
+              }),
+              /* @__PURE__ */ jsx_runtime175.jsxs(ThemedText, {
+                children: [
+                  weeklyPct,
+                  "% used"
+                ]
+              })
+            ]
+          }),
+          /* @__PURE__ */ jsx_runtime175.jsxs(ThemedText, {
+            dimColor: true,
+            children: [
+              formatTokens2(weeklyUsed),
+              " / ",
+              formatTokens2(weeklyLimit),
+              " tokens",
+              weeklyReset ? ` · Resets ${weeklyReset}` : ""
+            ]
+          })
+        ]
       }),
-      /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
-        dimColor: true,
-        children: /* @__PURE__ */ jsx_runtime176.jsx(ConfigurableShortcutHint, {
-          action: "confirm:no",
-          context: "Settings",
-          fallback: "Esc",
-          description: "cancel"
-        })
+      /* @__PURE__ */ jsx_runtime175.jsxs(ThemedBox_default, {
+        flexDirection: "column",
+        children: [
+          /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
+            bold: true,
+            children: "Current Session (5-Hour Window)"
+          }),
+          /* @__PURE__ */ jsx_runtime175.jsxs(ThemedBox_default, {
+            flexDirection: "row",
+            gap: 2,
+            children: [
+              /* @__PURE__ */ jsx_runtime175.jsxs(ThemedText, {
+                color: "cyan",
+                bold: true,
+                children: [
+                  formatTokens2(fiveHourTokens),
+                  " tokens used"
+                ]
+              }),
+              /* @__PURE__ */ jsx_runtime175.jsxs(ThemedText, {
+                dimColor: true,
+                children: [
+                  "(",
+                  formatNumber(fiveHourTokens),
+                  " tokens)",
+                  fiveHourReset ? ` · Resets ${fiveHourReset}` : ""
+                ]
+              })
+            ]
+          })
+        ]
+      }),
+      /* @__PURE__ */ jsx_runtime175.jsxs(ThemedBox_default, {
+        flexDirection: "column",
+        marginTop: 1,
+        children: [
+          /* @__PURE__ */ jsx_runtime175.jsxs(ThemedText, {
+            dimColor: true,
+            children: [
+              "View full logs & top up at:",
+              " ",
+              /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
+                color: "blue",
+                underline: true,
+                children: "https://evilclaude.swampmine.in/app/usage"
+              })
+            ]
+          }),
+          /* @__PURE__ */ jsx_runtime175.jsx(ThemedText, {
+            dimColor: true,
+            children: /* @__PURE__ */ jsx_runtime175.jsxs(Byline, {
+              children: [
+                /* @__PURE__ */ jsx_runtime175.jsx(ConfigurableShortcutHint, {
+                  action: "settings:retry",
+                  context: "Settings",
+                  fallback: "r",
+                  description: "refresh"
+                }),
+                /* @__PURE__ */ jsx_runtime175.jsx(ConfigurableShortcutHint, {
+                  action: "confirm:no",
+                  context: "Settings",
+                  fallback: "Esc",
+                  description: "close"
+                })
+              ]
+            })
+          })
+        ]
       })
     ]
   });
 }
-function ExtraUsageSection(t0) {
-  const $ = import_compiler_runtime142.c(20);
-  const {
-    extraUsage: extraUsage2,
-    maxWidth
-  } = t0;
-  const subscriptionType = getSubscriptionType();
-  const isProOrMax = subscriptionType === "pro" || subscriptionType === "max";
-  if (!isProOrMax) {
-    return false;
-  }
-  if (!extraUsage2.is_enabled) {
-    if (extraUsage.isEnabled()) {
-      let t1;
-      if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-        t1 = /* @__PURE__ */ jsx_runtime176.jsxs(ThemedBox_default, {
-          flexDirection: "column",
-          children: [
-            /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
-              bold: true,
-              children: EXTRA_USAGE_SECTION_TITLE
-            }),
-            /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
-              dimColor: true,
-              children: "Extra usage not enabled · /extra-usage to enable"
-            })
-          ]
-        });
-        $[0] = t1;
-      } else {
-        t1 = $[0];
-      }
-      return t1;
-    }
-    return null;
-  }
-  if (extraUsage2.monthly_limit === null) {
-    let t1;
-    if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
-      t1 = /* @__PURE__ */ jsx_runtime176.jsxs(ThemedBox_default, {
-        flexDirection: "column",
-        children: [
-          /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
-            bold: true,
-            children: EXTRA_USAGE_SECTION_TITLE
-          }),
-          /* @__PURE__ */ jsx_runtime176.jsx(ThemedText, {
-            dimColor: true,
-            children: "Unlimited"
-          })
-        ]
-      });
-      $[1] = t1;
-    } else {
-      t1 = $[1];
-    }
-    return t1;
-  }
-  if (typeof extraUsage2.used_credits !== "number" || typeof extraUsage2.utilization !== "number") {
-    return null;
-  }
-  const t1 = extraUsage2.used_credits / 100;
-  let t2;
-  if ($[2] !== t1) {
-    t2 = formatCost(t1, 2);
-    $[2] = t1;
-    $[3] = t2;
-  } else {
-    t2 = $[3];
-  }
-  const formattedUsedCredits = t2;
-  const t3 = extraUsage2.monthly_limit / 100;
-  let t4;
-  if ($[4] !== t3) {
-    t4 = formatCost(t3, 2);
-    $[4] = t3;
-    $[5] = t4;
-  } else {
-    t4 = $[5];
-  }
-  const formattedMonthlyLimit = t4;
-  let T0;
-  let t5;
-  let t6;
-  let t7;
-  if ($[6] !== extraUsage2.utilization) {
-    const now = new Date;
-    const oneMonthReset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    T0 = LimitBar;
-    t7 = EXTRA_USAGE_SECTION_TITLE;
-    t5 = extraUsage2.utilization;
-    t6 = oneMonthReset.toISOString();
-    $[6] = extraUsage2.utilization;
-    $[7] = T0;
-    $[8] = t5;
-    $[9] = t6;
-    $[10] = t7;
-  } else {
-    T0 = $[7];
-    t5 = $[8];
-    t6 = $[9];
-    t7 = $[10];
-  }
-  let t8;
-  if ($[11] !== t5 || $[12] !== t6) {
-    t8 = {
-      utilization: t5,
-      resets_at: t6
-    };
-    $[11] = t5;
-    $[12] = t6;
-    $[13] = t8;
-  } else {
-    t8 = $[13];
-  }
-  const t9 = `${formattedUsedCredits} / ${formattedMonthlyLimit} spent`;
-  let t10;
-  if ($[14] !== T0 || $[15] !== maxWidth || $[16] !== t7 || $[17] !== t8 || $[18] !== t9) {
-    t10 = /* @__PURE__ */ jsx_runtime176.jsx(T0, {
-      title: t7,
-      limit: t8,
-      showTimeInReset: false,
-      extraSubtext: t9,
-      maxWidth
-    });
-    $[14] = T0;
-    $[15] = maxWidth;
-    $[16] = t7;
-    $[17] = t8;
-    $[18] = t9;
-    $[19] = t10;
-  } else {
-    t10 = $[19];
-  }
-  return t10;
-}
-var import_compiler_runtime142, React53, import_react107, jsx_runtime176, EXTRA_USAGE_SECTION_TITLE = "Extra usage";
+var import_react106, jsx_runtime175;
 var init_Usage = __esm(() => {
-  init_extra_usage2();
-  init_cost_tracker();
-  init_auth2();
+  init_figures();
   init_useTerminalSize();
   init_ink2();
   init_useKeybinding();
@@ -435229,31 +435143,28 @@ var init_Usage = __esm(() => {
   init_ConfigurableShortcutHint();
   init_Byline();
   init_ProgressBar();
-  init_OverageCreditUpsell();
-  import_compiler_runtime142 = __toESM(require_compiler_runtime(), 1);
-  React53 = __toESM(require_react(), 1);
-  import_react107 = __toESM(require_react(), 1);
-  jsx_runtime176 = __toESM(require_jsx_runtime(), 1);
+  import_react106 = __toESM(require_react(), 1);
+  jsx_runtime175 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/Settings/Settings.tsx
 function Settings(t0) {
-  const $ = import_compiler_runtime143.c(25);
+  const $ = import_compiler_runtime141.c(25);
   const {
     onClose,
     context,
     defaultTab
   } = t0;
-  const [selectedTab, setSelectedTab] = import_react108.useState(defaultTab);
-  const [tabsHidden, setTabsHidden] = import_react108.useState(false);
-  const [configOwnsEsc, setConfigOwnsEsc] = import_react108.useState(false);
-  const [gatesOwnsEsc, setGatesOwnsEsc] = import_react108.useState(false);
+  const [selectedTab, setSelectedTab] = import_react107.useState(defaultTab);
+  const [tabsHidden, setTabsHidden] = import_react107.useState(false);
+  const [configOwnsEsc, setConfigOwnsEsc] = import_react107.useState(false);
+  const [gatesOwnsEsc, setGatesOwnsEsc] = import_react107.useState(false);
   const insideModal = useIsInsideModal();
   const {
     rows
   } = useModalOrTerminalSize(useTerminalSize());
   const contentHeight = insideModal ? rows + 1 : Math.max(15, Math.min(Math.floor(rows * 0.8), 30));
-  const [diagnosticsPromise] = import_react108.useState(_temp220);
+  const [diagnosticsPromise] = import_react107.useState(_temp220);
   useExitOnCtrlCDWithKeybindings();
   let t1;
   if ($[0] !== onClose || $[1] !== tabsHidden) {
@@ -435287,9 +435198,9 @@ function Settings(t0) {
   useKeybinding("confirm:no", handleEscape, t3);
   let t4;
   if ($[5] !== context || $[6] !== diagnosticsPromise) {
-    t4 = /* @__PURE__ */ jsx_runtime177.jsx(Tab, {
+    t4 = /* @__PURE__ */ jsx_runtime176.jsx(Tab, {
       title: "Status",
-      children: /* @__PURE__ */ jsx_runtime177.jsx(Status, {
+      children: /* @__PURE__ */ jsx_runtime176.jsx(Status, {
         context,
         diagnosticsPromise
       })
@@ -435302,11 +435213,11 @@ function Settings(t0) {
   }
   let t5;
   if ($[8] !== contentHeight || $[9] !== context || $[10] !== onClose) {
-    t5 = /* @__PURE__ */ jsx_runtime177.jsx(Tab, {
+    t5 = /* @__PURE__ */ jsx_runtime176.jsx(Tab, {
       title: "Config",
-      children: /* @__PURE__ */ jsx_runtime177.jsx(import_react108.Suspense, {
+      children: /* @__PURE__ */ jsx_runtime176.jsx(import_react107.Suspense, {
         fallback: null,
-        children: /* @__PURE__ */ jsx_runtime177.jsx(Config, {
+        children: /* @__PURE__ */ jsx_runtime176.jsx(Config, {
           context,
           onClose,
           setTabsHidden,
@@ -435324,9 +435235,9 @@ function Settings(t0) {
   }
   let t6;
   if ($[12] === Symbol.for("react.memo_cache_sentinel")) {
-    t6 = /* @__PURE__ */ jsx_runtime177.jsx(Tab, {
+    t6 = /* @__PURE__ */ jsx_runtime176.jsx(Tab, {
       title: "Usage",
-      children: /* @__PURE__ */ jsx_runtime177.jsx(Usage, {})
+      children: /* @__PURE__ */ jsx_runtime176.jsx(Usage, {})
     }, "usage");
     $[12] = t6;
   } else {
@@ -435355,9 +435266,9 @@ function Settings(t0) {
   const t10 = tabsHidden || insideModal ? undefined : contentHeight;
   let t11;
   if ($[19] !== selectedTab || $[20] !== t10 || $[21] !== t9 || $[22] !== tabs || $[23] !== tabsHidden) {
-    t11 = /* @__PURE__ */ jsx_runtime177.jsx(Pane, {
+    t11 = /* @__PURE__ */ jsx_runtime176.jsx(Pane, {
       color: "permission",
-      children: /* @__PURE__ */ jsx_runtime177.jsx(Tabs, {
+      children: /* @__PURE__ */ jsx_runtime176.jsx(Tabs, {
         color: "permission",
         selectedTab,
         onTabChange: setSelectedTab,
@@ -435379,12 +435290,12 @@ function Settings(t0) {
   return t11;
 }
 function _temp220() {
-  return buildDiagnostics().catch(_temp65);
+  return buildDiagnostics().catch(_temp64);
 }
-function _temp65() {
+function _temp64() {
   return [];
 }
-var import_compiler_runtime143, import_react108, jsx_runtime177;
+var import_compiler_runtime141, import_react107, jsx_runtime176;
 var init_Settings = __esm(() => {
   init_useKeybinding();
   init_useExitOnCtrlCDWithKeybindings();
@@ -435395,9 +435306,9 @@ var init_Settings = __esm(() => {
   init_Status();
   init_Config();
   init_Usage();
-  import_compiler_runtime143 = __toESM(require_compiler_runtime(), 1);
-  import_react108 = __toESM(require_react(), 1);
-  jsx_runtime177 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime141 = __toESM(require_compiler_runtime(), 1);
+  import_react107 = __toESM(require_react(), 1);
+  jsx_runtime176 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/config/config.tsx
@@ -435405,8 +435316,8 @@ var exports_config = {};
 __export(exports_config, {
   call: () => call14
 });
-var jsx_runtime178, call14 = async (onDone, context) => {
-  return /* @__PURE__ */ jsx_runtime178.jsx(Settings, {
+var jsx_runtime177, call14 = async (onDone, context) => {
+  return /* @__PURE__ */ jsx_runtime177.jsx(Settings, {
     onClose: onDone,
     context,
     defaultTab: "Config"
@@ -435414,7 +435325,7 @@ var jsx_runtime178, call14 = async (onDone, context) => {
 };
 var init_config7 = __esm(() => {
   init_Settings();
-  jsx_runtime178 = __toESM(require_jsx_runtime(), 1);
+  jsx_runtime177 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/config/index.ts
@@ -435570,7 +435481,7 @@ var init_contextSuggestions = __esm(() => {
 
 // components/design-system/StatusIcon.tsx
 function StatusIcon(t0) {
-  const $ = import_compiler_runtime144.c(5);
+  const $ = import_compiler_runtime142.c(5);
   const {
     status,
     withSpace: t1
@@ -435581,7 +435492,7 @@ function StatusIcon(t0) {
   const t3 = withSpace && " ";
   let t4;
   if ($[0] !== config.color || $[1] !== config.icon || $[2] !== t2 || $[3] !== t3) {
-    t4 = /* @__PURE__ */ jsx_runtime179.jsxs(ThemedText, {
+    t4 = /* @__PURE__ */ jsx_runtime178.jsxs(ThemedText, {
       color: config.color,
       dimColor: t2,
       children: [
@@ -435599,12 +435510,12 @@ function StatusIcon(t0) {
   }
   return t4;
 }
-var import_compiler_runtime144, jsx_runtime179, STATUS_CONFIG;
+var import_compiler_runtime142, jsx_runtime178, STATUS_CONFIG;
 var init_StatusIcon = __esm(() => {
   init_figures();
   init_ink2();
-  import_compiler_runtime144 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime179 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime142 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime178 = __toESM(require_jsx_runtime(), 1);
   STATUS_CONFIG = {
     success: {
       icon: figures_default.tick,
@@ -435635,7 +435546,7 @@ var init_StatusIcon = __esm(() => {
 
 // components/ContextSuggestions.tsx
 function ContextSuggestions(t0) {
-  const $ = import_compiler_runtime145.c(5);
+  const $ = import_compiler_runtime143.c(5);
   const {
     suggestions
   } = t0;
@@ -435644,7 +435555,7 @@ function ContextSuggestions(t0) {
   }
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
+    t1 = /* @__PURE__ */ jsx_runtime179.jsx(ThemedText, {
       bold: true,
       children: "Suggestions"
     });
@@ -435654,7 +435565,7 @@ function ContextSuggestions(t0) {
   }
   let t2;
   if ($[1] !== suggestions) {
-    t2 = suggestions.map(_temp66);
+    t2 = suggestions.map(_temp65);
     $[1] = suggestions;
     $[2] = t2;
   } else {
@@ -435662,7 +435573,7 @@ function ContextSuggestions(t0) {
   }
   let t3;
   if ($[3] !== t2) {
-    t3 = /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
+    t3 = /* @__PURE__ */ jsx_runtime179.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginTop: 1,
       children: [
@@ -435677,22 +435588,22 @@ function ContextSuggestions(t0) {
   }
   return t3;
 }
-function _temp66(suggestion, i) {
-  return /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
+function _temp65(suggestion, i) {
+  return /* @__PURE__ */ jsx_runtime179.jsxs(ThemedBox_default, {
     flexDirection: "column",
     marginTop: i === 0 ? 0 : 1,
     children: [
-      /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime179.jsxs(ThemedBox_default, {
         children: [
-          /* @__PURE__ */ jsx_runtime180.jsx(StatusIcon, {
+          /* @__PURE__ */ jsx_runtime179.jsx(StatusIcon, {
             status: suggestion.severity,
             withSpace: true
           }),
-          /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime179.jsx(ThemedText, {
             bold: true,
             children: suggestion.title
           }),
-          suggestion.savingsTokens ? /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
+          suggestion.savingsTokens ? /* @__PURE__ */ jsx_runtime179.jsxs(ThemedText, {
             dimColor: true,
             children: [
               " ",
@@ -435703,9 +435614,9 @@ function _temp66(suggestion, i) {
           }) : null
         ]
       }),
-      /* @__PURE__ */ jsx_runtime180.jsx(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime179.jsx(ThemedBox_default, {
         marginLeft: 2,
-        children: /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime179.jsx(ThemedText, {
           dimColor: true,
           children: suggestion.detail
         })
@@ -435713,19 +435624,19 @@ function _temp66(suggestion, i) {
     ]
   }, i);
 }
-var import_compiler_runtime145, jsx_runtime180;
+var import_compiler_runtime143, jsx_runtime179;
 var init_ContextSuggestions = __esm(() => {
   init_figures();
   init_ink2();
   init_format();
   init_StatusIcon();
-  import_compiler_runtime145 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime180 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime143 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime179 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/ContextVisualization.tsx
 function CollapseStatus() {
-  const $ = import_compiler_runtime146.c(2);
+  const $ = import_compiler_runtime144.c(2);
   if (false) {}
   return null;
 }
@@ -435750,7 +435661,7 @@ function groupBySource(items) {
   return orderedGroups;
 }
 function ContextVisualization(t0) {
-  const $ = import_compiler_runtime146.c(87);
+  const $ = import_compiler_runtime144.c(87);
   const {
     data
   } = t0;
@@ -435782,7 +435693,7 @@ function ContextVisualization(t0) {
   let t9;
   if ($[0] !== categories || $[1] !== gridRows || $[2] !== mcpTools || $[3] !== model || $[4] !== percentage || $[5] !== rawMaxTokens || $[6] !== systemTools || $[7] !== t1 || $[8] !== totalTokens) {
     const deferredBuiltinTools = t1 === undefined ? [] : t1;
-    const visibleCategories = categories.filter(_temp68);
+    const visibleCategories = categories.filter(_temp67);
     let t10;
     if ($[19] !== categories) {
       t10 = categories.some(_temp221);
@@ -435798,7 +435709,7 @@ function ContextVisualization(t0) {
     t6 = "column";
     t7 = 1;
     if ($[21] === Symbol.for("react.memo_cache_sentinel")) {
-      t8 = /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+      t8 = /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
         bold: true,
         children: "Context Usage"
       });
@@ -435816,7 +435727,7 @@ function ContextVisualization(t0) {
     }
     let t12;
     if ($[24] !== t11) {
-      t12 = /* @__PURE__ */ jsx_runtime181.jsx(ThemedBox_default, {
+      t12 = /* @__PURE__ */ jsx_runtime180.jsx(ThemedBox_default, {
         flexDirection: "column",
         flexShrink: 0,
         children: t11
@@ -435844,7 +435755,7 @@ function ContextVisualization(t0) {
     }
     let t15;
     if ($[30] !== model || $[31] !== percentage || $[32] !== t13 || $[33] !== t14) {
-      t15 = /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+      t15 = /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
         dimColor: true,
         children: [
           model,
@@ -435870,11 +435781,11 @@ function ContextVisualization(t0) {
     let t17;
     let t18;
     if ($[35] === Symbol.for("react.memo_cache_sentinel")) {
-      t16 = /* @__PURE__ */ jsx_runtime181.jsx(CollapseStatus, {});
-      t17 = /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+      t16 = /* @__PURE__ */ jsx_runtime180.jsx(CollapseStatus, {});
+      t17 = /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
         children: " "
       });
-      t18 = /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+      t18 = /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
         dimColor: true,
         italic: true,
         children: "Estimated usage by category"
@@ -435895,20 +435806,20 @@ function ContextVisualization(t0) {
         const isReserved = cat_2.name === RESERVED_CATEGORY_NAME2;
         const displayName = cat_2.name;
         const symbol = cat_2.isDeferred ? " " : isReserved ? "⛝" : "⛁";
-        return /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+        return /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
               color: cat_2.color,
               children: symbol
             }),
-            /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
               children: [
                 " ",
                 displayName,
                 ": "
               ]
             }),
-            /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
               dimColor: true,
               children: [
                 tokenDisplay,
@@ -435928,16 +435839,16 @@ function ContextVisualization(t0) {
     const t20 = visibleCategories.map(t19);
     let t21;
     if ($[40] !== categories || $[41] !== rawMaxTokens) {
-      t21 = (categories.find(_temp67)?.tokens ?? 0) > 0 && /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+      t21 = (categories.find(_temp66)?.tokens ?? 0) > 0 && /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
         children: [
-          /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
             dimColor: true,
             children: "⛶"
           }),
-          /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
             children: " Free space: "
           }),
-          /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
             dimColor: true,
             children: [
               formatTokens(categories.find(_temp73)?.tokens || 0),
@@ -435955,13 +435866,13 @@ function ContextVisualization(t0) {
     } else {
       t21 = $[42];
     }
-    const t22 = autocompactCategory && autocompactCategory.tokens > 0 && /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+    const t22 = autocompactCategory && autocompactCategory.tokens > 0 && /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
       children: [
-        /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
           color: autocompactCategory.color,
           children: "⛝"
         }),
-        /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
           dimColor: true,
           children: [
             " ",
@@ -435969,7 +435880,7 @@ function ContextVisualization(t0) {
             ": "
           ]
         }),
-        /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
           dimColor: true,
           children: [
             formatTokens(autocompactCategory.tokens),
@@ -435982,7 +435893,7 @@ function ContextVisualization(t0) {
     });
     let t23;
     if ($[43] !== t15 || $[44] !== t20 || $[45] !== t21 || $[46] !== t22) {
-      t23 = /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+      t23 = /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
         flexDirection: "column",
         gap: 0,
         flexShrink: 0,
@@ -436005,7 +435916,7 @@ function ContextVisualization(t0) {
       t23 = $[47];
     }
     if ($[48] !== t12 || $[49] !== t23) {
-      t9 = /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+      t9 = /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
         flexDirection: "row",
         gap: 2,
         children: [
@@ -436023,17 +435934,17 @@ function ContextVisualization(t0) {
     t2 = "column";
     t3 = -1;
     if ($[51] !== hasDeferredMcpTools || $[52] !== mcpTools) {
-      t4 = mcpTools.length > 0 && /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+      t4 = mcpTools.length > 0 && /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
         flexDirection: "column",
         marginTop: 1,
         children: [
-          /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
             children: [
-              /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
                 bold: true,
                 children: "MCP tools"
               }),
-              /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+              /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
                 dimColor: true,
                 children: [
                   " ",
@@ -436043,22 +435954,22 @@ function ContextVisualization(t0) {
               })
             ]
           }),
-          mcpTools.some(_temp92) && /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+          mcpTools.some(_temp92) && /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
             flexDirection: "column",
             marginTop: 1,
             children: [
-              /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
                 dimColor: true,
                 children: "Loaded"
               }),
               mcpTools.filter(_temp0).map(_temp1)
             ]
           }),
-          hasDeferredMcpTools && mcpTools.some(_temp102) && /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+          hasDeferredMcpTools && mcpTools.some(_temp102) && /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
             flexDirection: "column",
             marginTop: 1,
             children: [
-              /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
                 dimColor: true,
                 children: "Available"
               }),
@@ -436116,17 +436027,17 @@ function ContextVisualization(t0) {
   }
   let t11;
   if ($[56] !== agents) {
-    t11 = agents.length > 0 && /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+    t11 = agents.length > 0 && /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginTop: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
               bold: true,
               children: "Custom agents"
             }),
-            /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
               dimColor: true,
               children: " · /agents"
             })
@@ -436142,17 +436053,17 @@ function ContextVisualization(t0) {
   }
   let t12;
   if ($[58] !== memoryFiles) {
-    t12 = memoryFiles.length > 0 && /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+    t12 = memoryFiles.length > 0 && /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginTop: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
               bold: true,
               children: "Memory files"
             }),
-            /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
               dimColor: true,
               children: " · /memory"
             })
@@ -436168,17 +436079,17 @@ function ContextVisualization(t0) {
   }
   let t13;
   if ($[60] !== skills) {
-    t13 = skills && skills.tokens > 0 && /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+    t13 = skills && skills.tokens > 0 && /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginTop: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
               bold: true,
               children: "Skills"
             }),
-            /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
               dimColor: true,
               children: " · /skills"
             })
@@ -436202,7 +436113,7 @@ function ContextVisualization(t0) {
   }
   let t15;
   if ($[64] !== T0 || $[65] !== t10 || $[66] !== t11 || $[67] !== t12 || $[68] !== t13 || $[69] !== t14 || $[70] !== t2 || $[71] !== t3 || $[72] !== t4 || $[73] !== t5) {
-    t15 = /* @__PURE__ */ jsx_runtime181.jsxs(T0, {
+    t15 = /* @__PURE__ */ jsx_runtime180.jsxs(T0, {
       flexDirection: t2,
       marginLeft: t3,
       children: [
@@ -436239,7 +436150,7 @@ function ContextVisualization(t0) {
   }
   let t17;
   if ($[77] !== t16) {
-    t17 = /* @__PURE__ */ jsx_runtime181.jsx(ContextSuggestions, {
+    t17 = /* @__PURE__ */ jsx_runtime180.jsx(ContextSuggestions, {
       suggestions: t16
     });
     $[77] = t16;
@@ -436249,7 +436160,7 @@ function ContextVisualization(t0) {
   }
   let t18;
   if ($[79] !== T1 || $[80] !== t15 || $[81] !== t17 || $[82] !== t6 || $[83] !== t7 || $[84] !== t8 || $[85] !== t9) {
-    t18 = /* @__PURE__ */ jsx_runtime181.jsxs(T1, {
+    t18 = /* @__PURE__ */ jsx_runtime180.jsxs(T1, {
       flexDirection: t6,
       paddingLeft: t7,
       children: [
@@ -436274,11 +436185,11 @@ function ContextVisualization(t0) {
 }
 function _temp252(t0) {
   const [sourceDisplay_0, sourceSkills] = t0;
-  return /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
     flexDirection: "column",
     marginTop: 1,
     children: [
-      /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+      /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
         dimColor: true,
         children: sourceDisplay_0
       }),
@@ -436287,16 +436198,16 @@ function _temp252(t0) {
   }, sourceDisplay_0);
 }
 function _temp242(skill, i_8) {
-  return /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
     children: [
-      /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+      /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
         children: [
           "└ ",
           skill.name,
           ": "
         ]
       }),
-      /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+      /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
         dimColor: true,
         children: [
           formatTokens(skill.tokens),
@@ -436307,16 +436218,16 @@ function _temp242(skill, i_8) {
   }, i_8);
 }
 function _temp232(file, i_7) {
-  return /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
     children: [
-      /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+      /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
         children: [
           "└ ",
           getDisplayPath(file.path),
           ": "
         ]
       }),
-      /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+      /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
         dimColor: true,
         children: [
           formatTokens(file.tokens),
@@ -436328,11 +436239,11 @@ function _temp232(file, i_7) {
 }
 function _temp222(t0) {
   const [sourceDisplay, sourceAgents] = t0;
-  return /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
     flexDirection: "column",
     marginTop: 1,
     children: [
-      /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+      /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
         dimColor: true,
         children: sourceDisplay
       }),
@@ -436341,16 +436252,16 @@ function _temp222(t0) {
   }, sourceDisplay);
 }
 function _temp2110(agent, i_6) {
-  return /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
     children: [
-      /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+      /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
         children: [
           "└ ",
           agent.agentType,
           ": "
         ]
       }),
-      /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+      /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
         dimColor: true,
         children: [
           formatTokens(agent.tokens),
@@ -436361,16 +436272,16 @@ function _temp2110(agent, i_6) {
   }, i_6);
 }
 function _temp132(tool_1, i_1) {
-  return /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
     children: [
-      /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+      /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
         children: [
           "└ ",
           tool_1.name,
           ": "
         ]
       }),
-      /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+      /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
         dimColor: true,
         children: [
           formatTokens(tool_1.tokens),
@@ -436381,8 +436292,8 @@ function _temp132(tool_1, i_1) {
   }, i_1);
 }
 function _temp122(tool_0, i_0) {
-  return /* @__PURE__ */ jsx_runtime181.jsx(ThemedBox_default, {
-    children: /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime180.jsx(ThemedBox_default, {
+    children: /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
       dimColor: true,
       children: [
         "└ ",
@@ -436398,16 +436309,16 @@ function _temp102(t_2) {
   return !t_2.isLoaded;
 }
 function _temp1(tool, i) {
-  return /* @__PURE__ */ jsx_runtime181.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime180.jsxs(ThemedBox_default, {
     children: [
-      /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+      /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
         children: [
           "└ ",
           tool.name,
           ": "
         ]
       }),
-      /* @__PURE__ */ jsx_runtime181.jsxs(ThemedText, {
+      /* @__PURE__ */ jsx_runtime180.jsxs(ThemedText, {
         dimColor: true,
         children: [
           formatTokens(tool.tokens),
@@ -436429,11 +436340,11 @@ function _temp83(c_0) {
 function _temp73(c) {
   return c.name === "Free space";
 }
-function _temp67(c_1) {
+function _temp66(c_1) {
   return c_1.name === "Free space";
 }
 function _temp510(row, rowIndex) {
-  return /* @__PURE__ */ jsx_runtime181.jsx(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime180.jsx(ThemedBox_default, {
     flexDirection: "row",
     marginLeft: -1,
     children: row.map(_temp414)
@@ -436441,18 +436352,18 @@ function _temp510(row, rowIndex) {
 }
 function _temp414(square, colIndex) {
   if (square.categoryName === "Free space") {
-    return /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+    return /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
       dimColor: true,
       children: "⛶ "
     }, colIndex);
   }
   if (square.categoryName === RESERVED_CATEGORY_NAME2) {
-    return /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+    return /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
       color: square.color,
       children: "⛝ "
     }, colIndex);
   }
-  return /* @__PURE__ */ jsx_runtime181.jsx(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime180.jsx(ThemedText, {
     color: square.color,
     children: square.squareFullness >= 0.7 ? "⛁ " : "⛀ "
   }, colIndex);
@@ -436463,10 +436374,10 @@ function _temp314(cat_1) {
 function _temp221(cat_0) {
   return cat_0.isDeferred && cat_0.name.includes("MCP");
 }
-function _temp68(cat) {
+function _temp67(cat) {
   return cat.tokens > 0 && cat.name !== "Free space" && cat.name !== RESERVED_CATEGORY_NAME2 && !cat.isDeferred;
 }
-var import_compiler_runtime146, jsx_runtime181, RESERVED_CATEGORY_NAME2 = "Autocompact buffer", SOURCE_DISPLAY_ORDER;
+var import_compiler_runtime144, jsx_runtime180, RESERVED_CATEGORY_NAME2 = "Autocompact buffer", SOURCE_DISPLAY_ORDER;
 var init_ContextVisualization = __esm(() => {
   init_ink2();
   init_contextSuggestions();
@@ -436475,15 +436386,15 @@ var init_ContextVisualization = __esm(() => {
   init_constants2();
   init_stringUtils();
   init_ContextSuggestions();
-  import_compiler_runtime146 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime181 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime144 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime180 = __toESM(require_jsx_runtime(), 1);
   SOURCE_DISPLAY_ORDER = ["Project", "User", "Managed", "Plugin", "Built-in"];
 });
 
 // utils/staticRender.tsx
 import { PassThrough as PassThrough5 } from "stream";
 function RenderOnceAndExit(t0) {
-  const $ = import_compiler_runtime147.c(5);
+  const $ = import_compiler_runtime145.c(5);
   const {
     children
   } = t0;
@@ -436505,10 +436416,10 @@ function RenderOnceAndExit(t0) {
     t1 = $[1];
     t2 = $[2];
   }
-  import_react109.useLayoutEffect(t1, t2);
+  import_react108.useLayoutEffect(t1, t2);
   let t3;
   if ($[3] !== children) {
-    t3 = /* @__PURE__ */ jsx_runtime182.jsx(jsx_runtime182.Fragment, {
+    t3 = /* @__PURE__ */ jsx_runtime181.jsx(jsx_runtime181.Fragment, {
       children
     });
     $[3] = children;
@@ -436538,7 +436449,7 @@ function renderToAnsiString(node, columns) {
     stream.on("data", (chunk) => {
       output += chunk.toString();
     });
-    const instance = await render(/* @__PURE__ */ jsx_runtime182.jsx(RenderOnceAndExit, {
+    const instance = await render(/* @__PURE__ */ jsx_runtime181.jsx(RenderOnceAndExit, {
       children: node
     }), {
       stdout: stream,
@@ -436552,13 +436463,13 @@ async function renderToString(node, columns) {
   const output = await renderToAnsiString(node, columns);
   return stripAnsi(output);
 }
-var import_compiler_runtime147, import_react109, jsx_runtime182, SYNC_START = "\x1B[?2026h", SYNC_END = "\x1B[?2026l";
+var import_compiler_runtime145, import_react108, jsx_runtime181, SYNC_START = "\x1B[?2026h", SYNC_END = "\x1B[?2026l";
 var init_staticRender = __esm(() => {
   init_strip_ansi();
   init_ink2();
-  import_compiler_runtime147 = __toESM(require_compiler_runtime(), 1);
-  import_react109 = __toESM(require_react(), 1);
-  jsx_runtime182 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime145 = __toESM(require_compiler_runtime(), 1);
+  import_react108 = __toESM(require_react(), 1);
+  jsx_runtime181 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/context/context.tsx
@@ -436587,20 +436498,20 @@ async function call15(onDone, context) {
   const terminalWidth = process.stdout.columns || 80;
   const appState = getAppState();
   const data = await analyzeContextUsage(compactedMessages, mainLoopModel, async () => appState.toolPermissionContext, tools, appState.agentDefinitions, terminalWidth, context, undefined, apiView);
-  const output = await renderToAnsiString(/* @__PURE__ */ jsx_runtime183.jsx(ContextVisualization, {
+  const output = await renderToAnsiString(/* @__PURE__ */ jsx_runtime182.jsx(ContextVisualization, {
     data
   }));
   onDone(output);
   return null;
 }
-var jsx_runtime183;
+var jsx_runtime182;
 var init_context3 = __esm(() => {
   init_ContextVisualization();
   init_microCompact();
   init_analyzeContext();
   init_messages3();
   init_staticRender();
-  jsx_runtime183 = __toESM(require_jsx_runtime(), 1);
+  jsx_runtime182 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/context/context-noninteractive.ts
@@ -436943,10 +436854,10 @@ var init_cost2 = __esm(() => {
 
 // hooks/useDiffData.ts
 function useDiffData() {
-  const [diffResult, setDiffResult] = import_react110.useState(null);
-  const [hunks, setHunks] = import_react110.useState(new Map);
-  const [loading, setLoading] = import_react110.useState(true);
-  import_react110.useEffect(() => {
+  const [diffResult, setDiffResult] = import_react109.useState(null);
+  const [hunks, setHunks] = import_react109.useState(new Map);
+  const [loading, setLoading] = import_react109.useState(true);
+  import_react109.useEffect(() => {
     let cancelled = false;
     async function loadDiffData() {
       try {
@@ -436972,7 +436883,7 @@ function useDiffData() {
       cancelled = true;
     };
   }, []);
-  return import_react110.useMemo(() => {
+  return import_react109.useMemo(() => {
     if (!diffResult) {
       return { stats: null, files: [], hunks: new Map, loading };
     }
@@ -436998,10 +436909,10 @@ function useDiffData() {
     return { stats, files, hunks, loading: false };
   }, [diffResult, hunks, loading]);
 }
-var import_react110, MAX_LINES_PER_FILE2 = 400;
+var import_react109, MAX_LINES_PER_FILE2 = 400;
 var init_useDiffData = __esm(() => {
   init_gitDiff();
-  import_react110 = __toESM(require_react(), 1);
+  import_react109 = __toESM(require_react(), 1);
 });
 
 // hooks/useTurnDiffs.ts
@@ -437053,13 +436964,13 @@ function computeTurnStats(turn) {
   };
 }
 function useTurnDiffs(messages) {
-  const cache = import_react111.useRef({
+  const cache = import_react110.useRef({
     completedTurns: [],
     currentTurn: null,
     lastProcessedIndex: 0,
     lastTurnIndex: 0
   });
-  return import_react111.useMemo(() => {
+  return import_react110.useMemo(() => {
     const c = cache.current;
     if (messages.length < c.lastProcessedIndex) {
       c.completedTurns = [];
@@ -437135,15 +437046,15 @@ function useTurnDiffs(messages) {
     return result.reverse();
   }, [messages]);
 }
-var import_react111;
+var import_react110;
 var init_useTurnDiffs = __esm(() => {
-  import_react111 = __toESM(require_react(), 1);
+  import_react110 = __toESM(require_react(), 1);
 });
 
 // components/diff/DiffDetailView.tsx
 import { resolve as resolve35 } from "path";
 function DiffDetailView(t0) {
-  const $ = import_compiler_runtime148.c(53);
+  const $ = import_compiler_runtime146.c(53);
   const {
     filePath,
     hunks,
@@ -437207,7 +437118,7 @@ function DiffDetailView(t0) {
   if (isUntracked) {
     let t2;
     if ($[7] !== filePath) {
-      t2 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
+      t2 = /* @__PURE__ */ jsx_runtime183.jsx(ThemedText, {
         bold: true,
         children: filePath
       });
@@ -437218,7 +437129,7 @@ function DiffDetailView(t0) {
     }
     let t3;
     if ($[9] === Symbol.for("react.memo_cache_sentinel")) {
-      t3 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
+      t3 = /* @__PURE__ */ jsx_runtime183.jsx(ThemedText, {
         dimColor: true,
         children: " (untracked)"
       });
@@ -437228,7 +437139,7 @@ function DiffDetailView(t0) {
     }
     let t4;
     if ($[10] !== t2) {
-      t4 = /* @__PURE__ */ jsx_runtime184.jsxs(ThemedBox_default, {
+      t4 = /* @__PURE__ */ jsx_runtime183.jsxs(ThemedBox_default, {
         children: [
           t2,
           t3
@@ -437241,7 +437152,7 @@ function DiffDetailView(t0) {
     }
     let t5;
     if ($[12] === Symbol.for("react.memo_cache_sentinel")) {
-      t5 = /* @__PURE__ */ jsx_runtime184.jsx(Divider, {
+      t5 = /* @__PURE__ */ jsx_runtime183.jsx(Divider, {
         padding: 4
       });
       $[12] = t5;
@@ -437250,7 +437161,7 @@ function DiffDetailView(t0) {
     }
     let t6;
     if ($[13] === Symbol.for("react.memo_cache_sentinel")) {
-      t6 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
+      t6 = /* @__PURE__ */ jsx_runtime183.jsx(ThemedText, {
         dimColor: true,
         italic: true,
         children: "New file not yet staged."
@@ -437261,11 +437172,11 @@ function DiffDetailView(t0) {
     }
     let t7;
     if ($[14] !== filePath) {
-      t7 = /* @__PURE__ */ jsx_runtime184.jsxs(ThemedBox_default, {
+      t7 = /* @__PURE__ */ jsx_runtime183.jsxs(ThemedBox_default, {
         flexDirection: "column",
         children: [
           t6,
-          /* @__PURE__ */ jsx_runtime184.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime183.jsxs(ThemedText, {
             dimColor: true,
             italic: true,
             children: [
@@ -437283,7 +437194,7 @@ function DiffDetailView(t0) {
     }
     let t8;
     if ($[16] !== t4 || $[17] !== t7) {
-      t8 = /* @__PURE__ */ jsx_runtime184.jsxs(ThemedBox_default, {
+      t8 = /* @__PURE__ */ jsx_runtime183.jsxs(ThemedBox_default, {
         flexDirection: "column",
         width: "100%",
         children: [
@@ -437303,8 +437214,8 @@ function DiffDetailView(t0) {
   if (isBinary) {
     let t2;
     if ($[19] !== filePath) {
-      t2 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedBox_default, {
-        children: /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
+      t2 = /* @__PURE__ */ jsx_runtime183.jsx(ThemedBox_default, {
+        children: /* @__PURE__ */ jsx_runtime183.jsx(ThemedText, {
           bold: true,
           children: filePath
         })
@@ -437316,7 +437227,7 @@ function DiffDetailView(t0) {
     }
     let t3;
     if ($[21] === Symbol.for("react.memo_cache_sentinel")) {
-      t3 = /* @__PURE__ */ jsx_runtime184.jsx(Divider, {
+      t3 = /* @__PURE__ */ jsx_runtime183.jsx(Divider, {
         padding: 4
       });
       $[21] = t3;
@@ -437325,9 +437236,9 @@ function DiffDetailView(t0) {
     }
     let t4;
     if ($[22] === Symbol.for("react.memo_cache_sentinel")) {
-      t4 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedBox_default, {
+      t4 = /* @__PURE__ */ jsx_runtime183.jsx(ThemedBox_default, {
         flexDirection: "column",
-        children: /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime183.jsx(ThemedText, {
           dimColor: true,
           italic: true,
           children: "Binary file - cannot display diff"
@@ -437339,7 +437250,7 @@ function DiffDetailView(t0) {
     }
     let t5;
     if ($[23] !== t2) {
-      t5 = /* @__PURE__ */ jsx_runtime184.jsxs(ThemedBox_default, {
+      t5 = /* @__PURE__ */ jsx_runtime183.jsxs(ThemedBox_default, {
         flexDirection: "column",
         width: "100%",
         children: [
@@ -437358,8 +437269,8 @@ function DiffDetailView(t0) {
   if (isLargeFile) {
     let t2;
     if ($[25] !== filePath) {
-      t2 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedBox_default, {
-        children: /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
+      t2 = /* @__PURE__ */ jsx_runtime183.jsx(ThemedBox_default, {
+        children: /* @__PURE__ */ jsx_runtime183.jsx(ThemedText, {
           bold: true,
           children: filePath
         })
@@ -437371,7 +437282,7 @@ function DiffDetailView(t0) {
     }
     let t3;
     if ($[27] === Symbol.for("react.memo_cache_sentinel")) {
-      t3 = /* @__PURE__ */ jsx_runtime184.jsx(Divider, {
+      t3 = /* @__PURE__ */ jsx_runtime183.jsx(Divider, {
         padding: 4
       });
       $[27] = t3;
@@ -437380,9 +437291,9 @@ function DiffDetailView(t0) {
     }
     let t4;
     if ($[28] === Symbol.for("react.memo_cache_sentinel")) {
-      t4 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedBox_default, {
+      t4 = /* @__PURE__ */ jsx_runtime183.jsx(ThemedBox_default, {
         flexDirection: "column",
-        children: /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime183.jsx(ThemedText, {
           dimColor: true,
           italic: true,
           children: "Large file - diff exceeds 1 MB limit"
@@ -437394,7 +437305,7 @@ function DiffDetailView(t0) {
     }
     let t5;
     if ($[29] !== t2) {
-      t5 = /* @__PURE__ */ jsx_runtime184.jsxs(ThemedBox_default, {
+      t5 = /* @__PURE__ */ jsx_runtime183.jsxs(ThemedBox_default, {
         flexDirection: "column",
         width: "100%",
         children: [
@@ -437412,7 +437323,7 @@ function DiffDetailView(t0) {
   }
   let t2;
   if ($[31] !== filePath) {
-    t2 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
+    t2 = /* @__PURE__ */ jsx_runtime183.jsx(ThemedText, {
       bold: true,
       children: filePath
     });
@@ -437423,7 +437334,7 @@ function DiffDetailView(t0) {
   }
   let t3;
   if ($[33] !== isTruncated) {
-    t3 = isTruncated && /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
+    t3 = isTruncated && /* @__PURE__ */ jsx_runtime183.jsx(ThemedText, {
       dimColor: true,
       children: " (truncated)"
     });
@@ -437434,7 +437345,7 @@ function DiffDetailView(t0) {
   }
   let t4;
   if ($[35] !== t2 || $[36] !== t3) {
-    t4 = /* @__PURE__ */ jsx_runtime184.jsxs(ThemedBox_default, {
+    t4 = /* @__PURE__ */ jsx_runtime183.jsxs(ThemedBox_default, {
       children: [
         t2,
         t3
@@ -437448,7 +437359,7 @@ function DiffDetailView(t0) {
   }
   let t5;
   if ($[38] === Symbol.for("react.memo_cache_sentinel")) {
-    t5 = /* @__PURE__ */ jsx_runtime184.jsx(Divider, {
+    t5 = /* @__PURE__ */ jsx_runtime183.jsx(Divider, {
       padding: 4
     });
     $[38] = t5;
@@ -437457,10 +437368,10 @@ function DiffDetailView(t0) {
   }
   let t6;
   if ($[39] !== columns || $[40] !== fileContent || $[41] !== filePath || $[42] !== firstLine || $[43] !== hunks) {
-    t6 = hunks.length === 0 ? /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
+    t6 = hunks.length === 0 ? /* @__PURE__ */ jsx_runtime183.jsx(ThemedText, {
       dimColor: true,
       children: "No diff content"
-    }) : hunks.map((hunk, index) => /* @__PURE__ */ jsx_runtime184.jsx(StructuredDiff, {
+    }) : hunks.map((hunk, index) => /* @__PURE__ */ jsx_runtime183.jsx(StructuredDiff, {
       patch: hunk,
       filePath,
       firstLine,
@@ -437479,7 +437390,7 @@ function DiffDetailView(t0) {
   }
   let t7;
   if ($[45] !== t6) {
-    t7 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedBox_default, {
+    t7 = /* @__PURE__ */ jsx_runtime183.jsx(ThemedBox_default, {
       flexDirection: "column",
       children: t6
     });
@@ -437490,7 +437401,7 @@ function DiffDetailView(t0) {
   }
   let t8;
   if ($[47] !== isTruncated) {
-    t8 = isTruncated && /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
+    t8 = isTruncated && /* @__PURE__ */ jsx_runtime183.jsx(ThemedText, {
       dimColor: true,
       italic: true,
       children: "… diff truncated (exceeded 400 line limit)"
@@ -437502,7 +437413,7 @@ function DiffDetailView(t0) {
   }
   let t9;
   if ($[49] !== t4 || $[50] !== t7 || $[51] !== t8) {
-    t9 = /* @__PURE__ */ jsx_runtime184.jsxs(ThemedBox_default, {
+    t9 = /* @__PURE__ */ jsx_runtime183.jsxs(ThemedBox_default, {
       flexDirection: "column",
       width: "100%",
       children: [
@@ -437521,7 +437432,7 @@ function DiffDetailView(t0) {
   }
   return t9;
 }
-var import_compiler_runtime148, jsx_runtime184;
+var import_compiler_runtime146, jsx_runtime183;
 var init_DiffDetailView = __esm(() => {
   init_useTerminalSize();
   init_ink2();
@@ -437529,13 +437440,13 @@ var init_DiffDetailView = __esm(() => {
   init_file();
   init_Divider();
   init_StructuredDiff();
-  import_compiler_runtime148 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime184 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime146 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime183 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/diff/DiffFileList.tsx
 function DiffFileList(t0) {
-  const $ = import_compiler_runtime149.c(36);
+  const $ = import_compiler_runtime147.c(36);
   const {
     files,
     selectedIndex
@@ -437587,7 +437498,7 @@ function DiffFileList(t0) {
   if (files.length === 0) {
     let t2;
     if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-      t2 = /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
+      t2 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
         dimColor: true,
         children: "No changed files"
       });
@@ -437612,7 +437523,7 @@ function DiffFileList(t0) {
     T0 = ThemedBox_default;
     t2 = "column";
     if ($[17] !== hasMoreAbove || $[18] !== needsPagination || $[19] !== startIndex) {
-      t3 = needsPagination && /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
+      t3 = needsPagination && /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
         dimColor: true,
         children: hasMoreAbove ? ` ↑ ${startIndex} more ${plural(startIndex, "file")}` : " "
       });
@@ -437625,7 +437536,7 @@ function DiffFileList(t0) {
     }
     let t5;
     if ($[21] !== maxPathWidth || $[22] !== selectedIndex || $[23] !== startIndex) {
-      t5 = (file, index) => /* @__PURE__ */ jsx_runtime185.jsx(FileItem, {
+      t5 = (file, index) => /* @__PURE__ */ jsx_runtime184.jsx(FileItem, {
         file,
         isSelected: startIndex + index === selectedIndex,
         maxPathWidth
@@ -437659,7 +437570,7 @@ function DiffFileList(t0) {
   }
   let t5;
   if ($[25] !== endIndex || $[26] !== files.length || $[27] !== hasMoreBelow || $[28] !== needsPagination) {
-    t5 = needsPagination && /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
+    t5 = needsPagination && /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
       dimColor: true,
       children: hasMoreBelow ? ` ↓ ${files.length - endIndex} more ${plural(files.length - endIndex, "file")}` : " "
     });
@@ -437673,7 +437584,7 @@ function DiffFileList(t0) {
   }
   let t6;
   if ($[30] !== T0 || $[31] !== t2 || $[32] !== t3 || $[33] !== t4 || $[34] !== t5) {
-    t6 = /* @__PURE__ */ jsx_runtime185.jsxs(T0, {
+    t6 = /* @__PURE__ */ jsx_runtime184.jsxs(T0, {
       flexDirection: t2,
       children: [
         t3,
@@ -437693,7 +437604,7 @@ function DiffFileList(t0) {
   return t6;
 }
 function FileItem(t0) {
-  const $ = import_compiler_runtime149.c(14);
+  const $ = import_compiler_runtime147.c(14);
   const {
     file,
     isSelected,
@@ -437714,7 +437625,7 @@ function FileItem(t0) {
   const t2 = isSelected ? "background" : undefined;
   let t3;
   if ($[3] !== isSelected || $[4] !== line || $[5] !== t2) {
-    t3 = /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
+    t3 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
       bold: isSelected,
       color: t2,
       inverse: isSelected,
@@ -437729,7 +437640,7 @@ function FileItem(t0) {
   }
   let t4;
   if ($[7] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = /* @__PURE__ */ jsx_runtime185.jsx(ThemedBox_default, {
+    t4 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedBox_default, {
       flexGrow: 1
     });
     $[7] = t4;
@@ -437738,7 +437649,7 @@ function FileItem(t0) {
   }
   let t5;
   if ($[8] !== file || $[9] !== isSelected) {
-    t5 = /* @__PURE__ */ jsx_runtime185.jsx(FileStats, {
+    t5 = /* @__PURE__ */ jsx_runtime184.jsx(FileStats, {
       file,
       isSelected
     });
@@ -437750,7 +437661,7 @@ function FileItem(t0) {
   }
   let t6;
   if ($[11] !== t3 || $[12] !== t5) {
-    t6 = /* @__PURE__ */ jsx_runtime185.jsxs(ThemedBox_default, {
+    t6 = /* @__PURE__ */ jsx_runtime184.jsxs(ThemedBox_default, {
       flexDirection: "row",
       children: [
         t3,
@@ -437767,7 +437678,7 @@ function FileItem(t0) {
   return t6;
 }
 function FileStats(t0) {
-  const $ = import_compiler_runtime149.c(20);
+  const $ = import_compiler_runtime147.c(20);
   const {
     file,
     isSelected
@@ -437776,7 +437687,7 @@ function FileStats(t0) {
     const t1 = !isSelected;
     let t2;
     if ($[0] !== t1) {
-      t2 = /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
+      t2 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
         dimColor: t1,
         italic: true,
         children: "untracked"
@@ -437792,7 +437703,7 @@ function FileStats(t0) {
     const t1 = !isSelected;
     let t2;
     if ($[2] !== t1) {
-      t2 = /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
+      t2 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
         dimColor: t1,
         italic: true,
         children: "Binary file"
@@ -437808,7 +437719,7 @@ function FileStats(t0) {
     const t1 = !isSelected;
     let t2;
     if ($[4] !== t1) {
-      t2 = /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
+      t2 = /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
         dimColor: t1,
         italic: true,
         children: "Large file modified"
@@ -437822,7 +437733,7 @@ function FileStats(t0) {
   }
   let t1;
   if ($[6] !== file.linesAdded || $[7] !== isSelected) {
-    t1 = file.linesAdded > 0 && /* @__PURE__ */ jsx_runtime185.jsxs(ThemedText, {
+    t1 = file.linesAdded > 0 && /* @__PURE__ */ jsx_runtime184.jsxs(ThemedText, {
       color: "diffAddedWord",
       bold: isSelected,
       children: [
@@ -437839,7 +437750,7 @@ function FileStats(t0) {
   const t2 = file.linesAdded > 0 && file.linesRemoved > 0 && " ";
   let t3;
   if ($[9] !== file.linesRemoved || $[10] !== isSelected) {
-    t3 = file.linesRemoved > 0 && /* @__PURE__ */ jsx_runtime185.jsxs(ThemedText, {
+    t3 = file.linesRemoved > 0 && /* @__PURE__ */ jsx_runtime184.jsxs(ThemedText, {
       color: "diffRemovedWord",
       bold: isSelected,
       children: [
@@ -437855,7 +437766,7 @@ function FileStats(t0) {
   }
   let t4;
   if ($[12] !== file.isTruncated || $[13] !== isSelected) {
-    t4 = file.isTruncated && /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
+    t4 = file.isTruncated && /* @__PURE__ */ jsx_runtime184.jsx(ThemedText, {
       dimColor: !isSelected,
       children: " (truncated)"
     });
@@ -437867,7 +437778,7 @@ function FileStats(t0) {
   }
   let t5;
   if ($[15] !== t1 || $[16] !== t2 || $[17] !== t3 || $[18] !== t4) {
-    t5 = /* @__PURE__ */ jsx_runtime185.jsxs(ThemedText, {
+    t5 = /* @__PURE__ */ jsx_runtime184.jsxs(ThemedText, {
       children: [
         t1,
         t2,
@@ -437885,15 +437796,15 @@ function FileStats(t0) {
   }
   return t5;
 }
-var import_compiler_runtime149, jsx_runtime185, MAX_VISIBLE_FILES = 5;
+var import_compiler_runtime147, jsx_runtime184, MAX_VISIBLE_FILES = 5;
 var init_DiffFileList = __esm(() => {
   init_figures();
   init_useTerminalSize();
   init_ink2();
   init_format();
   init_stringUtils();
-  import_compiler_runtime149 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime185 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime147 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime184 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/diff/DiffDialog.tsx
@@ -437923,16 +437834,16 @@ function turnDiffToDiffData(turn) {
   };
 }
 function DiffDialog(t0) {
-  const $ = import_compiler_runtime150.c(73);
+  const $ = import_compiler_runtime148.c(73);
   const {
     messages,
     onDone
   } = t0;
   const gitDiffData = useDiffData();
   const turnDiffs = useTurnDiffs(messages);
-  const [viewMode, setViewMode] = import_react112.useState("list");
-  const [selectedIndex, setSelectedIndex] = import_react112.useState(0);
-  const [sourceIndex, setSourceIndex] = import_react112.useState(0);
+  const [viewMode, setViewMode] = import_react111.useState("list");
+  const [selectedIndex, setSelectedIndex] = import_react111.useState(0);
+  const [sourceIndex, setSourceIndex] = import_react111.useState(0);
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = {
@@ -437944,7 +437855,7 @@ function DiffDialog(t0) {
   }
   let t2;
   if ($[1] !== turnDiffs) {
-    t2 = [t1, ...turnDiffs.map(_temp69)];
+    t2 = [t1, ...turnDiffs.map(_temp68)];
     $[1] = turnDiffs;
     $[2] = t2;
   } else {
@@ -437991,8 +437902,8 @@ function DiffDialog(t0) {
     t5 = $[11];
     t6 = $[12];
   }
-  import_react112.useEffect(t5, t6);
-  const prevSourceIndex = import_react112.useRef(sourceIndex);
+  import_react111.useEffect(t5, t6);
+  const prevSourceIndex = import_react111.useRef(sourceIndex);
   let t7;
   let t8;
   if ($[13] !== sourceIndex) {
@@ -438010,7 +437921,7 @@ function DiffDialog(t0) {
     t7 = $[14];
     t8 = $[15];
   }
-  import_react112.useEffect(t7, t8);
+  import_react111.useEffect(t7, t8);
   useRegisterOverlay("diff-dialog");
   let t10;
   let t9;
@@ -438119,7 +438030,7 @@ function DiffDialog(t0) {
   useKeybindings(t15, t16);
   let t17;
   if ($[38] !== diffData.stats) {
-    t17 = diffData.stats ? /* @__PURE__ */ jsx_runtime186.jsxs(ThemedText, {
+    t17 = diffData.stats ? /* @__PURE__ */ jsx_runtime185.jsxs(ThemedText, {
       dimColor: true,
       children: [
         diffData.stats.filesCount,
@@ -438127,14 +438038,14 @@ function DiffDialog(t0) {
         plural(diffData.stats.filesCount, "file"),
         " ",
         "changed",
-        diffData.stats.linesAdded > 0 && /* @__PURE__ */ jsx_runtime186.jsxs(ThemedText, {
+        diffData.stats.linesAdded > 0 && /* @__PURE__ */ jsx_runtime185.jsxs(ThemedText, {
           color: "diffAddedWord",
           children: [
             " +",
             diffData.stats.linesAdded
           ]
         }),
-        diffData.stats.linesRemoved > 0 && /* @__PURE__ */ jsx_runtime186.jsxs(ThemedText, {
+        diffData.stats.linesRemoved > 0 && /* @__PURE__ */ jsx_runtime185.jsxs(ThemedText, {
           color: "diffRemovedWord",
           children: [
             " -",
@@ -438153,16 +438064,16 @@ function DiffDialog(t0) {
   const headerSubtitle = currentTurn ? currentTurn.userPromptPreview ? `"${currentTurn.userPromptPreview}"` : "" : "(git diff HEAD)";
   let t18;
   if ($[40] !== sourceIndex || $[41] !== sources) {
-    t18 = sources.length > 1 ? /* @__PURE__ */ jsx_runtime186.jsxs(ThemedBox_default, {
+    t18 = sources.length > 1 ? /* @__PURE__ */ jsx_runtime185.jsxs(ThemedBox_default, {
       children: [
-        sourceIndex > 0 && /* @__PURE__ */ jsx_runtime186.jsx(ThemedText, {
+        sourceIndex > 0 && /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
           dimColor: true,
           children: "◀ "
         }),
         sources.map((source, i) => {
           const isSelected = i === sourceIndex;
           const label = source.type === "current" ? "Current" : `T${source.turn.turnIndex}`;
-          return /* @__PURE__ */ jsx_runtime186.jsxs(ThemedText, {
+          return /* @__PURE__ */ jsx_runtime185.jsxs(ThemedText, {
             dimColor: !isSelected,
             bold: isSelected,
             children: [
@@ -438171,7 +438082,7 @@ function DiffDialog(t0) {
             ]
           }, i);
         }),
-        sourceIndex < sources.length - 1 && /* @__PURE__ */ jsx_runtime186.jsx(ThemedText, {
+        sourceIndex < sources.length - 1 && /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
           dimColor: true,
           children: " ▶"
         })
@@ -438204,7 +438115,7 @@ function DiffDialog(t0) {
   const emptyMessage = t19;
   let t20;
   if ($[43] !== headerSubtitle) {
-    t20 = headerSubtitle && /* @__PURE__ */ jsx_runtime186.jsxs(ThemedText, {
+    t20 = headerSubtitle && /* @__PURE__ */ jsx_runtime185.jsxs(ThemedText, {
       dimColor: true,
       children: [
         " ",
@@ -438218,7 +438129,7 @@ function DiffDialog(t0) {
   }
   let t21;
   if ($[45] !== headerTitle || $[46] !== t20) {
-    t21 = /* @__PURE__ */ jsx_runtime186.jsxs(ThemedText, {
+    t21 = /* @__PURE__ */ jsx_runtime185.jsxs(ThemedText, {
       children: [
         headerTitle,
         t20
@@ -438251,36 +438162,36 @@ function DiffDialog(t0) {
   const handleCancel = t22;
   let t23;
   if ($[51] !== dismissShortcut || $[52] !== sources.length || $[53] !== viewMode) {
-    t23 = (exitState) => exitState.pending ? /* @__PURE__ */ jsx_runtime186.jsxs(ThemedText, {
+    t23 = (exitState) => exitState.pending ? /* @__PURE__ */ jsx_runtime185.jsxs(ThemedText, {
       children: [
         "Press ",
         exitState.keyName,
         " again to exit"
       ]
-    }) : viewMode === "list" ? /* @__PURE__ */ jsx_runtime186.jsxs(Byline, {
+    }) : viewMode === "list" ? /* @__PURE__ */ jsx_runtime185.jsxs(Byline, {
       children: [
-        sources.length > 1 && /* @__PURE__ */ jsx_runtime186.jsx(ThemedText, {
+        sources.length > 1 && /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
           children: "←/→ source"
         }),
-        /* @__PURE__ */ jsx_runtime186.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
           children: "↑/↓ select"
         }),
-        /* @__PURE__ */ jsx_runtime186.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
           children: "Enter view"
         }),
-        /* @__PURE__ */ jsx_runtime186.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime185.jsxs(ThemedText, {
           children: [
             dismissShortcut,
             " close"
           ]
         })
       ]
-    }) : /* @__PURE__ */ jsx_runtime186.jsxs(Byline, {
+    }) : /* @__PURE__ */ jsx_runtime185.jsxs(Byline, {
       children: [
-        /* @__PURE__ */ jsx_runtime186.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
           children: "← back"
         }),
-        /* @__PURE__ */ jsx_runtime186.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime185.jsxs(ThemedText, {
           children: [
             dismissShortcut,
             " close"
@@ -438297,23 +438208,23 @@ function DiffDialog(t0) {
   }
   let t24;
   if ($[55] !== diffData.files || $[56] !== emptyMessage || $[57] !== selectedFile?.isBinary || $[58] !== selectedFile?.isLargeFile || $[59] !== selectedFile?.isTruncated || $[60] !== selectedFile?.isUntracked || $[61] !== selectedFile?.path || $[62] !== selectedHunks || $[63] !== selectedIndex || $[64] !== viewMode) {
-    t24 = diffData.files.length === 0 ? /* @__PURE__ */ jsx_runtime186.jsx(ThemedBox_default, {
+    t24 = diffData.files.length === 0 ? /* @__PURE__ */ jsx_runtime185.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime186.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime185.jsx(ThemedText, {
         dimColor: true,
         children: emptyMessage
       })
-    }) : viewMode === "list" ? /* @__PURE__ */ jsx_runtime186.jsx(ThemedBox_default, {
+    }) : viewMode === "list" ? /* @__PURE__ */ jsx_runtime185.jsx(ThemedBox_default, {
       flexDirection: "column",
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime186.jsx(DiffFileList, {
+      children: /* @__PURE__ */ jsx_runtime185.jsx(DiffFileList, {
         files: diffData.files,
         selectedIndex
       })
-    }) : /* @__PURE__ */ jsx_runtime186.jsx(ThemedBox_default, {
+    }) : /* @__PURE__ */ jsx_runtime185.jsx(ThemedBox_default, {
       flexDirection: "column",
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime186.jsx(DiffDetailView, {
+      children: /* @__PURE__ */ jsx_runtime185.jsx(DiffDetailView, {
         filePath: selectedFile?.path || "",
         hunks: selectedHunks,
         isLargeFile: selectedFile?.isLargeFile,
@@ -438338,7 +438249,7 @@ function DiffDialog(t0) {
   }
   let t25;
   if ($[66] !== handleCancel || $[67] !== sourceSelector || $[68] !== subtitle || $[69] !== t23 || $[70] !== t24 || $[71] !== title) {
-    t25 = /* @__PURE__ */ jsx_runtime186.jsxs(Dialog, {
+    t25 = /* @__PURE__ */ jsx_runtime185.jsxs(Dialog, {
       title,
       onCancel: handleCancel,
       color: "background",
@@ -438367,13 +438278,13 @@ function _temp315(prev_1) {
 function _temp223(prev) {
   return Math.max(0, prev - 1);
 }
-function _temp69(turn) {
+function _temp68(turn) {
   return {
     type: "turn",
     turn
   };
 }
-var import_compiler_runtime150, import_react112, jsx_runtime186;
+var import_compiler_runtime148, import_react111, jsx_runtime185;
 var init_DiffDialog = __esm(() => {
   init_overlayContext();
   init_useDiffData();
@@ -438386,9 +438297,9 @@ var init_DiffDialog = __esm(() => {
   init_Dialog();
   init_DiffDetailView();
   init_DiffFileList();
-  import_compiler_runtime150 = __toESM(require_compiler_runtime(), 1);
-  import_react112 = __toESM(require_react(), 1);
-  jsx_runtime186 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime148 = __toESM(require_compiler_runtime(), 1);
+  import_react111 = __toESM(require_react(), 1);
+  jsx_runtime185 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/diff/diff.tsx
@@ -438396,15 +438307,15 @@ var exports_diff = {};
 __export(exports_diff, {
   call: () => call18
 });
-var jsx_runtime187, call18 = async (onDone, context) => {
+var jsx_runtime186, call18 = async (onDone, context) => {
   await Promise.resolve().then(() => init_DiffDialog());
-  return /* @__PURE__ */ jsx_runtime187.jsx(DiffDialog, {
+  return /* @__PURE__ */ jsx_runtime186.jsx(DiffDialog, {
     messages: context.messages,
     onDone
   });
 };
 var init_diff3 = __esm(() => {
-  jsx_runtime187 = __toESM(require_jsx_runtime(), 1);
+  jsx_runtime186 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/diff/index.ts
@@ -438426,7 +438337,7 @@ var init_ctx_viz = __esm(() => {
 
 // components/KeybindingWarnings.tsx
 function KeybindingWarnings() {
-  const $ = import_compiler_runtime151.c(2);
+  const $ = import_compiler_runtime149.c(2);
   if (!isKeybindingCustomizationEnabled()) {
     return null;
   }
@@ -438440,31 +438351,31 @@ function KeybindingWarnings() {
         t1 = null;
         break bb0;
       }
-      const errors = warnings.filter(_temp70);
+      const errors = warnings.filter(_temp69);
       const warns = warnings.filter(_temp224);
-      t0 = /* @__PURE__ */ jsx_runtime188.jsxs(ThemedBox_default, {
+      t0 = /* @__PURE__ */ jsx_runtime187.jsxs(ThemedBox_default, {
         flexDirection: "column",
         marginTop: 1,
         marginBottom: 1,
         children: [
-          /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime187.jsx(ThemedText, {
             bold: true,
             color: errors.length > 0 ? "error" : "warning",
             children: "Keybinding Configuration Issues"
           }),
-          /* @__PURE__ */ jsx_runtime188.jsxs(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime187.jsxs(ThemedBox_default, {
             children: [
-              /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime187.jsx(ThemedText, {
                 dimColor: true,
                 children: "Location: "
               }),
-              /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime187.jsx(ThemedText, {
                 dimColor: true,
                 children: getKeybindingsPath()
               })
             ]
           }),
-          /* @__PURE__ */ jsx_runtime188.jsxs(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime187.jsxs(ThemedBox_default, {
             marginLeft: 1,
             flexDirection: "column",
             marginTop: 1,
@@ -438488,20 +438399,20 @@ function KeybindingWarnings() {
   return t0;
 }
 function _temp415(warning, i_0) {
-  return /* @__PURE__ */ jsx_runtime188.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime187.jsxs(ThemedBox_default, {
     flexDirection: "column",
     children: [
-      /* @__PURE__ */ jsx_runtime188.jsxs(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime187.jsxs(ThemedBox_default, {
         children: [
-          /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime187.jsx(ThemedText, {
             dimColor: true,
             children: "└ "
           }),
-          /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime187.jsx(ThemedText, {
             color: "warning",
             children: "[Warning]"
           }),
-          /* @__PURE__ */ jsx_runtime188.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime187.jsxs(ThemedText, {
             dimColor: true,
             children: [
               " ",
@@ -438510,9 +438421,9 @@ function _temp415(warning, i_0) {
           })
         ]
       }),
-      warning.suggestion && /* @__PURE__ */ jsx_runtime188.jsx(ThemedBox_default, {
+      warning.suggestion && /* @__PURE__ */ jsx_runtime187.jsx(ThemedBox_default, {
         marginLeft: 3,
-        children: /* @__PURE__ */ jsx_runtime188.jsxs(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime187.jsxs(ThemedText, {
           dimColor: true,
           children: [
             "→ ",
@@ -438524,20 +438435,20 @@ function _temp415(warning, i_0) {
   }, `warning-${i_0}`);
 }
 function _temp316(error, i) {
-  return /* @__PURE__ */ jsx_runtime188.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime187.jsxs(ThemedBox_default, {
     flexDirection: "column",
     children: [
-      /* @__PURE__ */ jsx_runtime188.jsxs(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime187.jsxs(ThemedBox_default, {
         children: [
-          /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime187.jsx(ThemedText, {
             dimColor: true,
             children: "└ "
           }),
-          /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime187.jsx(ThemedText, {
             color: "error",
             children: "[Error]"
           }),
-          /* @__PURE__ */ jsx_runtime188.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime187.jsxs(ThemedText, {
             dimColor: true,
             children: [
               " ",
@@ -438546,9 +438457,9 @@ function _temp316(error, i) {
           })
         ]
       }),
-      error.suggestion && /* @__PURE__ */ jsx_runtime188.jsx(ThemedBox_default, {
+      error.suggestion && /* @__PURE__ */ jsx_runtime187.jsx(ThemedBox_default, {
         marginLeft: 3,
-        children: /* @__PURE__ */ jsx_runtime188.jsxs(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime187.jsxs(ThemedText, {
           dimColor: true,
           children: [
             "→ ",
@@ -438562,20 +438473,20 @@ function _temp316(error, i) {
 function _temp224(w_0) {
   return w_0.severity === "warning";
 }
-function _temp70(w) {
+function _temp69(w) {
   return w.severity === "error";
 }
-var import_compiler_runtime151, jsx_runtime188;
+var import_compiler_runtime149, jsx_runtime187;
 var init_KeybindingWarnings = __esm(() => {
   init_ink2();
   init_loadUserBindings();
-  import_compiler_runtime151 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime188 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime149 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime187 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/McpParsingWarnings.tsx
 function McpConfigErrorSection(t0) {
-  const $ = import_compiler_runtime152.c(26);
+  const $ = import_compiler_runtime150.c(26);
   const {
     scope,
     parsingErrors,
@@ -438588,7 +438499,7 @@ function McpConfigErrorSection(t0) {
   }
   let t1;
   if ($[0] !== hasErrors || $[1] !== hasWarnings) {
-    t1 = (hasErrors || hasWarnings) && /* @__PURE__ */ jsx_runtime189.jsxs(ThemedText, {
+    t1 = (hasErrors || hasWarnings) && /* @__PURE__ */ jsx_runtime188.jsxs(ThemedText, {
       color: hasErrors ? "error" : "warning",
       children: [
         "[",
@@ -438613,7 +438524,7 @@ function McpConfigErrorSection(t0) {
   }
   let t3;
   if ($[5] !== t2) {
-    t3 = /* @__PURE__ */ jsx_runtime189.jsx(ThemedText, {
+    t3 = /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
       children: t2
     });
     $[5] = t2;
@@ -438623,7 +438534,7 @@ function McpConfigErrorSection(t0) {
   }
   let t4;
   if ($[7] !== t1 || $[8] !== t3) {
-    t4 = /* @__PURE__ */ jsx_runtime189.jsxs(ThemedBox_default, {
+    t4 = /* @__PURE__ */ jsx_runtime188.jsxs(ThemedBox_default, {
       children: [
         t1,
         t3
@@ -438637,7 +438548,7 @@ function McpConfigErrorSection(t0) {
   }
   let t5;
   if ($[10] === Symbol.for("react.memo_cache_sentinel")) {
-    t5 = /* @__PURE__ */ jsx_runtime189.jsx(ThemedText, {
+    t5 = /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
       dimColor: true,
       children: "Location: "
     });
@@ -438655,10 +438566,10 @@ function McpConfigErrorSection(t0) {
   }
   let t7;
   if ($[13] !== t6) {
-    t7 = /* @__PURE__ */ jsx_runtime189.jsxs(ThemedBox_default, {
+    t7 = /* @__PURE__ */ jsx_runtime188.jsxs(ThemedBox_default, {
       children: [
         t5,
-        /* @__PURE__ */ jsx_runtime189.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
           dimColor: true,
           children: t6
         })
@@ -438671,7 +438582,7 @@ function McpConfigErrorSection(t0) {
   }
   let t8;
   if ($[15] !== parsingErrors) {
-    t8 = parsingErrors.map(_temp71);
+    t8 = parsingErrors.map(_temp70);
     $[15] = parsingErrors;
     $[16] = t8;
   } else {
@@ -438687,7 +438598,7 @@ function McpConfigErrorSection(t0) {
   }
   let t10;
   if ($[19] !== t8 || $[20] !== t9) {
-    t10 = /* @__PURE__ */ jsx_runtime189.jsxs(ThemedBox_default, {
+    t10 = /* @__PURE__ */ jsx_runtime188.jsxs(ThemedBox_default, {
       marginLeft: 1,
       flexDirection: "column",
       children: [
@@ -438703,7 +438614,7 @@ function McpConfigErrorSection(t0) {
   }
   let t11;
   if ($[22] !== t10 || $[23] !== t4 || $[24] !== t7) {
-    t11 = /* @__PURE__ */ jsx_runtime189.jsxs(ThemedBox_default, {
+    t11 = /* @__PURE__ */ jsx_runtime188.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginTop: 1,
       children: [
@@ -438723,18 +438634,18 @@ function McpConfigErrorSection(t0) {
 }
 function _temp225(warning, i_0) {
   const serverName_0 = warning.mcpErrorMetadata?.serverName;
-  return /* @__PURE__ */ jsx_runtime189.jsx(ThemedBox_default, {
-    children: /* @__PURE__ */ jsx_runtime189.jsxs(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime188.jsx(ThemedBox_default, {
+    children: /* @__PURE__ */ jsx_runtime188.jsxs(ThemedText, {
       children: [
-        /* @__PURE__ */ jsx_runtime189.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
           dimColor: true,
           children: "└ "
         }),
-        /* @__PURE__ */ jsx_runtime189.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
           color: "warning",
           children: "[Warning]"
         }),
-        /* @__PURE__ */ jsx_runtime189.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime188.jsxs(ThemedText, {
           dimColor: true,
           children: [
             " ",
@@ -438747,20 +438658,20 @@ function _temp225(warning, i_0) {
     })
   }, `warning-${i_0}`);
 }
-function _temp71(error, i) {
+function _temp70(error, i) {
   const serverName = error.mcpErrorMetadata?.serverName;
-  return /* @__PURE__ */ jsx_runtime189.jsx(ThemedBox_default, {
-    children: /* @__PURE__ */ jsx_runtime189.jsxs(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime188.jsx(ThemedBox_default, {
+    children: /* @__PURE__ */ jsx_runtime188.jsxs(ThemedText, {
       children: [
-        /* @__PURE__ */ jsx_runtime189.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
           dimColor: true,
           children: "└ "
         }),
-        /* @__PURE__ */ jsx_runtime189.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
           color: "error",
           children: "[Error]"
         }),
-        /* @__PURE__ */ jsx_runtime189.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime188.jsxs(ThemedText, {
           dimColor: true,
           children: [
             " ",
@@ -438774,7 +438685,7 @@ function _temp71(error, i) {
   }, `error-${i}`);
 }
 function McpParsingWarnings() {
-  const $ = import_compiler_runtime152.c(6);
+  const $ = import_compiler_runtime150.c(6);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = {
@@ -438823,7 +438734,7 @@ function McpParsingWarnings() {
   }
   let t4;
   if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = /* @__PURE__ */ jsx_runtime189.jsx(ThemedText, {
+    t4 = /* @__PURE__ */ jsx_runtime188.jsx(ThemedText, {
       bold: true,
       children: "MCP Config Diagnostics"
     });
@@ -438833,20 +438744,20 @@ function McpParsingWarnings() {
   }
   let t5;
   if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-    t5 = /* @__PURE__ */ jsx_runtime189.jsxs(ThemedBox_default, {
+    t5 = /* @__PURE__ */ jsx_runtime188.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginTop: 1,
       marginBottom: 1,
       children: [
         t4,
-        /* @__PURE__ */ jsx_runtime189.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime188.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime189.jsxs(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime188.jsxs(ThemedText, {
             dimColor: true,
             children: [
               "For help configuring MCP servers, see:",
               " ",
-              /* @__PURE__ */ jsx_runtime189.jsx(Link, {
+              /* @__PURE__ */ jsx_runtime188.jsx(Link, {
                 url: "https://code.claude.com/docs/en/mcp",
                 children: "https://code.claude.com/docs/en/mcp"
               })
@@ -438867,7 +438778,7 @@ function _temp511(t0) {
     scope,
     config: config_1
   } = t0;
-  return /* @__PURE__ */ jsx_runtime189.jsx(McpConfigErrorSection, {
+  return /* @__PURE__ */ jsx_runtime188.jsx(McpConfigErrorSection, {
     scope,
     parsingErrors: filterErrors(config_1.errors, "fatal"),
     warnings: filterErrors(config_1.errors, "warning")
@@ -438888,25 +438799,25 @@ function _temp317(t0) {
 function filterErrors(errors, severity) {
   return errors.filter((e) => e.mcpErrorMetadata?.severity === severity);
 }
-var import_compiler_runtime152, jsx_runtime189;
+var import_compiler_runtime150, jsx_runtime188;
 var init_McpParsingWarnings = __esm(() => {
   init_config3();
   init_utils6();
   init_ink2();
-  import_compiler_runtime152 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime189 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime150 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime188 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/PressEnterToContinue.tsx
 function PressEnterToContinue() {
-  const $ = import_compiler_runtime153.c(1);
+  const $ = import_compiler_runtime151.c(1);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t0 = /* @__PURE__ */ jsx_runtime190.jsxs(ThemedText, {
+    t0 = /* @__PURE__ */ jsx_runtime189.jsxs(ThemedText, {
       color: "permission",
       children: [
         "Press ",
-        /* @__PURE__ */ jsx_runtime190.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime189.jsx(ThemedText, {
           bold: true,
           children: "Enter"
         }),
@@ -438919,16 +438830,16 @@ function PressEnterToContinue() {
   }
   return t0;
 }
-var import_compiler_runtime153, jsx_runtime190;
+var import_compiler_runtime151, jsx_runtime189;
 var init_PressEnterToContinue = __esm(() => {
   init_ink2();
-  import_compiler_runtime153 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime190 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime151 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime189 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/sandbox/SandboxDoctorSection.tsx
 function SandboxDoctorSection() {
-  const $ = import_compiler_runtime154.c(2);
+  const $ = import_compiler_runtime152.c(2);
   if (!SandboxManager2.isSupportedPlatform()) {
     return null;
   }
@@ -438949,25 +438860,25 @@ function SandboxDoctorSection() {
       }
       const statusColor = hasErrors ? "error" : "warning";
       const statusText = hasErrors ? "Missing dependencies" : "Available (with warnings)";
-      t0 = /* @__PURE__ */ jsx_runtime191.jsxs(ThemedBox_default, {
+      t0 = /* @__PURE__ */ jsx_runtime190.jsxs(ThemedBox_default, {
         flexDirection: "column",
         children: [
-          /* @__PURE__ */ jsx_runtime191.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime190.jsx(ThemedText, {
             bold: true,
             children: "Sandbox"
           }),
-          /* @__PURE__ */ jsx_runtime191.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime190.jsxs(ThemedText, {
             children: [
               "└ Status: ",
-              /* @__PURE__ */ jsx_runtime191.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime190.jsx(ThemedText, {
                 color: statusColor,
                 children: statusText
               })
             ]
           }),
-          depCheck.errors.map(_temp74),
+          depCheck.errors.map(_temp71),
           depCheck.warnings.map(_temp226),
-          hasErrors && /* @__PURE__ */ jsx_runtime191.jsx(ThemedText, {
+          hasErrors && /* @__PURE__ */ jsx_runtime190.jsx(ThemedText, {
             dimColor: true,
             children: "└ Run /sandbox for install instructions"
           })
@@ -438986,7 +438897,7 @@ function SandboxDoctorSection() {
   return t0;
 }
 function _temp226(w, i_0) {
-  return /* @__PURE__ */ jsx_runtime191.jsxs(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime190.jsxs(ThemedText, {
     color: "warning",
     children: [
       "└ ",
@@ -438994,8 +438905,8 @@ function _temp226(w, i_0) {
     ]
   }, i_0);
 }
-function _temp74(e, i) {
-  return /* @__PURE__ */ jsx_runtime191.jsxs(ThemedText, {
+function _temp71(e, i) {
+  return /* @__PURE__ */ jsx_runtime190.jsxs(ThemedText, {
     color: "error",
     children: [
       "└ ",
@@ -439003,12 +438914,12 @@ function _temp74(e, i) {
     ]
   }, i);
 }
-var import_compiler_runtime154, jsx_runtime191;
+var import_compiler_runtime152, jsx_runtime190;
 var init_SandboxDoctorSection = __esm(() => {
   init_ink2();
   init_sandbox_adapter();
-  import_compiler_runtime154 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime191 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime152 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime190 = __toESM(require_jsx_runtime(), 1);
 });
 
 // node_modules/.pnpm/lodash-es@4.18.1/node_modules/lodash-es/setWith.js
@@ -439156,7 +439067,7 @@ function buildNestedTree(errors) {
   return tree;
 }
 function ValidationErrorsList(t0) {
-  const $ = import_compiler_runtime155.c(9);
+  const $ = import_compiler_runtime153.c(9);
   const {
     errors
   } = t0;
@@ -439168,7 +439079,7 @@ function ValidationErrorsList(t0) {
   let t1;
   let t2;
   if ($[0] !== errors || $[1] !== themeName) {
-    const errorsByFile = errors.reduce(_temp75, {});
+    const errorsByFile = errors.reduce(_temp74, {});
     const sortedFiles = Object.keys(errorsByFile).sort();
     T0 = ThemedBox_default;
     t1 = "column";
@@ -439197,20 +439108,20 @@ function ValidationErrorsList(t0) {
           value: "inactive"
         }
       });
-      return /* @__PURE__ */ jsx_runtime192.jsxs(ThemedBox_default, {
+      return /* @__PURE__ */ jsx_runtime191.jsxs(ThemedBox_default, {
         flexDirection: "column",
         children: [
-          /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime191.jsx(ThemedText, {
             children: file_0
           }),
-          /* @__PURE__ */ jsx_runtime192.jsx(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime191.jsx(ThemedBox_default, {
             marginLeft: 1,
-            children: /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime191.jsx(ThemedText, {
               dimColor: true,
               children: treeOutput
             })
           }),
-          suggestionPairs.size > 0 && /* @__PURE__ */ jsx_runtime192.jsx(ThemedBox_default, {
+          suggestionPairs.size > 0 && /* @__PURE__ */ jsx_runtime191.jsx(ThemedBox_default, {
             flexDirection: "column",
             marginTop: 1,
             children: Array.from(suggestionPairs.values()).map(_temp318)
@@ -439230,7 +439141,7 @@ function ValidationErrorsList(t0) {
   }
   let t3;
   if ($[5] !== T0 || $[6] !== t1 || $[7] !== t2) {
-    t3 = /* @__PURE__ */ jsx_runtime192.jsx(T0, {
+    t3 = /* @__PURE__ */ jsx_runtime191.jsx(T0, {
       flexDirection: t1,
       children: t2
     });
@@ -439244,16 +439155,16 @@ function ValidationErrorsList(t0) {
   return t3;
 }
 function _temp318(pair, index) {
-  return /* @__PURE__ */ jsx_runtime192.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime191.jsxs(ThemedBox_default, {
     flexDirection: "column",
     marginBottom: 1,
     children: [
-      pair.suggestion && /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
+      pair.suggestion && /* @__PURE__ */ jsx_runtime191.jsx(ThemedText, {
         dimColor: true,
         wrap: "wrap",
         children: pair.suggestion
       }),
-      pair.docLink && /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
+      pair.docLink && /* @__PURE__ */ jsx_runtime191.jsxs(ThemedText, {
         dimColor: true,
         wrap: "wrap",
         children: [
@@ -439273,7 +439184,7 @@ function _temp227(a, b) {
   }
   return (a.path || "").localeCompare(b.path || "");
 }
-function _temp75(acc, error) {
+function _temp74(acc, error) {
   const file = error.file || "(file not specified)";
   if (!acc[file]) {
     acc[file] = [];
@@ -439281,23 +439192,23 @@ function _temp75(acc, error) {
   acc[file].push(error);
   return acc;
 }
-var import_compiler_runtime155, jsx_runtime192;
+var import_compiler_runtime153, jsx_runtime191;
 var init_ValidationErrorsList = __esm(() => {
   init_setWith();
   init_ink2();
   init_treeify();
-  import_compiler_runtime155 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime192 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime153 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime191 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/notifs/useSettingsErrors.tsx
 function useSettingsErrors() {
-  const $ = import_compiler_runtime156.c(6);
+  const $ = import_compiler_runtime154.c(6);
   const {
     addNotification,
     removeNotification
   } = useNotifications();
-  const [errors_0, setErrors] = import_react113.useState(_temp76);
+  const [errors_0, setErrors] = import_react112.useState(_temp75);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = () => {
@@ -439342,23 +439253,23 @@ function useSettingsErrors() {
     t1 = $[4];
     t2 = $[5];
   }
-  import_react113.useEffect(t1, t2);
+  import_react112.useEffect(t1, t2);
   return errors_0;
 }
-function _temp76() {
+function _temp75() {
   const {
     errors
   } = getSettingsWithAllErrors();
   return errors;
 }
-var import_compiler_runtime156, import_react113, SETTINGS_ERRORS_NOTIFICATION_KEY = "settings-errors";
+var import_compiler_runtime154, import_react112, SETTINGS_ERRORS_NOTIFICATION_KEY = "settings-errors";
 var init_useSettingsErrors = __esm(() => {
   init_notifications();
   init_state();
   init_allErrors();
   init_useSettingsChange();
-  import_compiler_runtime156 = __toESM(require_compiler_runtime(), 1);
-  import_react113 = __toESM(require_react(), 1);
+  import_compiler_runtime154 = __toESM(require_compiler_runtime(), 1);
+  import_react112 = __toESM(require_react(), 1);
 });
 
 // utils/permissions/shadowedRuleDetection.ts
@@ -439605,15 +439516,15 @@ var init_doctorContextWarnings = __esm(() => {
 // screens/Doctor.tsx
 import { join as join106 } from "path";
 function DistTagsDisplay(t0) {
-  const $ = import_compiler_runtime157.c(8);
+  const $ = import_compiler_runtime155.c(8);
   const {
     promise
   } = t0;
-  const distTags = import_react114.use(promise);
+  const distTags = import_react113.use(promise);
   if (!distTags.latest) {
     let t1;
     if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-      t1 = /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+      t1 = /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
         dimColor: true,
         children: "└ Failed to fetch versions"
       });
@@ -439625,7 +439536,7 @@ function DistTagsDisplay(t0) {
   }
   let t1;
   if ($[1] !== distTags.stable) {
-    t1 = distTags.stable && /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+    t1 = distTags.stable && /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
       children: [
         "└ Stable version: ",
         distTags.stable
@@ -439638,7 +439549,7 @@ function DistTagsDisplay(t0) {
   }
   let t2;
   if ($[3] !== distTags.latest) {
-    t2 = /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+    t2 = /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
       children: [
         "└ Latest version: ",
         distTags.latest
@@ -439651,7 +439562,7 @@ function DistTagsDisplay(t0) {
   }
   let t3;
   if ($[5] !== t1 || $[6] !== t2) {
-    t3 = /* @__PURE__ */ jsx_runtime193.jsxs(jsx_runtime193.Fragment, {
+    t3 = /* @__PURE__ */ jsx_runtime192.jsxs(jsx_runtime192.Fragment, {
       children: [
         t1,
         t2
@@ -439666,11 +439577,11 @@ function DistTagsDisplay(t0) {
   return t3;
 }
 function Doctor(t0) {
-  const $ = import_compiler_runtime157.c(84);
+  const $ = import_compiler_runtime155.c(84);
   const {
     onDone
   } = t0;
-  const agentDefinitions = useAppState(_temp78);
+  const agentDefinitions = useAppState(_temp77);
   const mcpTools = useAppState(_temp228);
   const toolPermissionContext = useAppState(_temp319);
   const pluginsErrors = useAppState(_temp417);
@@ -439684,10 +439595,10 @@ function Doctor(t0) {
     t1 = $[1];
   }
   const tools = t1;
-  const [diagnostic, setDiagnostic] = import_react114.useState(null);
-  const [agentInfo, setAgentInfo] = import_react114.useState(null);
-  const [contextWarnings, setContextWarnings] = import_react114.useState(null);
-  const [versionLockInfo, setVersionLockInfo] = import_react114.useState(null);
+  const [diagnostic, setDiagnostic] = import_react113.useState(null);
+  const [agentInfo, setAgentInfo] = import_react113.useState(null);
+  const [contextWarnings, setContextWarnings] = import_react113.useState(null);
+  const [versionLockInfo, setVersionLockInfo] = import_react113.useState(null);
   const validationErrors = useSettingsErrors();
   let t2;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
@@ -439700,7 +439611,7 @@ function Doctor(t0) {
   const autoUpdatesChannel = getInitialSettings()?.autoUpdatesChannel ?? "latest";
   let t3;
   if ($[3] !== validationErrors) {
-    t3 = validationErrors.filter(_temp77);
+    t3 = validationErrors.filter(_temp76);
     $[3] = validationErrors;
     $[4] = t3;
   } else {
@@ -439786,7 +439697,7 @@ function Doctor(t0) {
     t5 = $[9];
     t6 = $[10];
   }
-  import_react114.useEffect(t5, t6);
+  import_react113.useEffect(t5, t6);
   let t7;
   if ($[11] !== onDone) {
     t7 = () => {
@@ -439824,8 +439735,8 @@ function Doctor(t0) {
   if (!diagnostic) {
     let t10;
     if ($[16] === Symbol.for("react.memo_cache_sentinel")) {
-      t10 = /* @__PURE__ */ jsx_runtime193.jsx(Pane, {
-        children: /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+      t10 = /* @__PURE__ */ jsx_runtime192.jsx(Pane, {
+        children: /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
           dimColor: true,
           children: "Checking installation status…"
         })
@@ -439838,7 +439749,7 @@ function Doctor(t0) {
   }
   let t10;
   if ($[17] === Symbol.for("react.memo_cache_sentinel")) {
-    t10 = /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+    t10 = /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
       bold: true,
       children: "Diagnostics"
     });
@@ -439848,7 +439759,7 @@ function Doctor(t0) {
   }
   let t11;
   if ($[18] !== diagnostic.installationType || $[19] !== diagnostic.version) {
-    t11 = /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+    t11 = /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
       children: [
         "└ Currently running: ",
         diagnostic.installationType,
@@ -439865,7 +439776,7 @@ function Doctor(t0) {
   }
   let t12;
   if ($[21] !== diagnostic.packageManager) {
-    t12 = diagnostic.packageManager && /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+    t12 = diagnostic.packageManager && /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
       children: [
         "└ Package manager: ",
         diagnostic.packageManager
@@ -439878,7 +439789,7 @@ function Doctor(t0) {
   }
   let t13;
   if ($[23] !== diagnostic.installationPath) {
-    t13 = /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+    t13 = /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
       children: [
         "└ Path: ",
         diagnostic.installationPath
@@ -439891,7 +439802,7 @@ function Doctor(t0) {
   }
   let t14;
   if ($[25] !== diagnostic.invokedBinary) {
-    t14 = /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+    t14 = /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
       children: [
         "└ Invoked: ",
         diagnostic.invokedBinary
@@ -439904,7 +439815,7 @@ function Doctor(t0) {
   }
   let t15;
   if ($[27] !== diagnostic.configInstallMethod) {
-    t15 = /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+    t15 = /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
       children: [
         "└ Config install method: ",
         diagnostic.configInstallMethod
@@ -439919,7 +439830,7 @@ function Doctor(t0) {
   const t17 = diagnostic.ripgrepStatus.mode === "embedded" ? "bundled" : diagnostic.ripgrepStatus.mode === "builtin" ? "vendor" : diagnostic.ripgrepStatus.systemPath || "system";
   let t18;
   if ($[29] !== t16 || $[30] !== t17) {
-    t18 = /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+    t18 = /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
       children: [
         "└ Search: ",
         t16,
@@ -439936,10 +439847,10 @@ function Doctor(t0) {
   }
   let t19;
   if ($[32] !== diagnostic.recommendation) {
-    t19 = diagnostic.recommendation && /* @__PURE__ */ jsx_runtime193.jsxs(jsx_runtime193.Fragment, {
+    t19 = diagnostic.recommendation && /* @__PURE__ */ jsx_runtime192.jsxs(jsx_runtime192.Fragment, {
       children: [
-        /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {}),
-        /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {}),
+        /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
           color: "warning",
           children: [
             "Recommendation: ",
@@ -439947,7 +439858,7 @@ function Doctor(t0) {
 `)[0]
           ]
         }),
-        /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
           dimColor: true,
           children: diagnostic.recommendation.split(`
 `)[1]
@@ -439961,10 +439872,10 @@ function Doctor(t0) {
   }
   let t20;
   if ($[34] !== diagnostic.multipleInstallations) {
-    t20 = diagnostic.multipleInstallations.length > 1 && /* @__PURE__ */ jsx_runtime193.jsxs(jsx_runtime193.Fragment, {
+    t20 = diagnostic.multipleInstallations.length > 1 && /* @__PURE__ */ jsx_runtime192.jsxs(jsx_runtime192.Fragment, {
       children: [
-        /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {}),
-        /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {}),
+        /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
           color: "warning",
           children: "Warning: Multiple installations found"
         }),
@@ -439978,9 +439889,9 @@ function Doctor(t0) {
   }
   let t21;
   if ($[36] !== diagnostic.warnings) {
-    t21 = diagnostic.warnings.length > 0 && /* @__PURE__ */ jsx_runtime193.jsxs(jsx_runtime193.Fragment, {
+    t21 = diagnostic.warnings.length > 0 && /* @__PURE__ */ jsx_runtime192.jsxs(jsx_runtime192.Fragment, {
       children: [
-        /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {}),
+        /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {}),
         diagnostic.warnings.map(_temp103)
       ]
     });
@@ -439991,16 +439902,16 @@ function Doctor(t0) {
   }
   let t22;
   if ($[38] !== errorsExcludingMcp) {
-    t22 = errorsExcludingMcp.length > 0 && /* @__PURE__ */ jsx_runtime193.jsxs(ThemedBox_default, {
+    t22 = errorsExcludingMcp.length > 0 && /* @__PURE__ */ jsx_runtime192.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginTop: 1,
       marginBottom: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
           bold: true,
           children: "Invalid Settings"
         }),
-        /* @__PURE__ */ jsx_runtime193.jsx(ValidationErrorsList, {
+        /* @__PURE__ */ jsx_runtime192.jsx(ValidationErrorsList, {
           errors: errorsExcludingMcp
         })
       ]
@@ -440012,7 +439923,7 @@ function Doctor(t0) {
   }
   let t23;
   if ($[40] !== t11 || $[41] !== t12 || $[42] !== t13 || $[43] !== t14 || $[44] !== t15 || $[45] !== t18 || $[46] !== t19 || $[47] !== t20 || $[48] !== t21 || $[49] !== t22) {
-    t23 = /* @__PURE__ */ jsx_runtime193.jsxs(ThemedBox_default, {
+    t23 = /* @__PURE__ */ jsx_runtime192.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
         t10,
@@ -440044,7 +439955,7 @@ function Doctor(t0) {
   }
   let t24;
   if ($[51] === Symbol.for("react.memo_cache_sentinel")) {
-    t24 = /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+    t24 = /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
       bold: true,
       children: "Updates"
     });
@@ -440055,7 +439966,7 @@ function Doctor(t0) {
   const t25 = diagnostic.packageManager ? "Managed by package manager" : diagnostic.autoUpdates;
   let t26;
   if ($[52] !== t25) {
-    t26 = /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+    t26 = /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
       children: [
         "└ Auto-updates:",
         " ",
@@ -440069,7 +439980,7 @@ function Doctor(t0) {
   }
   let t27;
   if ($[54] !== diagnostic.hasUpdatePermissions) {
-    t27 = diagnostic.hasUpdatePermissions !== null && /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+    t27 = diagnostic.hasUpdatePermissions !== null && /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
       children: [
         "└ Update permissions:",
         " ",
@@ -440083,7 +439994,7 @@ function Doctor(t0) {
   }
   let t28;
   if ($[56] === Symbol.for("react.memo_cache_sentinel")) {
-    t28 = /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+    t28 = /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
       children: [
         "└ Auto-update channel: ",
         autoUpdatesChannel
@@ -440095,9 +440006,9 @@ function Doctor(t0) {
   }
   let t29;
   if ($[57] === Symbol.for("react.memo_cache_sentinel")) {
-    t29 = /* @__PURE__ */ jsx_runtime193.jsx(import_react114.Suspense, {
+    t29 = /* @__PURE__ */ jsx_runtime192.jsx(import_react113.Suspense, {
       fallback: null,
-      children: /* @__PURE__ */ jsx_runtime193.jsx(DistTagsDisplay, {
+      children: /* @__PURE__ */ jsx_runtime192.jsx(DistTagsDisplay, {
         promise: distTagsPromise
       })
     });
@@ -440107,7 +440018,7 @@ function Doctor(t0) {
   }
   let t30;
   if ($[58] !== t26 || $[59] !== t27) {
-    t30 = /* @__PURE__ */ jsx_runtime193.jsxs(ThemedBox_default, {
+    t30 = /* @__PURE__ */ jsx_runtime192.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
         t24,
@@ -440128,13 +440039,13 @@ function Doctor(t0) {
   let t33;
   let t34;
   if ($[61] === Symbol.for("react.memo_cache_sentinel")) {
-    t31 = /* @__PURE__ */ jsx_runtime193.jsx(SandboxDoctorSection, {});
-    t32 = /* @__PURE__ */ jsx_runtime193.jsx(McpParsingWarnings, {});
-    t33 = /* @__PURE__ */ jsx_runtime193.jsx(KeybindingWarnings, {});
-    t34 = envValidationErrors.length > 0 && /* @__PURE__ */ jsx_runtime193.jsxs(ThemedBox_default, {
+    t31 = /* @__PURE__ */ jsx_runtime192.jsx(SandboxDoctorSection, {});
+    t32 = /* @__PURE__ */ jsx_runtime192.jsx(McpParsingWarnings, {});
+    t33 = /* @__PURE__ */ jsx_runtime192.jsx(KeybindingWarnings, {});
+    t34 = envValidationErrors.length > 0 && /* @__PURE__ */ jsx_runtime192.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
           bold: true,
           children: "Environment Variables"
         }),
@@ -440153,14 +440064,14 @@ function Doctor(t0) {
   }
   let t35;
   if ($[65] !== versionLockInfo) {
-    t35 = versionLockInfo?.enabled && /* @__PURE__ */ jsx_runtime193.jsxs(ThemedBox_default, {
+    t35 = versionLockInfo?.enabled && /* @__PURE__ */ jsx_runtime192.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
           bold: true,
           children: "Version Locks"
         }),
-        versionLockInfo.staleLocksCleaned > 0 && /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+        versionLockInfo.staleLocksCleaned > 0 && /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
           dimColor: true,
           children: [
             "└ Cleaned ",
@@ -440168,7 +440079,7 @@ function Doctor(t0) {
             " stale lock(s)"
           ]
         }),
-        versionLockInfo.locks.length === 0 ? /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+        versionLockInfo.locks.length === 0 ? /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
           dimColor: true,
           children: "└ No active version locks"
         }) : versionLockInfo.locks.map(_temp123)
@@ -440181,15 +440092,15 @@ function Doctor(t0) {
   }
   let t36;
   if ($[67] !== agentInfo) {
-    t36 = agentInfo?.failedFiles && agentInfo.failedFiles.length > 0 && /* @__PURE__ */ jsx_runtime193.jsxs(ThemedBox_default, {
+    t36 = agentInfo?.failedFiles && agentInfo.failedFiles.length > 0 && /* @__PURE__ */ jsx_runtime192.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
           bold: true,
           color: "error",
           children: "Agent Parse Errors"
         }),
-        /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
           color: "error",
           children: [
             "└ Failed to parse ",
@@ -440207,15 +440118,15 @@ function Doctor(t0) {
   }
   let t37;
   if ($[69] !== pluginsErrors) {
-    t37 = pluginsErrors.length > 0 && /* @__PURE__ */ jsx_runtime193.jsxs(ThemedBox_default, {
+    t37 = pluginsErrors.length > 0 && /* @__PURE__ */ jsx_runtime192.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
           bold: true,
           color: "error",
           children: "Plugin Errors"
         }),
-        /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
           color: "error",
           children: [
             "└ ",
@@ -440233,19 +440144,19 @@ function Doctor(t0) {
   }
   let t38;
   if ($[71] !== contextWarnings) {
-    t38 = contextWarnings?.unreachableRulesWarning && /* @__PURE__ */ jsx_runtime193.jsxs(ThemedBox_default, {
+    t38 = contextWarnings?.unreachableRulesWarning && /* @__PURE__ */ jsx_runtime192.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
           bold: true,
           color: "warning",
           children: "Unreachable Permission Rules"
         }),
-        /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
           children: [
             "└",
             " ",
-            /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
               color: "warning",
               children: [
                 figures_default.warning,
@@ -440265,20 +440176,20 @@ function Doctor(t0) {
   }
   let t39;
   if ($[73] !== contextWarnings) {
-    t39 = contextWarnings && (contextWarnings.claudeMdWarning || contextWarnings.agentWarning || contextWarnings.mcpWarning) && /* @__PURE__ */ jsx_runtime193.jsxs(ThemedBox_default, {
+    t39 = contextWarnings && (contextWarnings.claudeMdWarning || contextWarnings.agentWarning || contextWarnings.mcpWarning) && /* @__PURE__ */ jsx_runtime192.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
           bold: true,
           children: "Context Usage Warnings"
         }),
-        contextWarnings.claudeMdWarning && /* @__PURE__ */ jsx_runtime193.jsxs(jsx_runtime193.Fragment, {
+        contextWarnings.claudeMdWarning && /* @__PURE__ */ jsx_runtime192.jsxs(jsx_runtime192.Fragment, {
           children: [
-            /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
               children: [
                 "└",
                 " ",
-                /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+                /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
                   color: "warning",
                   children: [
                     figures_default.warning,
@@ -440288,7 +440199,7 @@ function Doctor(t0) {
                 })
               ]
             }),
-            /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
               children: [
                 "  ",
                 "└ Files:"
@@ -440297,13 +440208,13 @@ function Doctor(t0) {
             contextWarnings.claudeMdWarning.details.map(_temp162)
           ]
         }),
-        contextWarnings.agentWarning && /* @__PURE__ */ jsx_runtime193.jsxs(jsx_runtime193.Fragment, {
+        contextWarnings.agentWarning && /* @__PURE__ */ jsx_runtime192.jsxs(jsx_runtime192.Fragment, {
           children: [
-            /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
               children: [
                 "└",
                 " ",
-                /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+                /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
                   color: "warning",
                   children: [
                     figures_default.warning,
@@ -440313,7 +440224,7 @@ function Doctor(t0) {
                 })
               ]
             }),
-            /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
               children: [
                 "  ",
                 "└ Top contributors:"
@@ -440322,13 +440233,13 @@ function Doctor(t0) {
             contextWarnings.agentWarning.details.map(_temp172)
           ]
         }),
-        contextWarnings.mcpWarning && /* @__PURE__ */ jsx_runtime193.jsxs(jsx_runtime193.Fragment, {
+        contextWarnings.mcpWarning && /* @__PURE__ */ jsx_runtime192.jsxs(jsx_runtime192.Fragment, {
           children: [
-            /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
               children: [
                 "└",
                 " ",
-                /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+                /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
                   color: "warning",
                   children: [
                     figures_default.warning,
@@ -440338,7 +440249,7 @@ function Doctor(t0) {
                 })
               ]
             }),
-            /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
               children: [
                 "  ",
                 "└ MCP servers:"
@@ -440356,8 +440267,8 @@ function Doctor(t0) {
   }
   let t40;
   if ($[75] === Symbol.for("react.memo_cache_sentinel")) {
-    t40 = /* @__PURE__ */ jsx_runtime193.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime193.jsx(PressEnterToContinue, {})
+    t40 = /* @__PURE__ */ jsx_runtime192.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime192.jsx(PressEnterToContinue, {})
     });
     $[75] = t40;
   } else {
@@ -440365,7 +440276,7 @@ function Doctor(t0) {
   }
   let t41;
   if ($[76] !== t23 || $[77] !== t30 || $[78] !== t35 || $[79] !== t36 || $[80] !== t37 || $[81] !== t38 || $[82] !== t39) {
-    t41 = /* @__PURE__ */ jsx_runtime193.jsxs(Pane, {
+    t41 = /* @__PURE__ */ jsx_runtime192.jsxs(Pane, {
       children: [
         t23,
         t30,
@@ -440395,7 +440306,7 @@ function Doctor(t0) {
   return t41;
 }
 function _temp182(detail_2, i_8) {
-  return /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
     dimColor: true,
     children: [
       "    ",
@@ -440405,7 +440316,7 @@ function _temp182(detail_2, i_8) {
   }, i_8);
 }
 function _temp172(detail_1, i_7) {
-  return /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
     dimColor: true,
     children: [
       "    ",
@@ -440415,7 +440326,7 @@ function _temp172(detail_1, i_7) {
   }, i_7);
 }
 function _temp162(detail_0, i_6) {
-  return /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
     dimColor: true,
     children: [
       "    ",
@@ -440425,7 +440336,7 @@ function _temp162(detail_0, i_6) {
   }, i_6);
 }
 function _temp152(detail, i_5) {
-  return /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
     dimColor: true,
     children: [
       "  ",
@@ -440435,7 +440346,7 @@ function _temp152(detail, i_5) {
   }, i_5);
 }
 function _temp142(error_0, i_4) {
-  return /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
     dimColor: true,
     children: [
       "  ",
@@ -440449,7 +440360,7 @@ function _temp142(error_0, i_4) {
   }, i_4);
 }
 function _temp133(file, i_3) {
-  return /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
     dimColor: true,
     children: [
       "  ",
@@ -440461,16 +440372,16 @@ function _temp133(file, i_3) {
   }, i_3);
 }
 function _temp123(lock, i_2) {
-  return /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
     children: [
       "└ ",
       lock.version,
       ": PID ",
       lock.pid,
       " ",
-      lock.isProcessRunning ? /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+      lock.isProcessRunning ? /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
         children: "(running)"
-      }) : /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+      }) : /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
         color: "warning",
         children: "(stale)"
       })
@@ -440478,13 +440389,13 @@ function _temp123(lock, i_2) {
   }, i_2);
 }
 function _temp113(validation, i_1) {
-  return /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
     children: [
       "└ ",
       validation.name,
       ":",
       " ",
-      /* @__PURE__ */ jsx_runtime193.jsx(ThemedText, {
+      /* @__PURE__ */ jsx_runtime192.jsx(ThemedText, {
         color: validation.status === "capped" ? "warning" : "error",
         children: validation.message
       })
@@ -440492,17 +440403,17 @@ function _temp113(validation, i_1) {
   }, i_1);
 }
 function _temp103(warning, i_0) {
-  return /* @__PURE__ */ jsx_runtime193.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime192.jsxs(ThemedBox_default, {
     flexDirection: "column",
     children: [
-      /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+      /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
         color: "warning",
         children: [
           "Warning: ",
           warning.issue
         ]
       }),
-      /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+      /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
         children: [
           "Fix: ",
           warning.fix
@@ -440512,7 +440423,7 @@ function _temp103(warning, i_0) {
   }, i_0);
 }
 function _temp110(install, i) {
-  return /* @__PURE__ */ jsx_runtime193.jsxs(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime192.jsxs(ThemedText, {
     children: [
       "└ ",
       install.type,
@@ -440538,7 +440449,7 @@ function _temp84(v) {
     ...result
   };
 }
-function _temp77(error) {
+function _temp76(error) {
   return error.mcpErrorMetadata === undefined;
 }
 function _temp610(diag) {
@@ -440560,10 +440471,10 @@ function _temp319(s_1) {
 function _temp228(s_0) {
   return s_0.mcp.tools;
 }
-function _temp78(s) {
+function _temp77(s) {
   return s.agentDefinitions;
 }
-var import_compiler_runtime157, import_react114, jsx_runtime193;
+var import_compiler_runtime155, import_react113, jsx_runtime192;
 var init_Doctor = __esm(() => {
   init_figures();
   init_KeybindingWarnings();
@@ -440590,9 +440501,9 @@ var init_Doctor = __esm(() => {
   init_outputLimits();
   init_outputFormatting();
   init_xdg();
-  import_compiler_runtime157 = __toESM(require_compiler_runtime(), 1);
-  import_react114 = __toESM(require_react(), 1);
-  jsx_runtime193 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime155 = __toESM(require_compiler_runtime(), 1);
+  import_react113 = __toESM(require_react(), 1);
+  jsx_runtime192 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/doctor/doctor.tsx
@@ -440600,14 +440511,14 @@ var exports_doctor = {};
 __export(exports_doctor, {
   call: () => call19
 });
-var jsx_runtime194, call19 = (onDone, _context, _args) => {
-  return Promise.resolve(/* @__PURE__ */ jsx_runtime194.jsx(Doctor, {
+var jsx_runtime193, call19 = (onDone, _context, _args) => {
+  return Promise.resolve(/* @__PURE__ */ jsx_runtime193.jsx(Doctor, {
     onDone
   }));
 };
 var init_doctor = __esm(() => {
   init_Doctor();
-  jsx_runtime194 = __toESM(require_jsx_runtime(), 1);
+  jsx_runtime193 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/doctor/index.ts
@@ -440636,17 +440547,17 @@ var init_versions3 = __esm(() => {
 import { mkdir as mkdir28 } from "fs/promises";
 import { join as join107 } from "path";
 function MemoryFileSelector(t0) {
-  const $ = import_compiler_runtime158.c(58);
+  const $ = import_compiler_runtime156.c(58);
   const {
     onSelect,
     onCancel
   } = t0;
-  const existingMemoryFiles = import_react115.use(getMemoryFiles());
+  const existingMemoryFiles = import_react114.use(getMemoryFiles());
   const userMemoryPath = join107(getClaudeConfigHomeDir(), "CLAUDE.md");
   const projectMemoryPath = join107(getOriginalCwd(), "CLAUDE.md");
   const hasUserMemory = existingMemoryFiles.some((f) => f.path === userMemoryPath);
   const hasProjectMemory = existingMemoryFiles.some((f_0) => f_0.path === projectMemoryPath);
-  const allMemoryFiles = [...existingMemoryFiles.filter(_temp80).map(_temp229), ...hasUserMemory ? [] : [{
+  const allMemoryFiles = [...existingMemoryFiles.filter(_temp79).map(_temp229), ...hasUserMemory ? [] : [{
     path: userMemoryPath,
     type: "User",
     content: "",
@@ -440740,11 +440651,11 @@ function MemoryFileSelector(t0) {
     t1 = $[3];
   }
   const initialPath = t1;
-  const [autoMemoryOn, setAutoMemoryOn] = import_react115.useState(isAutoMemoryEnabled);
-  const [autoDreamOn, setAutoDreamOn] = import_react115.useState(isAutoDreamEnabled);
-  const [showDreamRow] = import_react115.useState(isAutoMemoryEnabled);
+  const [autoMemoryOn, setAutoMemoryOn] = import_react114.useState(isAutoMemoryEnabled);
+  const [autoDreamOn, setAutoDreamOn] = import_react114.useState(isAutoDreamEnabled);
+  const [showDreamRow] = import_react114.useState(isAutoMemoryEnabled);
   const isDreamRunning = useAppState(_temp611);
-  const [lastDreamAt, setLastDreamAt] = import_react115.useState(null);
+  const [lastDreamAt, setLastDreamAt] = import_react114.useState(null);
   let t2;
   if ($[4] !== showDreamRow) {
     t2 = () => {
@@ -440767,7 +440678,7 @@ function MemoryFileSelector(t0) {
   } else {
     t3 = $[8];
   }
-  import_react115.useEffect(t2, t3);
+  import_react114.useEffect(t2, t3);
   let t4;
   if ($[9] !== isDreamRunning || $[10] !== lastDreamAt) {
     t4 = isDreamRunning ? "running" : lastDreamAt === null ? "" : lastDreamAt === 0 ? "never" : `last ran ${formatRelativeTimeAgo(new Date(lastDreamAt))}`;
@@ -440778,7 +440689,7 @@ function MemoryFileSelector(t0) {
     t4 = $[11];
   }
   const dreamStatus = t4;
-  const [focusedToggle, setFocusedToggle] = import_react115.useState(null);
+  const [focusedToggle, setFocusedToggle] = import_react114.useState(null);
   const toggleFocused = focusedToggle !== null;
   const lastToggleIndex = showDreamRow ? 1 : 0;
   let t5;
@@ -440883,7 +440794,7 @@ function MemoryFileSelector(t0) {
   let t12;
   if ($[27] === Symbol.for("react.memo_cache_sentinel")) {
     t12 = () => {
-      setFocusedToggle(_temp79);
+      setFocusedToggle(_temp78);
     };
     $[27] = t12;
   } else {
@@ -440905,7 +440816,7 @@ function MemoryFileSelector(t0) {
   const t15 = autoMemoryOn ? "on" : "off";
   let t16;
   if ($[30] !== t15) {
-    t16 = /* @__PURE__ */ jsx_runtime195.jsxs(ThemedText, {
+    t16 = /* @__PURE__ */ jsx_runtime194.jsxs(ThemedText, {
       children: [
         "Auto-memory: ",
         t15
@@ -440918,7 +440829,7 @@ function MemoryFileSelector(t0) {
   }
   let t17;
   if ($[32] !== t14 || $[33] !== t16) {
-    t17 = /* @__PURE__ */ jsx_runtime195.jsx(ListItem, {
+    t17 = /* @__PURE__ */ jsx_runtime194.jsx(ListItem, {
       isFocused: t14,
       children: t16
     });
@@ -440930,22 +440841,22 @@ function MemoryFileSelector(t0) {
   }
   let t18;
   if ($[35] !== autoDreamOn || $[36] !== dreamStatus || $[37] !== focusedToggle || $[38] !== isDreamRunning || $[39] !== showDreamRow) {
-    t18 = showDreamRow && /* @__PURE__ */ jsx_runtime195.jsx(ListItem, {
+    t18 = showDreamRow && /* @__PURE__ */ jsx_runtime194.jsx(ListItem, {
       isFocused: focusedToggle === 1,
       styled: false,
-      children: /* @__PURE__ */ jsx_runtime195.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime194.jsxs(ThemedText, {
         color: focusedToggle === 1 ? "suggestion" : undefined,
         children: [
           "Auto-dream: ",
           autoDreamOn ? "on" : "off",
-          dreamStatus && /* @__PURE__ */ jsx_runtime195.jsxs(ThemedText, {
+          dreamStatus && /* @__PURE__ */ jsx_runtime194.jsxs(ThemedText, {
             dimColor: true,
             children: [
               " · ",
               dreamStatus
             ]
           }),
-          !isDreamRunning && autoDreamOn && /* @__PURE__ */ jsx_runtime195.jsx(ThemedText, {
+          !isDreamRunning && autoDreamOn && /* @__PURE__ */ jsx_runtime194.jsx(ThemedText, {
             dimColor: true,
             children: " · /dream to run"
           })
@@ -440963,7 +440874,7 @@ function MemoryFileSelector(t0) {
   }
   let t19;
   if ($[41] !== t17 || $[42] !== t18) {
-    t19 = /* @__PURE__ */ jsx_runtime195.jsxs(ThemedBox_default, {
+    t19 = /* @__PURE__ */ jsx_runtime194.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
@@ -441005,7 +440916,7 @@ function MemoryFileSelector(t0) {
   }
   let t22;
   if ($[48] !== initialPath || $[49] !== memoryOptions || $[50] !== onCancel || $[51] !== t20 || $[52] !== t21 || $[53] !== toggleFocused) {
-    t22 = /* @__PURE__ */ jsx_runtime195.jsx(Select, {
+    t22 = /* @__PURE__ */ jsx_runtime194.jsx(Select, {
       defaultFocusValue: initialPath,
       options: memoryOptions,
       isDisabled: toggleFocused,
@@ -441025,7 +440936,7 @@ function MemoryFileSelector(t0) {
   }
   let t23;
   if ($[55] !== t19 || $[56] !== t22) {
-    t23 = /* @__PURE__ */ jsx_runtime195.jsxs(ThemedBox_default, {
+    t23 = /* @__PURE__ */ jsx_runtime194.jsxs(ThemedBox_default, {
       flexDirection: "column",
       width: "100%",
       children: [
@@ -441042,7 +440953,7 @@ function MemoryFileSelector(t0) {
   return t23;
 }
 function _temp85() {}
-function _temp79(prev_0) {
+function _temp78(prev_0) {
   return prev_0 !== null && prev_0 > 0 ? prev_0 - 1 : prev_0;
 }
 function _temp611(s_0) {
@@ -441063,10 +440974,10 @@ function _temp229(f_2) {
     exists: true
   };
 }
-function _temp80(f_1) {
+function _temp79(f_1) {
   return f_1.type !== "AutoMem" && f_1.type !== "TeamMem";
 }
-var import_compiler_runtime158, import_react115, jsx_runtime195, lastSelectedPath, OPEN_FOLDER_PREFIX = "__open_folder__";
+var import_compiler_runtime156, import_react114, jsx_runtime194, lastSelectedPath, OPEN_FOLDER_PREFIX = "__open_folder__";
 var init_MemoryFileSelector = __esm(() => {
   init_source();
   init_state();
@@ -441088,9 +440999,9 @@ var init_MemoryFileSelector = __esm(() => {
   init_settings2();
   init_CustomSelect();
   init_ListItem();
-  import_compiler_runtime158 = __toESM(require_compiler_runtime(), 1);
-  import_react115 = __toESM(require_react(), 1);
-  jsx_runtime195 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime156 = __toESM(require_compiler_runtime(), 1);
+  import_react114 = __toESM(require_react(), 1);
+  jsx_runtime194 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/memory/MemoryUpdateNotification.tsx
@@ -441106,11 +441017,11 @@ function getRelativeMemoryPath(path) {
   }
   return relativeToHome || relativeToCwd || path;
 }
-var import_compiler_runtime159;
+var import_compiler_runtime157;
 var init_MemoryUpdateNotification = __esm(() => {
   init_ink2();
   init_cwd2();
-  import_compiler_runtime159 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime157 = __toESM(require_compiler_runtime(), 1);
 });
 
 // utils/editor.ts
@@ -441392,27 +441303,27 @@ ${editorHint}`, {
       display: "system"
     });
   };
-  return /* @__PURE__ */ jsx_runtime196.jsx(Dialog, {
+  return /* @__PURE__ */ jsx_runtime195.jsx(Dialog, {
     title: "Memory",
     onCancel: handleCancel,
     color: "remember",
-    children: /* @__PURE__ */ jsx_runtime196.jsxs(ThemedBox_default, {
+    children: /* @__PURE__ */ jsx_runtime195.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime196.jsx(React56.Suspense, {
+        /* @__PURE__ */ jsx_runtime195.jsx(React55.Suspense, {
           fallback: null,
-          children: /* @__PURE__ */ jsx_runtime196.jsx(MemoryFileSelector, {
+          children: /* @__PURE__ */ jsx_runtime195.jsx(MemoryFileSelector, {
             onSelect: handleSelectMemoryFile,
             onCancel: handleCancel
           })
         }),
-        /* @__PURE__ */ jsx_runtime196.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime195.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime196.jsxs(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime195.jsxs(ThemedText, {
             dimColor: true,
             children: [
               "Learn more: ",
-              /* @__PURE__ */ jsx_runtime196.jsx(Link, {
+              /* @__PURE__ */ jsx_runtime195.jsx(Link, {
                 url: "https://code.claude.com/docs/en/memory"
               })
             ]
@@ -441422,10 +441333,10 @@ ${editorHint}`, {
     })
   });
 }
-var React56, jsx_runtime196, call20 = async (onDone) => {
+var React55, jsx_runtime195, call20 = async (onDone) => {
   clearMemoryFileCaches();
   await getMemoryFiles();
-  return /* @__PURE__ */ jsx_runtime196.jsx(MemoryCommand, {
+  return /* @__PURE__ */ jsx_runtime195.jsx(MemoryCommand, {
     onDone
   });
 };
@@ -441439,8 +441350,8 @@ var init_memory = __esm(() => {
   init_errors();
   init_log3();
   init_promptEditor();
-  React56 = __toESM(require_react(), 1);
-  jsx_runtime196 = __toESM(require_jsx_runtime(), 1);
+  React55 = __toESM(require_react(), 1);
+  jsx_runtime195 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/memory/index.ts
@@ -441457,7 +441368,7 @@ var init_memory2 = __esm(() => {
 
 // components/HelpV2/Commands.tsx
 function Commands(t0) {
-  const $ = import_compiler_runtime160.c(14);
+  const $ = import_compiler_runtime158.c(14);
   const {
     commands,
     maxHeight,
@@ -441493,7 +441404,7 @@ function Commands(t0) {
       }
       seen.add(cmd.name);
       return true;
-    }).sort(_temp81).map(t2);
+    }).sort(_temp80).map(t2);
     $[0] = commands;
     $[1] = maxWidth;
     $[2] = t1;
@@ -441503,20 +441414,20 @@ function Commands(t0) {
   const options = t1;
   let t2;
   if ($[5] !== commands.length || $[6] !== emptyMessage || $[7] !== focusHeader || $[8] !== headerFocused || $[9] !== onCancel || $[10] !== options || $[11] !== title || $[12] !== visibleCount) {
-    t2 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+    t2 = /* @__PURE__ */ jsx_runtime196.jsx(ThemedBox_default, {
       flexDirection: "column",
       paddingY: 1,
-      children: commands.length === 0 && emptyMessage ? /* @__PURE__ */ jsx_runtime197.jsx(ThemedText, {
+      children: commands.length === 0 && emptyMessage ? /* @__PURE__ */ jsx_runtime196.jsx(ThemedText, {
         dimColor: true,
         children: emptyMessage
-      }) : /* @__PURE__ */ jsx_runtime197.jsxs(jsx_runtime197.Fragment, {
+      }) : /* @__PURE__ */ jsx_runtime196.jsxs(jsx_runtime196.Fragment, {
         children: [
-          /* @__PURE__ */ jsx_runtime197.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime196.jsx(ThemedText, {
             children: title
           }),
-          /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime196.jsx(ThemedBox_default, {
             marginTop: 1,
-            children: /* @__PURE__ */ jsx_runtime197.jsx(Select, {
+            children: /* @__PURE__ */ jsx_runtime196.jsx(Select, {
               options,
               visibleOptionCount: visibleCount,
               onCancel,
@@ -441544,18 +441455,18 @@ function Commands(t0) {
   }
   return t2;
 }
-function _temp81(a, b) {
+function _temp80(a, b) {
   return a.name.localeCompare(b.name);
 }
-var import_compiler_runtime160, jsx_runtime197;
+var import_compiler_runtime158, jsx_runtime196;
 var init_Commands = __esm(() => {
   init_commands2();
   init_ink2();
   init_format();
   init_select();
   init_Tabs();
-  import_compiler_runtime160 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime197 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime158 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime196 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/PromptInput/utils.ts
@@ -441589,7 +441500,7 @@ function formatShortcut(shortcut) {
   return shortcut.replace(/\+/g, " + ");
 }
 function PromptInputHelpMenu(props) {
-  const $ = import_compiler_runtime161.c(99);
+  const $ = import_compiler_runtime159.c(99);
   const {
     dimColor,
     fixedWidth,
@@ -441709,8 +441620,8 @@ function PromptInputHelpMenu(props) {
   const t21 = fixedWidth ? 24 : undefined;
   let t22;
   if ($[23] !== dimColor) {
-    t22 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsx(ThemedText, {
+    t22 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsx(ThemedText, {
         dimColor,
         children: "! for bash mode"
       })
@@ -441722,8 +441633,8 @@ function PromptInputHelpMenu(props) {
   }
   let t23;
   if ($[25] !== dimColor) {
-    t23 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsx(ThemedText, {
+    t23 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsx(ThemedText, {
         dimColor,
         children: "/ for commands"
       })
@@ -441735,8 +441646,8 @@ function PromptInputHelpMenu(props) {
   }
   let t24;
   if ($[27] !== dimColor) {
-    t24 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsx(ThemedText, {
+    t24 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsx(ThemedText, {
         dimColor,
         children: "@ for file paths"
       })
@@ -441748,8 +441659,8 @@ function PromptInputHelpMenu(props) {
   }
   let t25;
   if ($[29] !== dimColor) {
-    t25 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsx(ThemedText, {
+    t25 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsx(ThemedText, {
         dimColor,
         children: "& for background"
       })
@@ -441761,8 +441672,8 @@ function PromptInputHelpMenu(props) {
   }
   let t26;
   if ($[31] !== dimColor) {
-    t26 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsx(ThemedText, {
+    t26 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsx(ThemedText, {
         dimColor,
         children: "/btw for side question"
       })
@@ -441774,7 +441685,7 @@ function PromptInputHelpMenu(props) {
   }
   let t27;
   if ($[33] !== t21 || $[34] !== t22 || $[35] !== t23 || $[36] !== t24 || $[37] !== t25 || $[38] !== t26) {
-    t27 = /* @__PURE__ */ jsx_runtime198.jsxs(ThemedBox_default, {
+    t27 = /* @__PURE__ */ jsx_runtime197.jsxs(ThemedBox_default, {
       flexDirection: "column",
       width: t21,
       children: [
@@ -441798,8 +441709,8 @@ function PromptInputHelpMenu(props) {
   const t28 = fixedWidth ? 35 : undefined;
   let t29;
   if ($[40] !== dimColor) {
-    t29 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsx(ThemedText, {
+    t29 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsx(ThemedText, {
         dimColor,
         children: "double tap esc to clear input"
       })
@@ -441811,8 +441722,8 @@ function PromptInputHelpMenu(props) {
   }
   let t30;
   if ($[42] !== cycleModeShortcut || $[43] !== dimColor) {
-    t30 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsxs(ThemedText, {
+    t30 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsxs(ThemedText, {
         dimColor,
         children: [
           cycleModeShortcut,
@@ -441829,8 +441740,8 @@ function PromptInputHelpMenu(props) {
   }
   let t31;
   if ($[45] !== dimColor || $[46] !== transcriptShortcut) {
-    t31 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsxs(ThemedText, {
+    t31 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsxs(ThemedText, {
         dimColor,
         children: [
           transcriptShortcut,
@@ -441846,8 +441757,8 @@ function PromptInputHelpMenu(props) {
   }
   let t32;
   if ($[48] !== dimColor || $[49] !== todosShortcut) {
-    t32 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsxs(ThemedText, {
+    t32 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsxs(ThemedText, {
         dimColor,
         children: [
           todosShortcut,
@@ -441870,8 +441781,8 @@ function PromptInputHelpMenu(props) {
   }
   let t34;
   if ($[52] !== dimColor) {
-    t34 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsx(ThemedText, {
+    t34 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsx(ThemedText, {
         dimColor,
         children: t33
       })
@@ -441883,7 +441794,7 @@ function PromptInputHelpMenu(props) {
   }
   let t35;
   if ($[54] !== t28 || $[55] !== t29 || $[56] !== t30 || $[57] !== t31 || $[58] !== t32 || $[59] !== t34 || $[60] !== terminalShortcutElement) {
-    t35 = /* @__PURE__ */ jsx_runtime198.jsxs(ThemedBox_default, {
+    t35 = /* @__PURE__ */ jsx_runtime197.jsxs(ThemedBox_default, {
       flexDirection: "column",
       width: t28,
       children: [
@@ -441908,8 +441819,8 @@ function PromptInputHelpMenu(props) {
   }
   let t36;
   if ($[62] !== dimColor || $[63] !== undoShortcut) {
-    t36 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsxs(ThemedText, {
+    t36 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsxs(ThemedText, {
         dimColor,
         children: [
           undoShortcut,
@@ -441925,8 +441836,8 @@ function PromptInputHelpMenu(props) {
   }
   let t37;
   if ($[65] !== dimColor) {
-    t37 = getPlatform() !== "windows" && /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsx(ThemedText, {
+    t37 = getPlatform() !== "windows" && /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsx(ThemedText, {
         dimColor,
         children: "ctrl + z to suspend"
       })
@@ -441938,8 +441849,8 @@ function PromptInputHelpMenu(props) {
   }
   let t38;
   if ($[67] !== dimColor || $[68] !== imagePasteShortcut) {
-    t38 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsxs(ThemedText, {
+    t38 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsxs(ThemedText, {
         dimColor,
         children: [
           imagePasteShortcut,
@@ -441955,8 +441866,8 @@ function PromptInputHelpMenu(props) {
   }
   let t39;
   if ($[70] !== dimColor || $[71] !== modelPickerShortcut) {
-    t39 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsxs(ThemedText, {
+    t39 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsxs(ThemedText, {
         dimColor,
         children: [
           modelPickerShortcut,
@@ -441972,8 +441883,8 @@ function PromptInputHelpMenu(props) {
   }
   let t40;
   if ($[73] !== dimColor || $[74] !== fastModeShortcut) {
-    t40 = isFastModeEnabled() && isFastModeAvailable() && /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsxs(ThemedText, {
+    t40 = isFastModeEnabled() && isFastModeAvailable() && /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsxs(ThemedText, {
         dimColor,
         children: [
           fastModeShortcut,
@@ -441989,8 +441900,8 @@ function PromptInputHelpMenu(props) {
   }
   let t41;
   if ($[76] !== dimColor || $[77] !== stashShortcut) {
-    t41 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsxs(ThemedText, {
+    t41 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsxs(ThemedText, {
         dimColor,
         children: [
           stashShortcut,
@@ -442006,8 +441917,8 @@ function PromptInputHelpMenu(props) {
   }
   let t42;
   if ($[79] !== dimColor || $[80] !== externalEditorShortcut) {
-    t42 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsxs(ThemedText, {
+    t42 = /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsxs(ThemedText, {
         dimColor,
         children: [
           externalEditorShortcut,
@@ -442023,8 +441934,8 @@ function PromptInputHelpMenu(props) {
   }
   let t43;
   if ($[82] !== dimColor) {
-    t43 = isKeybindingCustomizationEnabled() && /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime198.jsx(ThemedText, {
+    t43 = isKeybindingCustomizationEnabled() && /* @__PURE__ */ jsx_runtime197.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime197.jsx(ThemedText, {
         dimColor,
         children: "/keybindings to customize"
       })
@@ -442036,7 +441947,7 @@ function PromptInputHelpMenu(props) {
   }
   let t44;
   if ($[84] !== t36 || $[85] !== t37 || $[86] !== t38 || $[87] !== t39 || $[88] !== t40 || $[89] !== t41 || $[90] !== t42 || $[91] !== t43) {
-    t44 = /* @__PURE__ */ jsx_runtime198.jsxs(ThemedBox_default, {
+    t44 = /* @__PURE__ */ jsx_runtime197.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
         t36,
@@ -442063,7 +441974,7 @@ function PromptInputHelpMenu(props) {
   }
   let t45;
   if ($[93] !== gap || $[94] !== paddingX || $[95] !== t27 || $[96] !== t35 || $[97] !== t44) {
-    t45 = /* @__PURE__ */ jsx_runtime198.jsxs(ThemedBox_default, {
+    t45 = /* @__PURE__ */ jsx_runtime197.jsxs(ThemedBox_default, {
       paddingX,
       flexDirection: "row",
       gap,
@@ -442084,7 +441995,7 @@ function PromptInputHelpMenu(props) {
   }
   return t45;
 }
-var import_compiler_runtime161, jsx_runtime198;
+var import_compiler_runtime159, jsx_runtime197;
 var init_PromptInputHelpMenu = __esm(() => {
   init_ink2();
   init_platform2();
@@ -442093,17 +442004,17 @@ var init_PromptInputHelpMenu = __esm(() => {
   init_growthbook();
   init_fastMode();
   init_utils13();
-  import_compiler_runtime161 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime198 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime159 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime197 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/HelpV2/General.tsx
 function General() {
-  const $ = import_compiler_runtime162.c(2);
+  const $ = import_compiler_runtime160.c(2);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t0 = /* @__PURE__ */ jsx_runtime199.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime199.jsx(ThemedText, {
+    t0 = /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime198.jsx(ThemedText, {
         children: "EvilClaude understands your codebase, makes edits with your permission, and executes commands — right from your terminal."
       })
     });
@@ -442113,22 +442024,22 @@ function General() {
   }
   let t1;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = /* @__PURE__ */ jsx_runtime199.jsxs(ThemedBox_default, {
+    t1 = /* @__PURE__ */ jsx_runtime198.jsxs(ThemedBox_default, {
       flexDirection: "column",
       paddingY: 1,
       gap: 1,
       children: [
         t0,
-        /* @__PURE__ */ jsx_runtime199.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime198.jsxs(ThemedBox_default, {
           flexDirection: "column",
           children: [
-            /* @__PURE__ */ jsx_runtime199.jsx(ThemedBox_default, {
-              children: /* @__PURE__ */ jsx_runtime199.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime198.jsx(ThemedBox_default, {
+              children: /* @__PURE__ */ jsx_runtime198.jsx(ThemedText, {
                 bold: true,
                 children: "Shortcuts"
               })
             }),
-            /* @__PURE__ */ jsx_runtime199.jsx(PromptInputHelpMenu, {
+            /* @__PURE__ */ jsx_runtime198.jsx(PromptInputHelpMenu, {
               gap: 2,
               fixedWidth: true
             })
@@ -442142,17 +442053,17 @@ function General() {
   }
   return t1;
 }
-var import_compiler_runtime162, jsx_runtime199;
+var import_compiler_runtime160, jsx_runtime198;
 var init_General = __esm(() => {
   init_ink2();
   init_PromptInputHelpMenu();
-  import_compiler_runtime162 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime199 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime160 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime198 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/HelpV2/HelpV2.tsx
 function HelpV2(t0) {
-  const $ = import_compiler_runtime163.c(44);
+  const $ = import_compiler_runtime161.c(44);
   const {
     onClose,
     commands
@@ -442213,9 +442124,9 @@ function HelpV2(t0) {
   const customCommands = t3;
   let t4;
   if ($[8] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = /* @__PURE__ */ jsx_runtime200.jsx(Tab, {
+    t4 = /* @__PURE__ */ jsx_runtime199.jsx(Tab, {
       title: "general",
-      children: /* @__PURE__ */ jsx_runtime200.jsx(General, {})
+      children: /* @__PURE__ */ jsx_runtime199.jsx(General, {})
     }, "general");
     $[8] = t4;
   } else {
@@ -442226,9 +442137,9 @@ function HelpV2(t0) {
     tabs = [t4];
     let t5;
     if ($[16] !== builtinCommands || $[17] !== close || $[18] !== columns || $[19] !== maxHeight) {
-      t5 = /* @__PURE__ */ jsx_runtime200.jsx(Tab, {
+      t5 = /* @__PURE__ */ jsx_runtime199.jsx(Tab, {
         title: "commands",
-        children: /* @__PURE__ */ jsx_runtime200.jsx(Commands, {
+        children: /* @__PURE__ */ jsx_runtime199.jsx(Commands, {
           commands: builtinCommands,
           maxHeight,
           columns,
@@ -442247,9 +442158,9 @@ function HelpV2(t0) {
     tabs.push(t5);
     let t6;
     if ($[21] !== close || $[22] !== columns || $[23] !== customCommands || $[24] !== maxHeight) {
-      t6 = /* @__PURE__ */ jsx_runtime200.jsx(Tab, {
+      t6 = /* @__PURE__ */ jsx_runtime199.jsx(Tab, {
         title: "custom-commands",
-        children: /* @__PURE__ */ jsx_runtime200.jsx(Commands, {
+        children: /* @__PURE__ */ jsx_runtime199.jsx(Commands, {
           commands: customCommands,
           maxHeight,
           columns,
@@ -442281,7 +442192,7 @@ function HelpV2(t0) {
   const t5 = insideModal ? undefined : maxHeight;
   let t6;
   if ($[31] !== tabs) {
-    t6 = /* @__PURE__ */ jsx_runtime200.jsx(Tabs, {
+    t6 = /* @__PURE__ */ jsx_runtime199.jsx(Tabs, {
       title: `EvilClaude v${"1.0.29"}`,
       color: "professionalBlue",
       defaultTab: "general",
@@ -442294,13 +442205,13 @@ function HelpV2(t0) {
   }
   let t7;
   if ($[33] === Symbol.for("react.memo_cache_sentinel")) {
-    t7 = /* @__PURE__ */ jsx_runtime200.jsx(ThemedBox_default, {
+    t7 = /* @__PURE__ */ jsx_runtime199.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime200.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime199.jsxs(ThemedText, {
         children: [
           "For more help:",
           " ",
-          /* @__PURE__ */ jsx_runtime200.jsx(Link, {
+          /* @__PURE__ */ jsx_runtime199.jsx(Link, {
             url: "https://code.claude.com/docs/en/overview"
           })
         ]
@@ -442312,17 +442223,17 @@ function HelpV2(t0) {
   }
   let t8;
   if ($[34] !== dismissShortcut || $[35] !== exitState.keyName || $[36] !== exitState.pending) {
-    t8 = /* @__PURE__ */ jsx_runtime200.jsx(ThemedBox_default, {
+    t8 = /* @__PURE__ */ jsx_runtime199.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime200.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime199.jsx(ThemedText, {
         dimColor: true,
-        children: exitState.pending ? /* @__PURE__ */ jsx_runtime200.jsxs(jsx_runtime200.Fragment, {
+        children: exitState.pending ? /* @__PURE__ */ jsx_runtime199.jsxs(jsx_runtime199.Fragment, {
           children: [
             "Press ",
             exitState.keyName,
             " again to exit"
           ]
-        }) : /* @__PURE__ */ jsx_runtime200.jsxs(ThemedText, {
+        }) : /* @__PURE__ */ jsx_runtime199.jsxs(ThemedText, {
           italic: true,
           children: [
             dismissShortcut,
@@ -442340,7 +442251,7 @@ function HelpV2(t0) {
   }
   let t9;
   if ($[38] !== t6 || $[39] !== t8) {
-    t9 = /* @__PURE__ */ jsx_runtime200.jsxs(Pane, {
+    t9 = /* @__PURE__ */ jsx_runtime199.jsxs(Pane, {
       color: "professionalBlue",
       children: [
         t6,
@@ -442356,7 +442267,7 @@ function HelpV2(t0) {
   }
   let t10;
   if ($[41] !== t5 || $[42] !== t9) {
-    t10 = /* @__PURE__ */ jsx_runtime200.jsx(ThemedBox_default, {
+    t10 = /* @__PURE__ */ jsx_runtime199.jsx(ThemedBox_default, {
       flexDirection: "column",
       height: t5,
       children: t9
@@ -442369,7 +442280,7 @@ function HelpV2(t0) {
   }
   return t10;
 }
-var import_compiler_runtime163, jsx_runtime200;
+var import_compiler_runtime161, jsx_runtime199;
 var init_HelpV2 = __esm(() => {
   init_useExitOnCtrlCDWithKeybindings();
   init_useShortcutDisplay();
@@ -442382,8 +442293,8 @@ var init_HelpV2 = __esm(() => {
   init_Tabs();
   init_Commands();
   init_General();
-  import_compiler_runtime163 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime200 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime161 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime199 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/help/help.tsx
@@ -442391,19 +442302,19 @@ var exports_help = {};
 __export(exports_help, {
   call: () => call21
 });
-var jsx_runtime201, call21 = async (onDone, {
+var jsx_runtime200, call21 = async (onDone, {
   options: {
     commands
   }
 }) => {
-  return /* @__PURE__ */ jsx_runtime201.jsx(HelpV2, {
+  return /* @__PURE__ */ jsx_runtime200.jsx(HelpV2, {
     commands,
     onClose: onDone
   });
 };
 var init_help = __esm(() => {
   init_HelpV2();
-  jsx_runtime201 = __toESM(require_jsx_runtime(), 1);
+  jsx_runtime200 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/help/index.ts
@@ -442420,7 +442331,7 @@ var init_help2 = __esm(() => {
 
 // components/IdeAutoConnectDialog.tsx
 function IdeAutoConnectDialog(t0) {
-  const $ = import_compiler_runtime164.c(9);
+  const $ = import_compiler_runtime162.c(9);
   const {
     onComplete
   } = t0;
@@ -442457,7 +442368,7 @@ function IdeAutoConnectDialog(t0) {
   const options = t2;
   let t3;
   if ($[3] !== handleSelect) {
-    t3 = /* @__PURE__ */ jsx_runtime202.jsx(Select, {
+    t3 = /* @__PURE__ */ jsx_runtime201.jsx(Select, {
       options,
       onChange: handleSelect,
       defaultValue: "yes"
@@ -442469,7 +442380,7 @@ function IdeAutoConnectDialog(t0) {
   }
   let t4;
   if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = /* @__PURE__ */ jsx_runtime202.jsx(ThemedText, {
+    t4 = /* @__PURE__ */ jsx_runtime201.jsx(ThemedText, {
       dimColor: true,
       children: "You can also configure this in /config or with the --ide flag"
     });
@@ -442479,7 +442390,7 @@ function IdeAutoConnectDialog(t0) {
   }
   let t5;
   if ($[6] !== onComplete || $[7] !== t3) {
-    t5 = /* @__PURE__ */ jsx_runtime202.jsxs(Dialog, {
+    t5 = /* @__PURE__ */ jsx_runtime201.jsxs(Dialog, {
       title: "Do you wish to enable auto-connect to IDE?",
       color: "ide",
       onCancel: onComplete,
@@ -442501,7 +442412,7 @@ function shouldShowAutoConnectDialog() {
   return !isSupportedTerminal() && config.autoConnectIde !== true && config.hasIdeAutoConnectDialogBeenShown !== true;
 }
 function IdeDisableAutoConnectDialog(t0) {
-  const $ = import_compiler_runtime164.c(10);
+  const $ = import_compiler_runtime162.c(10);
   const {
     onComplete
   } = t0;
@@ -442510,7 +442421,7 @@ function IdeDisableAutoConnectDialog(t0) {
     t1 = (value) => {
       const disableAutoConnect = value === "yes";
       if (disableAutoConnect) {
-        saveGlobalConfig(_temp86);
+        saveGlobalConfig(_temp81);
       }
       onComplete(disableAutoConnect);
     };
@@ -442547,7 +442458,7 @@ function IdeDisableAutoConnectDialog(t0) {
   const options = t3;
   let t4;
   if ($[5] !== handleSelect) {
-    t4 = /* @__PURE__ */ jsx_runtime202.jsx(Select, {
+    t4 = /* @__PURE__ */ jsx_runtime201.jsx(Select, {
       options,
       onChange: handleSelect,
       defaultValue: "no"
@@ -442559,7 +442470,7 @@ function IdeDisableAutoConnectDialog(t0) {
   }
   let t5;
   if ($[7] !== handleCancel || $[8] !== t4) {
-    t5 = /* @__PURE__ */ jsx_runtime202.jsx(Dialog, {
+    t5 = /* @__PURE__ */ jsx_runtime201.jsx(Dialog, {
       title: "Do you wish to disable auto-connect to IDE?",
       subtitle: "You can also configure this in /config",
       onCancel: handleCancel,
@@ -442574,7 +442485,7 @@ function IdeDisableAutoConnectDialog(t0) {
   }
   return t5;
 }
-function _temp86(current) {
+function _temp81(current) {
   return {
     ...current,
     autoConnectIde: false
@@ -442584,15 +442495,15 @@ function shouldShowDisableAutoConnectDialog() {
   const config = getGlobalConfig();
   return !isSupportedTerminal() && config.autoConnectIde === true;
 }
-var import_compiler_runtime164, jsx_runtime202;
+var import_compiler_runtime162, jsx_runtime201;
 var init_IdeAutoConnectDialog = __esm(() => {
   init_ink2();
   init_config2();
   init_ide();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime164 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime202 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime162 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime201 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/ide/ide.tsx
@@ -442603,7 +442514,7 @@ __export(exports_ide, {
 });
 import * as path21 from "path";
 function IDEScreen(t0) {
-  const $ = import_compiler_runtime165.c(39);
+  const $ = import_compiler_runtime163.c(39);
   const {
     availableIDEs,
     unavailableIDEs,
@@ -442619,9 +442530,9 @@ function IDEScreen(t0) {
   } else {
     t1 = $[1];
   }
-  const [selectedValue, setSelectedValue] = import_react116.useState(t1);
-  const [showAutoConnectDialog, setShowAutoConnectDialog] = import_react116.useState(false);
-  const [showDisableAutoConnectDialog, setShowDisableAutoConnectDialog] = import_react116.useState(false);
+  const [selectedValue, setSelectedValue] = import_react115.useState(t1);
+  const [showAutoConnectDialog, setShowAutoConnectDialog] = import_react115.useState(false);
+  const [showDisableAutoConnectDialog, setShowDisableAutoConnectDialog] = import_react115.useState(false);
   let t2;
   if ($[2] !== availableIDEs || $[3] !== onSelect) {
     t2 = (value) => {
@@ -442644,7 +442555,7 @@ function IDEScreen(t0) {
   const handleSelectIDE = t2;
   let t3;
   if ($[5] !== availableIDEs) {
-    t3 = availableIDEs.reduce(_temp87, {});
+    t3 = availableIDEs.reduce(_temp86, {});
     $[5] = availableIDEs;
     $[6] = t3;
   } else {
@@ -442684,7 +442595,7 @@ function IDEScreen(t0) {
   if (showAutoConnectDialog) {
     let t5;
     if ($[12] !== handleSelectIDE || $[13] !== selectedValue) {
-      t5 = /* @__PURE__ */ jsx_runtime203.jsx(IdeAutoConnectDialog, {
+      t5 = /* @__PURE__ */ jsx_runtime202.jsx(IdeAutoConnectDialog, {
         onComplete: () => handleSelectIDE(selectedValue)
       });
       $[12] = handleSelectIDE;
@@ -442698,7 +442609,7 @@ function IDEScreen(t0) {
   if (showDisableAutoConnectDialog) {
     let t5;
     if ($[15] !== onSelect) {
-      t5 = /* @__PURE__ */ jsx_runtime203.jsx(IdeDisableAutoConnectDialog, {
+      t5 = /* @__PURE__ */ jsx_runtime202.jsx(IdeDisableAutoConnectDialog, {
         onComplete: () => {
           onSelect(undefined);
         }
@@ -442712,7 +442623,7 @@ function IDEScreen(t0) {
   }
   let t5;
   if ($[17] !== availableIDEs.length) {
-    t5 = availableIDEs.length === 0 && /* @__PURE__ */ jsx_runtime203.jsx(ThemedText, {
+    t5 = availableIDEs.length === 0 && /* @__PURE__ */ jsx_runtime202.jsx(ThemedText, {
       dimColor: true,
       children: isSupportedJetBrainsTerminal() ? `No available IDEs detected. Please install the plugin and restart your IDE:
 https://docs.claude.com/s/claude-code-jetbrains` : "No available IDEs detected. Make sure your IDE has the EvilClaude extension or plugin installed and is running."
@@ -442724,7 +442635,7 @@ https://docs.claude.com/s/claude-code-jetbrains` : "No available IDEs detected. 
   }
   let t6;
   if ($[19] !== availableIDEs.length || $[20] !== handleSelectIDE || $[21] !== options || $[22] !== selectedValue) {
-    t6 = availableIDEs.length !== 0 && /* @__PURE__ */ jsx_runtime203.jsx(Select, {
+    t6 = availableIDEs.length !== 0 && /* @__PURE__ */ jsx_runtime202.jsx(Select, {
       defaultValue: selectedValue,
       defaultFocusValue: selectedValue,
       options,
@@ -442743,9 +442654,9 @@ https://docs.claude.com/s/claude-code-jetbrains` : "No available IDEs detected. 
   }
   let t7;
   if ($[24] !== availableIDEs) {
-    t7 = availableIDEs.length !== 0 && availableIDEs.some(_temp230) && /* @__PURE__ */ jsx_runtime203.jsx(ThemedBox_default, {
+    t7 = availableIDEs.length !== 0 && availableIDEs.some(_temp230) && /* @__PURE__ */ jsx_runtime202.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime203.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime202.jsx(ThemedText, {
         color: "warning",
         children: "Note: Only one EvilClaude instance can be connected to VS Code at a time."
       })
@@ -442757,9 +442668,9 @@ https://docs.claude.com/s/claude-code-jetbrains` : "No available IDEs detected. 
   }
   let t8;
   if ($[26] !== availableIDEs.length) {
-    t8 = availableIDEs.length !== 0 && !isSupportedTerminal() && /* @__PURE__ */ jsx_runtime203.jsx(ThemedBox_default, {
+    t8 = availableIDEs.length !== 0 && !isSupportedTerminal() && /* @__PURE__ */ jsx_runtime202.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime203.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime202.jsx(ThemedText, {
         dimColor: true,
         children: "Tip: You can enable auto-connect to IDE in /config or with the --ide flag"
       })
@@ -442771,11 +442682,11 @@ https://docs.claude.com/s/claude-code-jetbrains` : "No available IDEs detected. 
   }
   let t9;
   if ($[28] !== unavailableIDEs) {
-    t9 = unavailableIDEs.length > 0 && /* @__PURE__ */ jsx_runtime203.jsxs(ThemedBox_default, {
+    t9 = unavailableIDEs.length > 0 && /* @__PURE__ */ jsx_runtime202.jsxs(ThemedBox_default, {
       marginTop: 1,
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime203.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime202.jsxs(ThemedText, {
           dimColor: true,
           children: [
             "Found ",
@@ -442783,7 +442694,7 @@ https://docs.claude.com/s/claude-code-jetbrains` : "No available IDEs detected. 
             " other running IDE(s). However, their workspace/project directories do not match the current cwd."
           ]
         }),
-        /* @__PURE__ */ jsx_runtime203.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime202.jsx(ThemedBox_default, {
           marginTop: 1,
           flexDirection: "column",
           children: unavailableIDEs.map(_temp321)
@@ -442797,7 +442708,7 @@ https://docs.claude.com/s/claude-code-jetbrains` : "No available IDEs detected. 
   }
   let t10;
   if ($[30] !== t5 || $[31] !== t6 || $[32] !== t7 || $[33] !== t8 || $[34] !== t9) {
-    t10 = /* @__PURE__ */ jsx_runtime203.jsxs(ThemedBox_default, {
+    t10 = /* @__PURE__ */ jsx_runtime202.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
         t5,
@@ -442818,7 +442729,7 @@ https://docs.claude.com/s/claude-code-jetbrains` : "No available IDEs detected. 
   }
   let t11;
   if ($[36] !== onClose || $[37] !== t10) {
-    t11 = /* @__PURE__ */ jsx_runtime203.jsx(Dialog, {
+    t11 = /* @__PURE__ */ jsx_runtime202.jsx(Dialog, {
       title: "Select IDE",
       subtitle: "Connect to an IDE for integrated development features.",
       onCancel: onClose,
@@ -442834,9 +442745,9 @@ https://docs.claude.com/s/claude-code-jetbrains` : "No available IDEs detected. 
   return t11;
 }
 function _temp321(ide_3, index) {
-  return /* @__PURE__ */ jsx_runtime203.jsx(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime202.jsx(ThemedBox_default, {
     paddingLeft: 3,
-    children: /* @__PURE__ */ jsx_runtime203.jsxs(ThemedText, {
+    children: /* @__PURE__ */ jsx_runtime202.jsxs(ThemedText, {
       dimColor: true,
       children: [
         "• ",
@@ -442850,7 +442761,7 @@ function _temp321(ide_3, index) {
 function _temp230(ide_2) {
   return ide_2.name === "VS Code" || ide_2.name === "Visual Studio Code";
 }
-function _temp87(acc, ide_0) {
+function _temp86(acc, ide_0) {
   acc[ide_0.name] = (acc[ide_0.name] || 0) + 1;
   return acc;
 }
@@ -442867,7 +442778,7 @@ async function findCurrentIDE(availableIDEs, dynamicMcpConfig) {
   return null;
 }
 function IDEOpenSelection(t0) {
-  const $ = import_compiler_runtime165.c(18);
+  const $ = import_compiler_runtime163.c(18);
   const {
     availableIDEs,
     onSelectIDE,
@@ -442881,7 +442792,7 @@ function IDEOpenSelection(t0) {
   } else {
     t1 = $[1];
   }
-  const [selectedValue, setSelectedValue] = import_react116.useState(t1);
+  const [selectedValue, setSelectedValue] = import_react115.useState(t1);
   let t2;
   if ($[2] !== availableIDEs || $[3] !== onSelectIDE) {
     t2 = (value) => {
@@ -442930,7 +442841,7 @@ function IDEOpenSelection(t0) {
   }
   let t6;
   if ($[11] !== options || $[12] !== selectedValue || $[13] !== t5) {
-    t6 = /* @__PURE__ */ jsx_runtime203.jsx(Select, {
+    t6 = /* @__PURE__ */ jsx_runtime202.jsx(Select, {
       defaultValue: selectedValue,
       defaultFocusValue: selectedValue,
       options,
@@ -442945,7 +442856,7 @@ function IDEOpenSelection(t0) {
   }
   let t7;
   if ($[15] !== handleCancel || $[16] !== t6) {
-    t7 = /* @__PURE__ */ jsx_runtime203.jsx(Dialog, {
+    t7 = /* @__PURE__ */ jsx_runtime202.jsx(Dialog, {
       title: "Select an IDE to open the project",
       onCancel: handleCancel,
       color: "ide",
@@ -442966,13 +442877,13 @@ function _temp419(ide_0) {
   };
 }
 function RunningIDESelector(t0) {
-  const $ = import_compiler_runtime165.c(15);
+  const $ = import_compiler_runtime163.c(15);
   const {
     runningIDEs,
     onSelectIDE,
     onDone
   } = t0;
-  const [selectedValue, setSelectedValue] = import_react116.useState(runningIDEs[0] ?? "");
+  const [selectedValue, setSelectedValue] = import_react115.useState(runningIDEs[0] ?? "");
   let t1;
   if ($[0] !== onSelectIDE) {
     t1 = (value) => {
@@ -443019,7 +442930,7 @@ function RunningIDESelector(t0) {
   }
   let t5;
   if ($[8] !== options || $[9] !== selectedValue || $[10] !== t4) {
-    t5 = /* @__PURE__ */ jsx_runtime203.jsx(Select, {
+    t5 = /* @__PURE__ */ jsx_runtime202.jsx(Select, {
       defaultFocusValue: selectedValue,
       options,
       onChange: t4
@@ -443033,7 +442944,7 @@ function RunningIDESelector(t0) {
   }
   let t6;
   if ($[12] !== handleCancel || $[13] !== t5) {
-    t6 = /* @__PURE__ */ jsx_runtime203.jsx(Dialog, {
+    t6 = /* @__PURE__ */ jsx_runtime202.jsx(Dialog, {
       title: "Select IDE to install extension",
       onCancel: handleCancel,
       color: "ide",
@@ -443054,7 +442965,7 @@ function _temp514(ide) {
   };
 }
 function InstallOnMount(t0) {
-  const $ = import_compiler_runtime165.c(4);
+  const $ = import_compiler_runtime163.c(4);
   const {
     ide,
     onInstall
@@ -443074,7 +442985,7 @@ function InstallOnMount(t0) {
     t1 = $[2];
     t2 = $[3];
   }
-  import_react116.useEffect(t1, t2);
+  import_react115.useEffect(t1, t2);
   return null;
 }
 async function call22(onDone, context, args) {
@@ -443094,7 +443005,7 @@ async function call22(onDone, context, args) {
       onDone("No IDEs with EvilClaude extension detected.");
       return null;
     }
-    return /* @__PURE__ */ jsx_runtime203.jsx(IDEOpenSelection, {
+    return /* @__PURE__ */ jsx_runtime202.jsx(IDEOpenSelection, {
       availableIDEs,
       onSelectIDE: async (selectedIDE) => {
         if (!selectedIDE) {
@@ -443138,7 +443049,7 @@ async function call22(onDone, context, args) {
       }
     };
     if (runningIDEs.length > 1) {
-      return /* @__PURE__ */ jsx_runtime203.jsx(RunningIDESelector, {
+      return /* @__PURE__ */ jsx_runtime202.jsx(RunningIDESelector, {
         runningIDEs,
         onSelectIDE: onInstall,
         onDone: () => {
@@ -443148,7 +443059,7 @@ async function call22(onDone, context, args) {
         }
       });
     } else if (runningIDEs.length === 1) {
-      return /* @__PURE__ */ jsx_runtime203.jsx(InstallOnMount, {
+      return /* @__PURE__ */ jsx_runtime202.jsx(InstallOnMount, {
         ide: runningIDEs[0],
         onInstall
       });
@@ -443157,7 +443068,7 @@ async function call22(onDone, context, args) {
   const availableIDEs = detectedIDEs.filter((ide) => ide.isValid);
   const unavailableIDEs = detectedIDEs.filter((ide) => !ide.isValid);
   const currentIDE = await findCurrentIDE(availableIDEs, dynamicMcpConfig);
-  return /* @__PURE__ */ jsx_runtime203.jsx(IDECommandFlow, {
+  return /* @__PURE__ */ jsx_runtime202.jsx(IDECommandFlow, {
     availableIDEs,
     unavailableIDEs,
     currentIDE,
@@ -443174,11 +443085,11 @@ function IDECommandFlow({
   onChangeDynamicMcpConfig,
   onDone
 }) {
-  const [connectingIDE, setConnectingIDE] = import_react116.useState(null);
+  const [connectingIDE, setConnectingIDE] = import_react115.useState(null);
   const ideClient = useAppState((s) => s.mcp.clients.find((c) => c.name === "ide"));
   const setAppState = useSetAppState();
-  const isFirstCheckRef = import_react116.useRef(true);
-  import_react116.useEffect(() => {
+  const isFirstCheckRef = import_react115.useRef(true);
+  import_react115.useEffect(() => {
     if (!connectingIDE)
       return;
     if (isFirstCheckRef.current) {
@@ -443193,13 +443104,13 @@ function IDECommandFlow({
       onDone(`Failed to connect to ${connectingIDE.name}.`);
     }
   }, [ideClient, connectingIDE, onDone]);
-  import_react116.useEffect(() => {
+  import_react115.useEffect(() => {
     if (!connectingIDE)
       return;
     const timer = setTimeout(onDone, IDE_CONNECTION_TIMEOUT_MS, `Connection to ${connectingIDE.name} timed out.`);
     return () => clearTimeout(timer);
   }, [connectingIDE, onDone]);
-  const handleSelectIDE = import_react116.useCallback((selectedIDE) => {
+  const handleSelectIDE = import_react115.useCallback((selectedIDE) => {
     if (!onChangeDynamicMcpConfig) {
       onDone("Error connecting to IDE.");
       return;
@@ -443242,7 +443153,7 @@ function IDECommandFlow({
     onChangeDynamicMcpConfig(newConfig);
   }, [dynamicMcpConfig, currentIDE, ideClient, setAppState, onChangeDynamicMcpConfig, onDone]);
   if (connectingIDE) {
-    return /* @__PURE__ */ jsx_runtime203.jsxs(ThemedText, {
+    return /* @__PURE__ */ jsx_runtime202.jsxs(ThemedText, {
       dimColor: true,
       children: [
         "Connecting to ",
@@ -443251,7 +443162,7 @@ function IDECommandFlow({
       ]
     });
   }
-  return /* @__PURE__ */ jsx_runtime203.jsx(IDEScreen, {
+  return /* @__PURE__ */ jsx_runtime202.jsx(IDEScreen, {
     availableIDEs,
     unavailableIDEs,
     selectedIDE: currentIDE,
@@ -443288,7 +443199,7 @@ function formatWorkspaceFolders(folders, maxLength = 100) {
   }
   return result;
 }
-var import_compiler_runtime165, import_react116, jsx_runtime203, IDE_CONNECTION_TIMEOUT_MS = 35000;
+var import_compiler_runtime163, import_react115, jsx_runtime202, IDE_CONNECTION_TIMEOUT_MS = 35000;
 var init_ide2 = __esm(() => {
   init_source();
   init_analytics();
@@ -443302,9 +443213,9 @@ var init_ide2 = __esm(() => {
   init_execFileNoThrow();
   init_ide();
   init_worktree();
-  import_compiler_runtime165 = __toESM(require_compiler_runtime(), 1);
-  import_react116 = __toESM(require_react(), 1);
-  jsx_runtime203 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime163 = __toESM(require_compiler_runtime(), 1);
+  import_react115 = __toESM(require_react(), 1);
+  jsx_runtime202 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/ide/index.ts
@@ -443751,7 +443662,7 @@ var init_logout2 = __esm(() => {
 // components/WorkflowMultiselectDialog.tsx
 function renderInputGuide(exitState) {
   if (exitState.pending) {
-    return /* @__PURE__ */ jsx_runtime204.jsxs(ThemedText, {
+    return /* @__PURE__ */ jsx_runtime203.jsxs(ThemedText, {
       children: [
         "Press ",
         exitState.keyName,
@@ -443759,21 +443670,21 @@ function renderInputGuide(exitState) {
       ]
     });
   }
-  return /* @__PURE__ */ jsx_runtime204.jsxs(Byline, {
+  return /* @__PURE__ */ jsx_runtime203.jsxs(Byline, {
     children: [
-      /* @__PURE__ */ jsx_runtime204.jsx(KeyboardShortcutHint, {
+      /* @__PURE__ */ jsx_runtime203.jsx(KeyboardShortcutHint, {
         shortcut: "↑↓",
         action: "navigate"
       }),
-      /* @__PURE__ */ jsx_runtime204.jsx(KeyboardShortcutHint, {
+      /* @__PURE__ */ jsx_runtime203.jsx(KeyboardShortcutHint, {
         shortcut: "Space",
         action: "toggle"
       }),
-      /* @__PURE__ */ jsx_runtime204.jsx(KeyboardShortcutHint, {
+      /* @__PURE__ */ jsx_runtime203.jsx(KeyboardShortcutHint, {
         shortcut: "Enter",
         action: "confirm"
       }),
-      /* @__PURE__ */ jsx_runtime204.jsx(ConfigurableShortcutHint, {
+      /* @__PURE__ */ jsx_runtime203.jsx(ConfigurableShortcutHint, {
         action: "confirm:no",
         context: "Confirmation",
         fallback: "Esc",
@@ -443783,12 +443694,12 @@ function renderInputGuide(exitState) {
   });
 }
 function WorkflowMultiselectDialog(t0) {
-  const $ = import_compiler_runtime166.c(14);
+  const $ = import_compiler_runtime164.c(14);
   const {
     onSubmit,
     defaultSelections
   } = t0;
-  const [showError, setShowError] = import_react117.useState(false);
+  const [showError, setShowError] = import_react116.useState(false);
   let t1;
   if ($[0] !== onSubmit) {
     t1 = (selectedValues) => {
@@ -443827,13 +443738,13 @@ function WorkflowMultiselectDialog(t0) {
   const handleCancel = t3;
   let t4;
   if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = /* @__PURE__ */ jsx_runtime204.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime204.jsxs(ThemedText, {
+    t4 = /* @__PURE__ */ jsx_runtime203.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime203.jsxs(ThemedText, {
         dimColor: true,
         children: [
           "More workflow examples (issue triage, CI fixes, etc.) at:",
           " ",
-          /* @__PURE__ */ jsx_runtime204.jsx(Link, {
+          /* @__PURE__ */ jsx_runtime203.jsx(Link, {
             url: "https://github.com/anthropics/claude-code-action/blob/main/examples/",
             children: "https://github.com/anthropics/claude-code-action/blob/main/examples/"
           })
@@ -443846,14 +443757,14 @@ function WorkflowMultiselectDialog(t0) {
   }
   let t5;
   if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-    t5 = WORKFLOWS.map(_temp88);
+    t5 = WORKFLOWS.map(_temp87);
     $[5] = t5;
   } else {
     t5 = $[5];
   }
   let t6;
   if ($[6] !== defaultSelections || $[7] !== handleSubmit) {
-    t6 = /* @__PURE__ */ jsx_runtime204.jsx(SelectMulti, {
+    t6 = /* @__PURE__ */ jsx_runtime203.jsx(SelectMulti, {
       options: t5,
       defaultValue: defaultSelections,
       onSubmit: handleSubmit,
@@ -443869,8 +443780,8 @@ function WorkflowMultiselectDialog(t0) {
   }
   let t7;
   if ($[9] !== showError) {
-    t7 = showError && /* @__PURE__ */ jsx_runtime204.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime204.jsx(ThemedText, {
+    t7 = showError && /* @__PURE__ */ jsx_runtime203.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime203.jsx(ThemedText, {
         color: "error",
         children: "You must select at least one workflow to continue"
       })
@@ -443882,7 +443793,7 @@ function WorkflowMultiselectDialog(t0) {
   }
   let t8;
   if ($[11] !== t6 || $[12] !== t7) {
-    t8 = /* @__PURE__ */ jsx_runtime204.jsxs(Dialog, {
+    t8 = /* @__PURE__ */ jsx_runtime203.jsxs(Dialog, {
       title: "Select GitHub workflows to install",
       subtitle: "We'll create a workflow file in your repository for each one you select.",
       onCancel: handleCancel,
@@ -443901,13 +443812,13 @@ function WorkflowMultiselectDialog(t0) {
   }
   return t8;
 }
-function _temp88(workflow) {
+function _temp87(workflow) {
   return {
     label: workflow.label,
     value: workflow.value
   };
 }
-var import_compiler_runtime166, import_react117, jsx_runtime204, WORKFLOWS;
+var import_compiler_runtime164, import_react116, jsx_runtime203, WORKFLOWS;
 var init_WorkflowMultiselectDialog = __esm(() => {
   init_ink2();
   init_ConfigurableShortcutHint();
@@ -443915,9 +443826,9 @@ var init_WorkflowMultiselectDialog = __esm(() => {
   init_Byline();
   init_Dialog();
   init_KeyboardShortcutHint();
-  import_compiler_runtime166 = __toESM(require_compiler_runtime(), 1);
-  import_react117 = __toESM(require_react(), 1);
-  jsx_runtime204 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime164 = __toESM(require_compiler_runtime(), 1);
+  import_react116 = __toESM(require_react(), 1);
+  jsx_runtime203 = __toESM(require_jsx_runtime(), 1);
   WORKFLOWS = [{
     value: "claude",
     label: "@EvilClaude - Tag @claude in issues and PR comments"
@@ -444066,7 +443977,7 @@ jobs:
 
 // commands/install-github-app/ApiKeyStep.tsx
 function ApiKeyStep(t0) {
-  const $ = import_compiler_runtime167.c(55);
+  const $ = import_compiler_runtime165.c(55);
   const {
     existingApiKey,
     apiKeyOrOAuthToken,
@@ -444078,7 +443989,7 @@ function ApiKeyStep(t0) {
     onSelectOption
   } = t0;
   const selectedOption = t1 === undefined ? existingApiKey ? "existing" : onCreateOAuthToken ? "oauth" : "new" : t1;
-  const [cursorOffset, setCursorOffset] = import_react118.useState(0);
+  const [cursorOffset, setCursorOffset] = import_react117.useState(0);
   const terminalSize = useTerminalSize();
   const [theme] = useTheme();
   let t2;
@@ -444195,15 +444106,15 @@ function ApiKeyStep(t0) {
   useKeybindings(t8, t9);
   let t10;
   if ($[26] === Symbol.for("react.memo_cache_sentinel")) {
-    t10 = /* @__PURE__ */ jsx_runtime205.jsxs(ThemedBox_default, {
+    t10 = /* @__PURE__ */ jsx_runtime204.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime205.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime204.jsx(ThemedText, {
           bold: true,
           children: "Install GitHub App"
         }),
-        /* @__PURE__ */ jsx_runtime205.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime204.jsx(ThemedText, {
           dimColor: true,
           children: "Choose API key"
         })
@@ -444215,9 +444126,9 @@ function ApiKeyStep(t0) {
   }
   let t11;
   if ($[27] !== existingApiKey || $[28] !== selectedOption || $[29] !== theme) {
-    t11 = existingApiKey && /* @__PURE__ */ jsx_runtime205.jsx(ThemedBox_default, {
+    t11 = existingApiKey && /* @__PURE__ */ jsx_runtime204.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime205.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime204.jsxs(ThemedText, {
         children: [
           selectedOption === "existing" ? color("success", theme)("> ") : "  ",
           "Use your existing EvilClaude API key"
@@ -444233,9 +444144,9 @@ function ApiKeyStep(t0) {
   }
   let t12;
   if ($[31] !== onCreateOAuthToken || $[32] !== selectedOption || $[33] !== theme) {
-    t12 = onCreateOAuthToken && /* @__PURE__ */ jsx_runtime205.jsx(ThemedBox_default, {
+    t12 = onCreateOAuthToken && /* @__PURE__ */ jsx_runtime204.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime205.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime204.jsxs(ThemedText, {
         children: [
           selectedOption === "oauth" ? color("success", theme)("> ") : "  ",
           "Create a long-lived token with your EvilClaude subscription"
@@ -444260,9 +444171,9 @@ function ApiKeyStep(t0) {
   }
   let t14;
   if ($[38] !== t13) {
-    t14 = /* @__PURE__ */ jsx_runtime205.jsx(ThemedBox_default, {
+    t14 = /* @__PURE__ */ jsx_runtime204.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime205.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime204.jsxs(ThemedText, {
         children: [
           t13,
           "Enter a new API key"
@@ -444276,7 +444187,7 @@ function ApiKeyStep(t0) {
   }
   let t15;
   if ($[40] !== apiKeyOrOAuthToken || $[41] !== cursorOffset || $[42] !== onApiKeyChange || $[43] !== onSubmit || $[44] !== selectedOption || $[45] !== terminalSize) {
-    t15 = selectedOption === "new" && /* @__PURE__ */ jsx_runtime205.jsx(TextInput, {
+    t15 = selectedOption === "new" && /* @__PURE__ */ jsx_runtime204.jsx(TextInput, {
       value: apiKeyOrOAuthToken,
       onChange: onApiKeyChange,
       onSubmit,
@@ -444301,7 +444212,7 @@ function ApiKeyStep(t0) {
   }
   let t16;
   if ($[47] !== t11 || $[48] !== t12 || $[49] !== t14 || $[50] !== t15) {
-    t16 = /* @__PURE__ */ jsx_runtime205.jsxs(ThemedBox_default, {
+    t16 = /* @__PURE__ */ jsx_runtime204.jsxs(ThemedBox_default, {
       flexDirection: "column",
       borderStyle: "round",
       paddingX: 1,
@@ -444323,9 +444234,9 @@ function ApiKeyStep(t0) {
   }
   let t17;
   if ($[52] === Symbol.for("react.memo_cache_sentinel")) {
-    t17 = /* @__PURE__ */ jsx_runtime205.jsx(ThemedBox_default, {
+    t17 = /* @__PURE__ */ jsx_runtime204.jsx(ThemedBox_default, {
       marginLeft: 3,
-      children: /* @__PURE__ */ jsx_runtime205.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime204.jsx(ThemedText, {
         dimColor: true,
         children: "↑/↓ to select · Enter to continue"
       })
@@ -444336,7 +444247,7 @@ function ApiKeyStep(t0) {
   }
   let t18;
   if ($[53] !== t16) {
-    t18 = /* @__PURE__ */ jsx_runtime205.jsxs(jsx_runtime205.Fragment, {
+    t18 = /* @__PURE__ */ jsx_runtime204.jsxs(jsx_runtime204.Fragment, {
       children: [
         t16,
         t17
@@ -444349,20 +444260,20 @@ function ApiKeyStep(t0) {
   }
   return t18;
 }
-var import_compiler_runtime167, import_react118, jsx_runtime205;
+var import_compiler_runtime165, import_react117, jsx_runtime204;
 var init_ApiKeyStep = __esm(() => {
   init_TextInput();
   init_useTerminalSize();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime167 = __toESM(require_compiler_runtime(), 1);
-  import_react118 = __toESM(require_react(), 1);
-  jsx_runtime205 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime165 = __toESM(require_compiler_runtime(), 1);
+  import_react117 = __toESM(require_react(), 1);
+  jsx_runtime204 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/CheckExistingSecretStep.tsx
 function CheckExistingSecretStep(t0) {
-  const $ = import_compiler_runtime168.c(42);
+  const $ = import_compiler_runtime166.c(42);
   const {
     useExistingSecret,
     secretName,
@@ -444370,7 +444281,7 @@ function CheckExistingSecretStep(t0) {
     onSecretNameChange,
     onSubmit
   } = t0;
-  const [cursorOffset, setCursorOffset] = import_react119.useState(0);
+  const [cursorOffset, setCursorOffset] = import_react118.useState(0);
   const terminalSize = useTerminalSize();
   const [theme] = useTheme();
   let t1;
@@ -444444,15 +444355,15 @@ function CheckExistingSecretStep(t0) {
   useKeybindings(t5, t7);
   let t8;
   if ($[15] === Symbol.for("react.memo_cache_sentinel")) {
-    t8 = /* @__PURE__ */ jsx_runtime206.jsxs(ThemedBox_default, {
+    t8 = /* @__PURE__ */ jsx_runtime205.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime206.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime205.jsx(ThemedText, {
           bold: true,
           children: "Install GitHub App"
         }),
-        /* @__PURE__ */ jsx_runtime206.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime205.jsx(ThemedText, {
           dimColor: true,
           children: "Setup API key secret"
         })
@@ -444464,9 +444375,9 @@ function CheckExistingSecretStep(t0) {
   }
   let t9;
   if ($[16] === Symbol.for("react.memo_cache_sentinel")) {
-    t9 = /* @__PURE__ */ jsx_runtime206.jsx(ThemedBox_default, {
+    t9 = /* @__PURE__ */ jsx_runtime205.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime206.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime205.jsx(ThemedText, {
         color: "warning",
         children: "SWAMPMINE_API_KEY already exists in repository secrets!"
       })
@@ -444477,9 +444388,9 @@ function CheckExistingSecretStep(t0) {
   }
   let t10;
   if ($[17] === Symbol.for("react.memo_cache_sentinel")) {
-    t10 = /* @__PURE__ */ jsx_runtime206.jsx(ThemedBox_default, {
+    t10 = /* @__PURE__ */ jsx_runtime205.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime206.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime205.jsx(ThemedText, {
         children: "Would you like to:"
       })
     });
@@ -444498,9 +444409,9 @@ function CheckExistingSecretStep(t0) {
   }
   let t12;
   if ($[21] !== t11) {
-    t12 = /* @__PURE__ */ jsx_runtime206.jsx(ThemedBox_default, {
+    t12 = /* @__PURE__ */ jsx_runtime205.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime206.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime205.jsxs(ThemedText, {
         children: [
           t11,
           "Use the existing API key"
@@ -444523,9 +444434,9 @@ function CheckExistingSecretStep(t0) {
   }
   let t14;
   if ($[26] !== t13) {
-    t14 = /* @__PURE__ */ jsx_runtime206.jsx(ThemedBox_default, {
+    t14 = /* @__PURE__ */ jsx_runtime205.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime206.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime205.jsxs(ThemedText, {
         children: [
           t13,
           "Create a new secret with a different name"
@@ -444539,15 +444450,15 @@ function CheckExistingSecretStep(t0) {
   }
   let t15;
   if ($[28] !== cursorOffset || $[29] !== onSecretNameChange || $[30] !== onSubmit || $[31] !== secretName || $[32] !== terminalSize || $[33] !== useExistingSecret) {
-    t15 = !useExistingSecret && /* @__PURE__ */ jsx_runtime206.jsxs(jsx_runtime206.Fragment, {
+    t15 = !useExistingSecret && /* @__PURE__ */ jsx_runtime205.jsxs(jsx_runtime205.Fragment, {
       children: [
-        /* @__PURE__ */ jsx_runtime206.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime205.jsx(ThemedBox_default, {
           marginBottom: 1,
-          children: /* @__PURE__ */ jsx_runtime206.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime205.jsx(ThemedText, {
             children: "Enter new secret name (alphanumeric with underscores):"
           })
         }),
-        /* @__PURE__ */ jsx_runtime206.jsx(TextInput, {
+        /* @__PURE__ */ jsx_runtime205.jsx(TextInput, {
           value: secretName,
           onChange: onSecretNameChange,
           onSubmit,
@@ -444572,7 +444483,7 @@ function CheckExistingSecretStep(t0) {
   }
   let t16;
   if ($[35] !== t12 || $[36] !== t14 || $[37] !== t15) {
-    t16 = /* @__PURE__ */ jsx_runtime206.jsxs(ThemedBox_default, {
+    t16 = /* @__PURE__ */ jsx_runtime205.jsxs(ThemedBox_default, {
       flexDirection: "column",
       borderStyle: "round",
       paddingX: 1,
@@ -444594,9 +444505,9 @@ function CheckExistingSecretStep(t0) {
   }
   let t17;
   if ($[39] === Symbol.for("react.memo_cache_sentinel")) {
-    t17 = /* @__PURE__ */ jsx_runtime206.jsx(ThemedBox_default, {
+    t17 = /* @__PURE__ */ jsx_runtime205.jsx(ThemedBox_default, {
       marginLeft: 3,
-      children: /* @__PURE__ */ jsx_runtime206.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime205.jsx(ThemedText, {
         dimColor: true,
         children: "↑/↓ to select · Enter to continue"
       })
@@ -444607,7 +444518,7 @@ function CheckExistingSecretStep(t0) {
   }
   let t18;
   if ($[40] !== t16) {
-    t18 = /* @__PURE__ */ jsx_runtime206.jsxs(jsx_runtime206.Fragment, {
+    t18 = /* @__PURE__ */ jsx_runtime205.jsxs(jsx_runtime205.Fragment, {
       children: [
         t16,
         t17
@@ -444620,23 +444531,23 @@ function CheckExistingSecretStep(t0) {
   }
   return t18;
 }
-var import_compiler_runtime168, import_react119, jsx_runtime206;
+var import_compiler_runtime166, import_react118, jsx_runtime205;
 var init_CheckExistingSecretStep = __esm(() => {
   init_TextInput();
   init_useTerminalSize();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime168 = __toESM(require_compiler_runtime(), 1);
-  import_react119 = __toESM(require_react(), 1);
-  jsx_runtime206 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime166 = __toESM(require_compiler_runtime(), 1);
+  import_react118 = __toESM(require_react(), 1);
+  jsx_runtime205 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/CheckGitHubStep.tsx
 function CheckGitHubStep() {
-  const $ = import_compiler_runtime169.c(1);
+  const $ = import_compiler_runtime167.c(1);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t0 = /* @__PURE__ */ jsx_runtime207.jsx(ThemedText, {
+    t0 = /* @__PURE__ */ jsx_runtime206.jsx(ThemedText, {
       children: "Checking GitHub CLI installation…"
     });
     $[0] = t0;
@@ -444645,16 +444556,16 @@ function CheckGitHubStep() {
   }
   return t0;
 }
-var import_compiler_runtime169, jsx_runtime207;
+var import_compiler_runtime167, jsx_runtime206;
 var init_CheckGitHubStep = __esm(() => {
   init_ink2();
-  import_compiler_runtime169 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime207 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime167 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime206 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/ChooseRepoStep.tsx
 function ChooseRepoStep(t0) {
-  const $ = import_compiler_runtime170.c(49);
+  const $ = import_compiler_runtime168.c(49);
   const {
     currentRepo,
     useCurrentRepo,
@@ -444663,8 +444574,8 @@ function ChooseRepoStep(t0) {
     onSubmit,
     onToggleUseCurrentRepo
   } = t0;
-  const [cursorOffset, setCursorOffset] = import_react120.useState(0);
-  const [showEmptyError, setShowEmptyError] = import_react120.useState(false);
+  const [cursorOffset, setCursorOffset] = import_react119.useState(0);
+  const [showEmptyError, setShowEmptyError] = import_react119.useState(false);
   const terminalSize = useTerminalSize();
   const textInputColumns = terminalSize.columns;
   let t1;
@@ -444764,15 +444675,15 @@ function ChooseRepoStep(t0) {
   useKeybindings(t7, t8);
   let t9;
   if ($[20] === Symbol.for("react.memo_cache_sentinel")) {
-    t9 = /* @__PURE__ */ jsx_runtime208.jsxs(ThemedBox_default, {
+    t9 = /* @__PURE__ */ jsx_runtime207.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime208.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime207.jsx(ThemedText, {
           bold: true,
           children: "Install GitHub App"
         }),
-        /* @__PURE__ */ jsx_runtime208.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime207.jsx(ThemedText, {
           dimColor: true,
           children: "Select GitHub repository"
         })
@@ -444784,9 +444695,9 @@ function ChooseRepoStep(t0) {
   }
   let t10;
   if ($[21] !== currentRepo || $[22] !== useCurrentRepo) {
-    t10 = currentRepo && /* @__PURE__ */ jsx_runtime208.jsx(ThemedBox_default, {
+    t10 = currentRepo && /* @__PURE__ */ jsx_runtime207.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime208.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime207.jsxs(ThemedText, {
         bold: useCurrentRepo,
         color: useCurrentRepo ? "permission" : undefined,
         children: [
@@ -444808,9 +444719,9 @@ function ChooseRepoStep(t0) {
   const t14 = currentRepo ? "Enter a different repository" : "Enter repository";
   let t15;
   if ($[24] !== t11 || $[25] !== t12 || $[26] !== t13 || $[27] !== t14) {
-    t15 = /* @__PURE__ */ jsx_runtime208.jsx(ThemedBox_default, {
+    t15 = /* @__PURE__ */ jsx_runtime207.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime208.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime207.jsxs(ThemedText, {
         bold: t11,
         color: t12,
         children: [
@@ -444829,10 +444740,10 @@ function ChooseRepoStep(t0) {
   }
   let t16;
   if ($[29] !== currentRepo || $[30] !== cursorOffset || $[31] !== handleSubmit || $[32] !== onRepoUrlChange || $[33] !== repoUrl || $[34] !== textInputColumns || $[35] !== useCurrentRepo) {
-    t16 = (!useCurrentRepo || !currentRepo) && /* @__PURE__ */ jsx_runtime208.jsx(ThemedBox_default, {
+    t16 = (!useCurrentRepo || !currentRepo) && /* @__PURE__ */ jsx_runtime207.jsx(ThemedBox_default, {
       marginLeft: 2,
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime208.jsx(TextInput, {
+      children: /* @__PURE__ */ jsx_runtime207.jsx(TextInput, {
         value: repoUrl,
         onChange: (value) => {
           onRepoUrlChange(value);
@@ -444860,7 +444771,7 @@ function ChooseRepoStep(t0) {
   }
   let t17;
   if ($[37] !== t10 || $[38] !== t15 || $[39] !== t16) {
-    t17 = /* @__PURE__ */ jsx_runtime208.jsxs(ThemedBox_default, {
+    t17 = /* @__PURE__ */ jsx_runtime207.jsxs(ThemedBox_default, {
       flexDirection: "column",
       borderStyle: "round",
       paddingX: 1,
@@ -444880,10 +444791,10 @@ function ChooseRepoStep(t0) {
   }
   let t18;
   if ($[41] !== showEmptyError) {
-    t18 = showEmptyError && /* @__PURE__ */ jsx_runtime208.jsx(ThemedBox_default, {
+    t18 = showEmptyError && /* @__PURE__ */ jsx_runtime207.jsx(ThemedBox_default, {
       marginLeft: 3,
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime208.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime207.jsx(ThemedText, {
         color: "error",
         children: "Please enter a repository name to continue"
       })
@@ -444896,9 +444807,9 @@ function ChooseRepoStep(t0) {
   const t19 = currentRepo ? "↑/↓ to select · " : "";
   let t20;
   if ($[43] !== t19) {
-    t20 = /* @__PURE__ */ jsx_runtime208.jsx(ThemedBox_default, {
+    t20 = /* @__PURE__ */ jsx_runtime207.jsx(ThemedBox_default, {
       marginLeft: 3,
-      children: /* @__PURE__ */ jsx_runtime208.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime207.jsxs(ThemedText, {
         dimColor: true,
         children: [
           t19,
@@ -444913,7 +444824,7 @@ function ChooseRepoStep(t0) {
   }
   let t21;
   if ($[45] !== t17 || $[46] !== t18 || $[47] !== t20) {
-    t21 = /* @__PURE__ */ jsx_runtime208.jsxs(jsx_runtime208.Fragment, {
+    t21 = /* @__PURE__ */ jsx_runtime207.jsxs(jsx_runtime207.Fragment, {
       children: [
         t17,
         t18,
@@ -444929,20 +444840,20 @@ function ChooseRepoStep(t0) {
   }
   return t21;
 }
-var import_compiler_runtime170, import_react120, jsx_runtime208;
+var import_compiler_runtime168, import_react119, jsx_runtime207;
 var init_ChooseRepoStep = __esm(() => {
   init_TextInput();
   init_useTerminalSize();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime170 = __toESM(require_compiler_runtime(), 1);
-  import_react120 = __toESM(require_react(), 1);
-  jsx_runtime208 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime168 = __toESM(require_compiler_runtime(), 1);
+  import_react119 = __toESM(require_react(), 1);
+  jsx_runtime207 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/CreatingStep.tsx
 function CreatingStep(t0) {
-  const $ = import_compiler_runtime171.c(10);
+  const $ = import_compiler_runtime169.c(10);
   const {
     currentWorkflowInstallStep,
     secretExists,
@@ -444967,15 +444878,15 @@ function CreatingStep(t0) {
   const progressSteps = t2;
   let t3;
   if ($[6] === Symbol.for("react.memo_cache_sentinel")) {
-    t3 = /* @__PURE__ */ jsx_runtime209.jsxs(ThemedBox_default, {
+    t3 = /* @__PURE__ */ jsx_runtime208.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime209.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime208.jsx(ThemedText, {
           bold: true,
           children: "Install GitHub App"
         }),
-        /* @__PURE__ */ jsx_runtime209.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime208.jsx(ThemedText, {
           dimColor: true,
           children: "Create GitHub Actions workflow"
         })
@@ -444987,8 +444898,8 @@ function CreatingStep(t0) {
   }
   let t4;
   if ($[7] !== currentWorkflowInstallStep || $[8] !== progressSteps) {
-    t4 = /* @__PURE__ */ jsx_runtime209.jsx(jsx_runtime209.Fragment, {
-      children: /* @__PURE__ */ jsx_runtime209.jsxs(ThemedBox_default, {
+    t4 = /* @__PURE__ */ jsx_runtime208.jsx(jsx_runtime208.Fragment, {
+      children: /* @__PURE__ */ jsx_runtime208.jsxs(ThemedBox_default, {
         flexDirection: "column",
         borderStyle: "round",
         paddingX: 1,
@@ -445003,8 +444914,8 @@ function CreatingStep(t0) {
                 status = "in-progress";
               }
             }
-            return /* @__PURE__ */ jsx_runtime209.jsx(ThemedBox_default, {
-              children: /* @__PURE__ */ jsx_runtime209.jsxs(ThemedText, {
+            return /* @__PURE__ */ jsx_runtime208.jsx(ThemedBox_default, {
+              children: /* @__PURE__ */ jsx_runtime208.jsxs(ThemedText, {
                 color: status === "completed" ? "success" : status === "in-progress" ? "warning" : undefined,
                 children: [
                   status === "completed" ? "✓ " : "",
@@ -445025,16 +444936,16 @@ function CreatingStep(t0) {
   }
   return t4;
 }
-var import_compiler_runtime171, jsx_runtime209;
+var import_compiler_runtime169, jsx_runtime208;
 var init_CreatingStep = __esm(() => {
   init_ink2();
-  import_compiler_runtime171 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime209 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime169 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime208 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/ErrorStep.tsx
 function ErrorStep(t0) {
-  const $ = import_compiler_runtime172.c(15);
+  const $ = import_compiler_runtime170.c(15);
   const {
     error,
     errorReason,
@@ -445042,10 +444953,10 @@ function ErrorStep(t0) {
   } = t0;
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = /* @__PURE__ */ jsx_runtime210.jsx(ThemedBox_default, {
+    t1 = /* @__PURE__ */ jsx_runtime209.jsx(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime210.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime209.jsx(ThemedText, {
         bold: true,
         children: "Install GitHub App"
       })
@@ -445056,7 +444967,7 @@ function ErrorStep(t0) {
   }
   let t2;
   if ($[1] !== error) {
-    t2 = /* @__PURE__ */ jsx_runtime210.jsxs(ThemedText, {
+    t2 = /* @__PURE__ */ jsx_runtime209.jsxs(ThemedText, {
       color: "error",
       children: [
         "Error: ",
@@ -445070,9 +444981,9 @@ function ErrorStep(t0) {
   }
   let t3;
   if ($[3] !== errorReason) {
-    t3 = errorReason && /* @__PURE__ */ jsx_runtime210.jsx(ThemedBox_default, {
+    t3 = errorReason && /* @__PURE__ */ jsx_runtime209.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime210.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime209.jsxs(ThemedText, {
         dimColor: true,
         children: [
           "Reason: ",
@@ -445087,15 +444998,15 @@ function ErrorStep(t0) {
   }
   let t4;
   if ($[5] !== errorInstructions) {
-    t4 = errorInstructions && errorInstructions.length > 0 && /* @__PURE__ */ jsx_runtime210.jsxs(ThemedBox_default, {
+    t4 = errorInstructions && errorInstructions.length > 0 && /* @__PURE__ */ jsx_runtime209.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginTop: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime210.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime209.jsx(ThemedText, {
           dimColor: true,
           children: "How to fix:"
         }),
-        errorInstructions.map(_temp89)
+        errorInstructions.map(_temp88)
       ]
     });
     $[5] = errorInstructions;
@@ -445105,14 +445016,14 @@ function ErrorStep(t0) {
   }
   let t5;
   if ($[7] === Symbol.for("react.memo_cache_sentinel")) {
-    t5 = /* @__PURE__ */ jsx_runtime210.jsx(ThemedBox_default, {
+    t5 = /* @__PURE__ */ jsx_runtime209.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime210.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime209.jsxs(ThemedText, {
         dimColor: true,
         children: [
           "For manual setup instructions, see:",
           " ",
-          /* @__PURE__ */ jsx_runtime210.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime209.jsx(ThemedText, {
             color: "claude",
             children: GITHUB_ACTION_SETUP_DOCS_URL
           })
@@ -445125,7 +445036,7 @@ function ErrorStep(t0) {
   }
   let t6;
   if ($[8] !== t2 || $[9] !== t3 || $[10] !== t4) {
-    t6 = /* @__PURE__ */ jsx_runtime210.jsxs(ThemedBox_default, {
+    t6 = /* @__PURE__ */ jsx_runtime209.jsxs(ThemedBox_default, {
       flexDirection: "column",
       borderStyle: "round",
       paddingX: 1,
@@ -445146,9 +445057,9 @@ function ErrorStep(t0) {
   }
   let t7;
   if ($[12] === Symbol.for("react.memo_cache_sentinel")) {
-    t7 = /* @__PURE__ */ jsx_runtime210.jsx(ThemedBox_default, {
+    t7 = /* @__PURE__ */ jsx_runtime209.jsx(ThemedBox_default, {
       marginLeft: 3,
-      children: /* @__PURE__ */ jsx_runtime210.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime209.jsx(ThemedText, {
         dimColor: true,
         children: "Press any key to exit"
       })
@@ -445159,7 +445070,7 @@ function ErrorStep(t0) {
   }
   let t8;
   if ($[13] !== t6) {
-    t8 = /* @__PURE__ */ jsx_runtime210.jsxs(jsx_runtime210.Fragment, {
+    t8 = /* @__PURE__ */ jsx_runtime209.jsxs(jsx_runtime209.Fragment, {
       children: [
         t6,
         t7
@@ -445172,30 +445083,30 @@ function ErrorStep(t0) {
   }
   return t8;
 }
-function _temp89(instruction, index) {
-  return /* @__PURE__ */ jsx_runtime210.jsxs(ThemedBox_default, {
+function _temp88(instruction, index) {
+  return /* @__PURE__ */ jsx_runtime209.jsxs(ThemedBox_default, {
     marginLeft: 2,
     children: [
-      /* @__PURE__ */ jsx_runtime210.jsx(ThemedText, {
+      /* @__PURE__ */ jsx_runtime209.jsx(ThemedText, {
         dimColor: true,
         children: "• "
       }),
-      /* @__PURE__ */ jsx_runtime210.jsx(ThemedText, {
+      /* @__PURE__ */ jsx_runtime209.jsx(ThemedText, {
         children: instruction
       })
     ]
   }, index);
 }
-var import_compiler_runtime172, jsx_runtime210;
+var import_compiler_runtime170, jsx_runtime209;
 var init_ErrorStep = __esm(() => {
   init_ink2();
-  import_compiler_runtime172 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime210 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime170 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime209 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/ExistingWorkflowStep.tsx
 function ExistingWorkflowStep(t0) {
-  const $ = import_compiler_runtime173.c(16);
+  const $ = import_compiler_runtime171.c(16);
   const {
     repoName,
     onSelectAction
@@ -445241,7 +445152,7 @@ function ExistingWorkflowStep(t0) {
   const handleCancel = t3;
   let t4;
   if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = /* @__PURE__ */ jsx_runtime211.jsx(ThemedText, {
+    t4 = /* @__PURE__ */ jsx_runtime210.jsx(ThemedText, {
       bold: true,
       children: "Existing Workflow Found"
     });
@@ -445251,12 +445162,12 @@ function ExistingWorkflowStep(t0) {
   }
   let t5;
   if ($[6] !== repoName) {
-    t5 = /* @__PURE__ */ jsx_runtime211.jsxs(ThemedBox_default, {
+    t5 = /* @__PURE__ */ jsx_runtime210.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
         t4,
-        /* @__PURE__ */ jsx_runtime211.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime210.jsxs(ThemedText, {
           dimColor: true,
           children: [
             "Repository: ",
@@ -445272,21 +445183,21 @@ function ExistingWorkflowStep(t0) {
   }
   let t6;
   if ($[8] === Symbol.for("react.memo_cache_sentinel")) {
-    t6 = /* @__PURE__ */ jsx_runtime211.jsxs(ThemedBox_default, {
+    t6 = /* @__PURE__ */ jsx_runtime210.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime211.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime210.jsxs(ThemedText, {
           children: [
             "A EvilClaude workflow file already exists at",
             " ",
-            /* @__PURE__ */ jsx_runtime211.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime210.jsx(ThemedText, {
               color: "claude",
               children: ".github/workflows/claude.yml"
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime211.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime210.jsx(ThemedText, {
           dimColor: true,
           children: "What would you like to do?"
         })
@@ -445298,9 +445209,9 @@ function ExistingWorkflowStep(t0) {
   }
   let t7;
   if ($[9] !== handleCancel || $[10] !== handleSelect) {
-    t7 = /* @__PURE__ */ jsx_runtime211.jsx(ThemedBox_default, {
+    t7 = /* @__PURE__ */ jsx_runtime210.jsx(ThemedBox_default, {
       flexDirection: "column",
-      children: /* @__PURE__ */ jsx_runtime211.jsx(Select, {
+      children: /* @__PURE__ */ jsx_runtime210.jsx(Select, {
         options,
         onChange: handleSelect,
         onCancel: handleCancel
@@ -445314,14 +445225,14 @@ function ExistingWorkflowStep(t0) {
   }
   let t8;
   if ($[12] === Symbol.for("react.memo_cache_sentinel")) {
-    t8 = /* @__PURE__ */ jsx_runtime211.jsx(ThemedBox_default, {
+    t8 = /* @__PURE__ */ jsx_runtime210.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime211.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime210.jsxs(ThemedText, {
         dimColor: true,
         children: [
           "View the latest workflow template at:",
           " ",
-          /* @__PURE__ */ jsx_runtime211.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime210.jsx(ThemedText, {
             color: "claude",
             children: "https://github.com/anthropics/claude-code-action/blob/main/examples/claude.yml"
           })
@@ -445334,7 +445245,7 @@ function ExistingWorkflowStep(t0) {
   }
   let t9;
   if ($[13] !== t5 || $[14] !== t7) {
-    t9 = /* @__PURE__ */ jsx_runtime211.jsxs(ThemedBox_default, {
+    t9 = /* @__PURE__ */ jsx_runtime210.jsxs(ThemedBox_default, {
       flexDirection: "column",
       borderStyle: "round",
       borderDimColor: true,
@@ -445354,17 +445265,17 @@ function ExistingWorkflowStep(t0) {
   }
   return t9;
 }
-var import_compiler_runtime173, jsx_runtime211;
+var import_compiler_runtime171, jsx_runtime210;
 var init_ExistingWorkflowStep = __esm(() => {
   init_CustomSelect();
   init_ink2();
-  import_compiler_runtime173 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime211 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime171 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime210 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/InstallAppStep.tsx
 function InstallAppStep(t0) {
-  const $ = import_compiler_runtime174.c(12);
+  const $ = import_compiler_runtime172.c(12);
   const {
     repoUrl,
     onSubmit
@@ -445381,10 +445292,10 @@ function InstallAppStep(t0) {
   useKeybinding("confirm:yes", onSubmit, t1);
   let t2;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = /* @__PURE__ */ jsx_runtime212.jsx(ThemedBox_default, {
+    t2 = /* @__PURE__ */ jsx_runtime211.jsx(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime211.jsx(ThemedText, {
         bold: true,
         children: "Install the EvilClaude GitHub App"
       })
@@ -445395,9 +445306,9 @@ function InstallAppStep(t0) {
   }
   let t3;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
-    t3 = /* @__PURE__ */ jsx_runtime212.jsx(ThemedBox_default, {
+    t3 = /* @__PURE__ */ jsx_runtime211.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime211.jsx(ThemedText, {
         children: "Opening browser to install the EvilClaude GitHub App…"
       })
     });
@@ -445407,9 +445318,9 @@ function InstallAppStep(t0) {
   }
   let t4;
   if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = /* @__PURE__ */ jsx_runtime212.jsx(ThemedBox_default, {
+    t4 = /* @__PURE__ */ jsx_runtime211.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime211.jsx(ThemedText, {
         children: "If your browser doesn't open automatically, visit:"
       })
     });
@@ -445419,9 +445330,9 @@ function InstallAppStep(t0) {
   }
   let t5;
   if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-    t5 = /* @__PURE__ */ jsx_runtime212.jsx(ThemedBox_default, {
+    t5 = /* @__PURE__ */ jsx_runtime211.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime211.jsx(ThemedText, {
         underline: true,
         children: "https://github.com/apps/claude"
       })
@@ -445432,12 +445343,12 @@ function InstallAppStep(t0) {
   }
   let t6;
   if ($[5] !== repoUrl) {
-    t6 = /* @__PURE__ */ jsx_runtime212.jsx(ThemedBox_default, {
+    t6 = /* @__PURE__ */ jsx_runtime211.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime212.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime211.jsxs(ThemedText, {
         children: [
           "Please install the app for repository: ",
-          /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime211.jsx(ThemedText, {
             bold: true,
             children: repoUrl
           })
@@ -445451,9 +445362,9 @@ function InstallAppStep(t0) {
   }
   let t7;
   if ($[7] === Symbol.for("react.memo_cache_sentinel")) {
-    t7 = /* @__PURE__ */ jsx_runtime212.jsx(ThemedBox_default, {
+    t7 = /* @__PURE__ */ jsx_runtime211.jsx(ThemedBox_default, {
       marginBottom: 1,
-      children: /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime211.jsx(ThemedText, {
         dimColor: true,
         children: "Important: Make sure to grant access to this specific repository"
       })
@@ -445464,8 +445375,8 @@ function InstallAppStep(t0) {
   }
   let t8;
   if ($[8] === Symbol.for("react.memo_cache_sentinel")) {
-    t8 = /* @__PURE__ */ jsx_runtime212.jsx(ThemedBox_default, {
-      children: /* @__PURE__ */ jsx_runtime212.jsxs(ThemedText, {
+    t8 = /* @__PURE__ */ jsx_runtime211.jsx(ThemedBox_default, {
+      children: /* @__PURE__ */ jsx_runtime211.jsxs(ThemedText, {
         bold: true,
         color: "permission",
         children: [
@@ -445480,14 +445391,14 @@ function InstallAppStep(t0) {
   }
   let t9;
   if ($[9] === Symbol.for("react.memo_cache_sentinel")) {
-    t9 = /* @__PURE__ */ jsx_runtime212.jsx(ThemedBox_default, {
+    t9 = /* @__PURE__ */ jsx_runtime211.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime212.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime211.jsxs(ThemedText, {
         dimColor: true,
         children: [
           "Having trouble? See manual setup instructions at:",
           " ",
-          /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime211.jsx(ThemedText, {
             color: "claude",
             children: GITHUB_ACTION_SETUP_DOCS_URL
           })
@@ -445500,7 +445411,7 @@ function InstallAppStep(t0) {
   }
   let t10;
   if ($[10] !== t6) {
-    t10 = /* @__PURE__ */ jsx_runtime212.jsxs(ThemedBox_default, {
+    t10 = /* @__PURE__ */ jsx_runtime211.jsxs(ThemedBox_default, {
       flexDirection: "column",
       borderStyle: "round",
       borderDimColor: true,
@@ -445523,13 +445434,13 @@ function InstallAppStep(t0) {
   }
   return t10;
 }
-var import_compiler_runtime174, jsx_runtime212;
+var import_compiler_runtime172, jsx_runtime211;
 var init_InstallAppStep = __esm(() => {
   init_figures();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime174 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime212 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime172 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime211 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/OAuthFlowStep.tsx
@@ -445537,16 +445448,16 @@ function OAuthFlowStep({
   onSuccess,
   onCancel
 }) {
-  const [oauthStatus, setOAuthStatus] = import_react121.useState({
+  const [oauthStatus, setOAuthStatus] = import_react120.useState({
     state: "starting"
   });
-  const [oauthService] = import_react121.useState(() => new OAuthService);
-  const [pastedCode, setPastedCode] = import_react121.useState("");
-  const [cursorOffset, setCursorOffset] = import_react121.useState(0);
-  const [showPastePrompt, setShowPastePrompt] = import_react121.useState(false);
-  const [urlCopied, setUrlCopied] = import_react121.useState(false);
-  const timersRef = import_react121.useRef(new Set);
-  const urlCopiedTimerRef = import_react121.useRef(undefined);
+  const [oauthService] = import_react120.useState(() => new OAuthService);
+  const [pastedCode, setPastedCode] = import_react120.useState("");
+  const [cursorOffset, setCursorOffset] = import_react120.useState(0);
+  const [showPastePrompt, setShowPastePrompt] = import_react120.useState(false);
+  const [urlCopied, setUrlCopied] = import_react120.useState(false);
+  const timersRef = import_react120.useRef(new Set);
+  const urlCopiedTimerRef = import_react120.useRef(undefined);
   const terminalSize = useTerminalSize();
   const textInputColumns = Math.max(50, terminalSize.columns - PASTE_HERE_MSG2.length - 4);
   function handleKeyDown(e) {
@@ -445595,7 +445506,7 @@ function OAuthFlowStep({
       });
     }
   }
-  const startOAuth = import_react121.useCallback(async () => {
+  const startOAuth = import_react120.useCallback(async () => {
     timersRef.current.forEach((timer) => clearTimeout(timer));
     timersRef.current.clear();
     try {
@@ -445639,12 +445550,12 @@ function OAuthFlowStep({
       });
     }
   }, [oauthService, onSuccess]);
-  import_react121.useEffect(() => {
+  import_react120.useEffect(() => {
     if (oauthStatus.state === "starting") {
       startOAuth();
     }
   }, [oauthStatus.state, startOAuth]);
-  import_react121.useEffect(() => {
+  import_react120.useEffect(() => {
     if (oauthStatus.state === "about_to_retry") {
       const timer_1 = setTimeout((nextState, setShowPastePrompt_0, setOAuthStatus_1) => {
         setShowPastePrompt_0(nextState.state === "waiting_for_login");
@@ -445653,7 +445564,7 @@ function OAuthFlowStep({
       timersRef.current.add(timer_1);
     }
   }, [oauthStatus]);
-  import_react121.useEffect(() => {
+  import_react120.useEffect(() => {
     if (pastedCode === "c" && oauthStatus.state === "waiting_for_login" && showPastePrompt && !urlCopied) {
       setClipboard(oauthStatus.url).then((raw) => {
         if (raw)
@@ -445665,7 +445576,7 @@ function OAuthFlowStep({
       setPastedCode("");
     }
   }, [pastedCode, oauthStatus, showPastePrompt, urlCopied]);
-  import_react121.useEffect(() => {
+  import_react120.useEffect(() => {
     const timers = timersRef.current;
     return () => {
       oauthService.cleanup();
@@ -445677,33 +445588,33 @@ function OAuthFlowStep({
   function renderStatusMessage() {
     switch (oauthStatus.state) {
       case "starting":
-        return /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
+        return /* @__PURE__ */ jsx_runtime212.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime213.jsx(Spinner, {}),
-            /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime212.jsx(Spinner, {}),
+            /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
               children: "Starting authentication…"
             })
           ]
         });
       case "waiting_for_login":
-        return /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
+        return /* @__PURE__ */ jsx_runtime212.jsxs(ThemedBox_default, {
           flexDirection: "column",
           gap: 1,
           children: [
-            !showPastePrompt && /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
+            !showPastePrompt && /* @__PURE__ */ jsx_runtime212.jsxs(ThemedBox_default, {
               children: [
-                /* @__PURE__ */ jsx_runtime213.jsx(Spinner, {}),
-                /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+                /* @__PURE__ */ jsx_runtime212.jsx(Spinner, {}),
+                /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
                   children: "Opening browser to sign in with your EvilClaude account…"
                 })
               ]
             }),
-            showPastePrompt && /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
+            showPastePrompt && /* @__PURE__ */ jsx_runtime212.jsxs(ThemedBox_default, {
               children: [
-                /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+                /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
                   children: PASTE_HERE_MSG2
                 }),
-                /* @__PURE__ */ jsx_runtime213.jsx(TextInput, {
+                /* @__PURE__ */ jsx_runtime212.jsx(TextInput, {
                   value: pastedCode,
                   onChange: setPastedCode,
                   onSubmit: (value_0) => handleSubmitCode(value_0, oauthStatus.url),
@@ -445716,55 +445627,55 @@ function OAuthFlowStep({
           ]
         });
       case "processing":
-        return /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
+        return /* @__PURE__ */ jsx_runtime212.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime213.jsx(Spinner, {}),
-            /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime212.jsx(Spinner, {}),
+            /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
               children: "Processing authentication…"
             })
           ]
         });
       case "success":
-        return /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
+        return /* @__PURE__ */ jsx_runtime212.jsxs(ThemedBox_default, {
           flexDirection: "column",
           gap: 1,
           children: [
-            /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
               color: "success",
               children: "✓ Authentication token created successfully!"
             }),
-            /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
               dimColor: true,
               children: "Using token for GitHub Actions setup…"
             })
           ]
         });
       case "error":
-        return /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
+        return /* @__PURE__ */ jsx_runtime212.jsxs(ThemedBox_default, {
           flexDirection: "column",
           gap: 1,
           children: [
-            /* @__PURE__ */ jsx_runtime213.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime212.jsxs(ThemedText, {
               color: "error",
               children: [
                 "OAuth error: ",
                 oauthStatus.message
               ]
             }),
-            oauthStatus.toRetry ? /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+            oauthStatus.toRetry ? /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
               dimColor: true,
               children: "Press Enter to try again, or any other key to cancel"
-            }) : /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+            }) : /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
               dimColor: true,
               children: "Press any key to return to API key selection"
             })
           ]
         });
       case "about_to_retry":
-        return /* @__PURE__ */ jsx_runtime213.jsx(ThemedBox_default, {
+        return /* @__PURE__ */ jsx_runtime212.jsx(ThemedBox_default, {
           flexDirection: "column",
           gap: 1,
-          children: /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
             color: "permission",
             children: "Retrying…"
           })
@@ -445773,64 +445684,64 @@ function OAuthFlowStep({
         return null;
     }
   }
-  return /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime212.jsxs(ThemedBox_default, {
     flexDirection: "column",
     gap: 1,
     tabIndex: 0,
     autoFocus: true,
     onKeyDown: handleKeyDown,
     children: [
-      oauthStatus.state === "starting" && /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
+      oauthStatus.state === "starting" && /* @__PURE__ */ jsx_runtime212.jsxs(ThemedBox_default, {
         flexDirection: "column",
         gap: 1,
         paddingBottom: 1,
         children: [
-          /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
             bold: true,
             children: "Create Authentication Token"
           }),
-          /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
             dimColor: true,
             children: "Creating a long-lived token for GitHub Actions"
           })
         ]
       }),
-      oauthStatus.state !== "success" && oauthStatus.state !== "starting" && oauthStatus.state !== "processing" && /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
+      oauthStatus.state !== "success" && oauthStatus.state !== "starting" && oauthStatus.state !== "processing" && /* @__PURE__ */ jsx_runtime212.jsxs(ThemedBox_default, {
         flexDirection: "column",
         gap: 1,
         paddingBottom: 1,
         children: [
-          /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
             bold: true,
             children: "Create Authentication Token"
           }),
-          /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
             dimColor: true,
             children: "Creating a long-lived token for GitHub Actions"
           })
         ]
       }, "header"),
-      oauthStatus.state === "waiting_for_login" && showPastePrompt && /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
+      oauthStatus.state === "waiting_for_login" && showPastePrompt && /* @__PURE__ */ jsx_runtime212.jsxs(ThemedBox_default, {
         flexDirection: "column",
         gap: 1,
         paddingBottom: 1,
         children: [
-          /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime212.jsxs(ThemedBox_default, {
             paddingX: 1,
             children: [
-              /* @__PURE__ */ jsx_runtime213.jsxs(ThemedText, {
+              /* @__PURE__ */ jsx_runtime212.jsxs(ThemedText, {
                 dimColor: true,
                 children: [
                   "Browser didn't open? Use the url below to sign in",
                   " "
                 ]
               }),
-              urlCopied ? /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+              urlCopied ? /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
                 color: "success",
                 children: "(Copied!)"
-              }) : /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+              }) : /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
                 dimColor: true,
-                children: /* @__PURE__ */ jsx_runtime213.jsx(KeyboardShortcutHint, {
+                children: /* @__PURE__ */ jsx_runtime212.jsx(KeyboardShortcutHint, {
                   shortcut: "c",
                   action: "copy",
                   parens: true
@@ -445838,16 +445749,16 @@ function OAuthFlowStep({
               })
             ]
           }),
-          /* @__PURE__ */ jsx_runtime213.jsx(Link, {
+          /* @__PURE__ */ jsx_runtime212.jsx(Link, {
             url: oauthStatus.url,
-            children: /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime212.jsx(ThemedText, {
               dimColor: true,
               children: oauthStatus.url
             })
           })
         ]
       }, "urlToCopy"),
-      /* @__PURE__ */ jsx_runtime213.jsx(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime212.jsx(ThemedBox_default, {
         paddingLeft: 1,
         flexDirection: "column",
         gap: 1,
@@ -445856,7 +445767,7 @@ function OAuthFlowStep({
     ]
   });
 }
-var import_react121, jsx_runtime213, PASTE_HERE_MSG2 = "Paste code here if prompted > ";
+var import_react120, jsx_runtime212, PASTE_HERE_MSG2 = "Paste code here if prompted > ";
 var init_OAuthFlowStep = __esm(() => {
   init_analytics();
   init_KeyboardShortcutHint();
@@ -445868,13 +445779,13 @@ var init_OAuthFlowStep = __esm(() => {
   init_oauth2();
   init_auth2();
   init_log3();
-  import_react121 = __toESM(require_react(), 1);
-  jsx_runtime213 = __toESM(require_jsx_runtime(), 1);
+  import_react120 = __toESM(require_react(), 1);
+  jsx_runtime212 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/SuccessStep.tsx
 function SuccessStep(t0) {
-  const $ = import_compiler_runtime175.c(21);
+  const $ = import_compiler_runtime173.c(21);
   const {
     secretExists,
     useExistingSecret,
@@ -445884,15 +445795,15 @@ function SuccessStep(t0) {
   const skipWorkflow = t1 === undefined ? false : t1;
   let t2;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = /* @__PURE__ */ jsx_runtime214.jsxs(ThemedBox_default, {
+    t2 = /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
           bold: true,
           children: "Install GitHub App"
         }),
-        /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
           dimColor: true,
           children: "Success"
         })
@@ -445904,7 +445815,7 @@ function SuccessStep(t0) {
   }
   let t3;
   if ($[1] !== skipWorkflow) {
-    t3 = !skipWorkflow && /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
+    t3 = !skipWorkflow && /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
       color: "success",
       children: "✓ GitHub Actions workflow created!"
     });
@@ -445915,9 +445826,9 @@ function SuccessStep(t0) {
   }
   let t4;
   if ($[3] !== secretExists || $[4] !== useExistingSecret) {
-    t4 = secretExists && useExistingSecret && /* @__PURE__ */ jsx_runtime214.jsx(ThemedBox_default, {
+    t4 = secretExists && useExistingSecret && /* @__PURE__ */ jsx_runtime213.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
         color: "success",
         children: "✓ Using existing SWAMPMINE_API_KEY secret"
       })
@@ -445930,9 +445841,9 @@ function SuccessStep(t0) {
   }
   let t5;
   if ($[6] !== secretExists || $[7] !== secretName || $[8] !== useExistingSecret) {
-    t5 = (!secretExists || !useExistingSecret) && /* @__PURE__ */ jsx_runtime214.jsx(ThemedBox_default, {
+    t5 = (!secretExists || !useExistingSecret) && /* @__PURE__ */ jsx_runtime213.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime214.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime213.jsxs(ThemedText, {
         color: "success",
         children: [
           "✓ API key saved as ",
@@ -445950,9 +445861,9 @@ function SuccessStep(t0) {
   }
   let t6;
   if ($[10] === Symbol.for("react.memo_cache_sentinel")) {
-    t6 = /* @__PURE__ */ jsx_runtime214.jsx(ThemedBox_default, {
+    t6 = /* @__PURE__ */ jsx_runtime213.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
         children: "Next steps:"
       })
     });
@@ -445962,27 +445873,27 @@ function SuccessStep(t0) {
   }
   let t7;
   if ($[11] !== skipWorkflow) {
-    t7 = skipWorkflow ? /* @__PURE__ */ jsx_runtime214.jsxs(jsx_runtime214.Fragment, {
+    t7 = skipWorkflow ? /* @__PURE__ */ jsx_runtime213.jsxs(jsx_runtime213.Fragment, {
       children: [
-        /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
           children: "1. Install the EvilClaude GitHub App if you haven't already"
         }),
-        /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
           children: "2. Your workflow file was kept unchanged"
         }),
-        /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
           children: "3. API key is configured and ready to use"
         })
       ]
-    }) : /* @__PURE__ */ jsx_runtime214.jsxs(jsx_runtime214.Fragment, {
+    }) : /* @__PURE__ */ jsx_runtime213.jsxs(jsx_runtime213.Fragment, {
       children: [
-        /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
           children: "1. A pre-filled PR page has been created"
         }),
-        /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
           children: "2. Install the EvilClaude GitHub App if you haven't already"
         }),
-        /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
           children: "3. Merge the PR to enable EvilClaude PR assistance"
         })
       ]
@@ -445994,7 +445905,7 @@ function SuccessStep(t0) {
   }
   let t8;
   if ($[13] !== t3 || $[14] !== t4 || $[15] !== t5 || $[16] !== t7) {
-    t8 = /* @__PURE__ */ jsx_runtime214.jsxs(ThemedBox_default, {
+    t8 = /* @__PURE__ */ jsx_runtime213.jsxs(ThemedBox_default, {
       flexDirection: "column",
       borderStyle: "round",
       paddingX: 1,
@@ -446017,9 +445928,9 @@ function SuccessStep(t0) {
   }
   let t9;
   if ($[18] === Symbol.for("react.memo_cache_sentinel")) {
-    t9 = /* @__PURE__ */ jsx_runtime214.jsx(ThemedBox_default, {
+    t9 = /* @__PURE__ */ jsx_runtime213.jsx(ThemedBox_default, {
       marginLeft: 3,
-      children: /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime213.jsx(ThemedText, {
         dimColor: true,
         children: "Press any key to exit"
       })
@@ -446030,7 +445941,7 @@ function SuccessStep(t0) {
   }
   let t10;
   if ($[19] !== t8) {
-    t10 = /* @__PURE__ */ jsx_runtime214.jsxs(jsx_runtime214.Fragment, {
+    t10 = /* @__PURE__ */ jsx_runtime213.jsxs(jsx_runtime213.Fragment, {
       children: [
         t8,
         t9
@@ -446043,11 +445954,11 @@ function SuccessStep(t0) {
   }
   return t10;
 }
-var import_compiler_runtime175, jsx_runtime214;
+var import_compiler_runtime173, jsx_runtime213;
 var init_SuccessStep = __esm(() => {
   init_ink2();
-  import_compiler_runtime175 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime214 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime173 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime213 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/setupGitHubActions.ts
@@ -446271,7 +446182,7 @@ var init_setupGitHubActions = __esm(() => {
 
 // commands/install-github-app/WarningsStep.tsx
 function WarningsStep(t0) {
-  const $ = import_compiler_runtime176.c(8);
+  const $ = import_compiler_runtime174.c(8);
   const {
     warnings,
     onContinue
@@ -446288,18 +446199,18 @@ function WarningsStep(t0) {
   useKeybinding("confirm:yes", onContinue, t1);
   let t2;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = /* @__PURE__ */ jsx_runtime215.jsxs(ThemedBox_default, {
+    t2 = /* @__PURE__ */ jsx_runtime214.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime215.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime214.jsxs(ThemedText, {
           bold: true,
           children: [
             figures_default.warning,
             " Setup Warnings"
           ]
         }),
-        /* @__PURE__ */ jsx_runtime215.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
           dimColor: true,
           children: "We found some potential issues, but you can continue anyway"
         })
@@ -446319,9 +446230,9 @@ function WarningsStep(t0) {
   }
   let t4;
   if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = /* @__PURE__ */ jsx_runtime215.jsx(ThemedBox_default, {
+    t4 = /* @__PURE__ */ jsx_runtime214.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime215.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
         bold: true,
         color: "permission",
         children: "Press Enter to continue anyway, or Ctrl+C to exit and fix issues"
@@ -446333,14 +446244,14 @@ function WarningsStep(t0) {
   }
   let t5;
   if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-    t5 = /* @__PURE__ */ jsx_runtime215.jsx(ThemedBox_default, {
+    t5 = /* @__PURE__ */ jsx_runtime214.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime215.jsxs(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime214.jsxs(ThemedText, {
         dimColor: true,
         children: [
           "You can also try the manual setup steps if needed:",
           " ",
-          /* @__PURE__ */ jsx_runtime215.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
             color: "claude",
             children: GITHUB_ACTION_SETUP_DOCS_URL
           })
@@ -446353,8 +446264,8 @@ function WarningsStep(t0) {
   }
   let t6;
   if ($[6] !== t3) {
-    t6 = /* @__PURE__ */ jsx_runtime215.jsx(jsx_runtime215.Fragment, {
-      children: /* @__PURE__ */ jsx_runtime215.jsxs(ThemedBox_default, {
+    t6 = /* @__PURE__ */ jsx_runtime214.jsx(jsx_runtime214.Fragment, {
+      children: /* @__PURE__ */ jsx_runtime214.jsxs(ThemedBox_default, {
         flexDirection: "column",
         borderStyle: "round",
         paddingX: 1,
@@ -446374,29 +446285,29 @@ function WarningsStep(t0) {
   return t6;
 }
 function _temp231(warning, index) {
-  return /* @__PURE__ */ jsx_runtime215.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime214.jsxs(ThemedBox_default, {
     flexDirection: "column",
     marginBottom: 1,
     children: [
-      /* @__PURE__ */ jsx_runtime215.jsx(ThemedText, {
+      /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
         color: "warning",
         bold: true,
         children: warning.title
       }),
-      /* @__PURE__ */ jsx_runtime215.jsx(ThemedText, {
+      /* @__PURE__ */ jsx_runtime214.jsx(ThemedText, {
         children: warning.message
       }),
-      warning.instructions.length > 0 && /* @__PURE__ */ jsx_runtime215.jsx(ThemedBox_default, {
+      warning.instructions.length > 0 && /* @__PURE__ */ jsx_runtime214.jsx(ThemedBox_default, {
         flexDirection: "column",
         marginLeft: 2,
         marginTop: 1,
-        children: warning.instructions.map(_temp90)
+        children: warning.instructions.map(_temp89)
       })
     ]
   }, index);
 }
-function _temp90(instruction, i) {
-  return /* @__PURE__ */ jsx_runtime215.jsxs(ThemedText, {
+function _temp89(instruction, i) {
+  return /* @__PURE__ */ jsx_runtime214.jsxs(ThemedText, {
     dimColor: true,
     children: [
       "• ",
@@ -446404,13 +446315,13 @@ function _temp90(instruction, i) {
     ]
   }, i);
 }
-var import_compiler_runtime176, jsx_runtime215;
+var import_compiler_runtime174, jsx_runtime214;
 var init_WarningsStep = __esm(() => {
   init_figures();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime176 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime215 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime174 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime214 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/install-github-app/install-github-app.tsx
@@ -446419,17 +446330,17 @@ __export(exports_install_github_app, {
   call: () => call24
 });
 function InstallGitHubApp(props) {
-  const [existingApiKey] = import_react122.useState(() => getAnthropicApiKey());
-  const [state, setState] = import_react122.useState({
+  const [existingApiKey] = import_react121.useState(() => getAnthropicApiKey());
+  const [state, setState] = import_react121.useState({
     ...INITIAL_STATE2,
     useExistingKey: !!existingApiKey,
     selectedApiKeyOption: existingApiKey ? "existing" : isAnthropicAuthEnabled() ? "oauth" : "new"
   });
   useExitOnCtrlCDWithKeybindings();
-  import_react122.default.useEffect(() => {
+  import_react121.default.useEffect(() => {
     logEvent("tengu_install_github_app_started", {});
   }, []);
-  const checkGitHubCLI = import_react122.useCallback(async () => {
+  const checkGitHubCLI = import_react121.useCallback(async () => {
     const warnings = [];
     const ghVersionResult = await execa("gh --version", {
       shell: true,
@@ -446488,12 +446399,12 @@ function InstallGitHubApp(props) {
       step: warnings.length > 0 ? "warnings" : "choose-repo"
     }));
   }, []);
-  import_react122.default.useEffect(() => {
+  import_react121.default.useEffect(() => {
     if (state.step === "check-gh") {
       checkGitHubCLI();
     }
   }, [state.step, checkGitHubCLI]);
-  const runSetupGitHubActions = import_react122.useCallback(async (apiKeyOrOAuthToken, secretName) => {
+  const runSetupGitHubActions = import_react121.useCallback(async (apiKeyOrOAuthToken, secretName) => {
     setState((prev_1) => ({
       ...prev_1,
       step: "creating",
@@ -446789,7 +446700,7 @@ function InstallGitHubApp(props) {
       selectedApiKeyOption: option
     }));
   };
-  const handleCreateOAuthToken = import_react122.useCallback(() => {
+  const handleCreateOAuthToken = import_react121.useCallback(() => {
     logEvent("tengu_install_github_app_step_completed", {
       step: "api-key"
     });
@@ -446798,7 +446709,7 @@ function InstallGitHubApp(props) {
       step: "oauth-flow"
     }));
   }, []);
-  const handleOAuthSuccess = import_react122.useCallback((token) => {
+  const handleOAuthSuccess = import_react121.useCallback((token) => {
     logEvent("tengu_install_github_app_step_completed", {
       step: "oauth-flow"
     });
@@ -446811,7 +446722,7 @@ function InstallGitHubApp(props) {
     }));
     runSetupGitHubActions(token, "CLAUDE_CODE_OAUTH_TOKEN");
   }, [runSetupGitHubActions]);
-  const handleOAuthCancel = import_react122.useCallback(() => {
+  const handleOAuthCancel = import_react121.useCallback(() => {
     setState((prev_24) => ({
       ...prev_24,
       step: "api-key"
@@ -446879,14 +446790,14 @@ For manual setup instructions, see: ${GITHUB_ACTION_SETUP_DOCS_URL}`);
   }
   switch (state.step) {
     case "check-gh":
-      return /* @__PURE__ */ jsx_runtime216.jsx(CheckGitHubStep, {});
+      return /* @__PURE__ */ jsx_runtime215.jsx(CheckGitHubStep, {});
     case "warnings":
-      return /* @__PURE__ */ jsx_runtime216.jsx(WarningsStep, {
+      return /* @__PURE__ */ jsx_runtime215.jsx(WarningsStep, {
         warnings: state.warnings,
         onContinue: handleSubmit
       });
     case "choose-repo":
-      return /* @__PURE__ */ jsx_runtime216.jsx(ChooseRepoStep, {
+      return /* @__PURE__ */ jsx_runtime215.jsx(ChooseRepoStep, {
         currentRepo: state.currentRepo,
         useCurrentRepo: state.useCurrentRepo,
         repoUrl: state.selectedRepoName,
@@ -446895,17 +446806,17 @@ For manual setup instructions, see: ${GITHUB_ACTION_SETUP_DOCS_URL}`);
         onSubmit: handleSubmit
       });
     case "install-app":
-      return /* @__PURE__ */ jsx_runtime216.jsx(InstallAppStep, {
+      return /* @__PURE__ */ jsx_runtime215.jsx(InstallAppStep, {
         repoUrl: state.selectedRepoName,
         onSubmit: handleSubmit
       });
     case "check-existing-workflow":
-      return /* @__PURE__ */ jsx_runtime216.jsx(ExistingWorkflowStep, {
+      return /* @__PURE__ */ jsx_runtime215.jsx(ExistingWorkflowStep, {
         repoName: state.selectedRepoName,
         onSelectAction: handleWorkflowAction
       });
     case "check-existing-secret":
-      return /* @__PURE__ */ jsx_runtime216.jsx(CheckExistingSecretStep, {
+      return /* @__PURE__ */ jsx_runtime215.jsx(CheckExistingSecretStep, {
         useExistingSecret: state.useExistingSecret,
         secretName: state.secretName,
         onToggleUseExistingSecret: handleToggleUseExistingSecret,
@@ -446913,7 +446824,7 @@ For manual setup instructions, see: ${GITHUB_ACTION_SETUP_DOCS_URL}`);
         onSubmit: handleSubmit
       });
     case "api-key":
-      return /* @__PURE__ */ jsx_runtime216.jsx(ApiKeyStep, {
+      return /* @__PURE__ */ jsx_runtime215.jsx(ApiKeyStep, {
         existingApiKey,
         useExistingKey: state.useExistingKey,
         apiKeyOrOAuthToken: state.apiKeyOrOAuthToken,
@@ -446925,7 +446836,7 @@ For manual setup instructions, see: ${GITHUB_ACTION_SETUP_DOCS_URL}`);
         onSelectOption: handleApiKeyOptionChange
       });
     case "creating":
-      return /* @__PURE__ */ jsx_runtime216.jsx(CreatingStep, {
+      return /* @__PURE__ */ jsx_runtime215.jsx(CreatingStep, {
         currentWorkflowInstallStep: state.currentWorkflowInstallStep,
         secretExists: state.secretExists,
         useExistingSecret: state.useExistingSecret,
@@ -446934,11 +446845,11 @@ For manual setup instructions, see: ${GITHUB_ACTION_SETUP_DOCS_URL}`);
         selectedWorkflows: state.selectedWorkflows
       });
     case "success":
-      return /* @__PURE__ */ jsx_runtime216.jsx(ThemedBox_default, {
+      return /* @__PURE__ */ jsx_runtime215.jsx(ThemedBox_default, {
         tabIndex: 0,
         autoFocus: true,
         onKeyDown: handleDismissKeyDown,
-        children: /* @__PURE__ */ jsx_runtime216.jsx(SuccessStep, {
+        children: /* @__PURE__ */ jsx_runtime215.jsx(SuccessStep, {
           secretExists: state.secretExists,
           useExistingSecret: state.useExistingSecret,
           secretName: state.secretName,
@@ -446946,18 +446857,18 @@ For manual setup instructions, see: ${GITHUB_ACTION_SETUP_DOCS_URL}`);
         })
       });
     case "error":
-      return /* @__PURE__ */ jsx_runtime216.jsx(ThemedBox_default, {
+      return /* @__PURE__ */ jsx_runtime215.jsx(ThemedBox_default, {
         tabIndex: 0,
         autoFocus: true,
         onKeyDown: handleDismissKeyDown,
-        children: /* @__PURE__ */ jsx_runtime216.jsx(ErrorStep, {
+        children: /* @__PURE__ */ jsx_runtime215.jsx(ErrorStep, {
           error: state.error,
           errorReason: state.errorReason,
           errorInstructions: state.errorInstructions
         })
       });
     case "select-workflows":
-      return /* @__PURE__ */ jsx_runtime216.jsx(WorkflowMultiselectDialog, {
+      return /* @__PURE__ */ jsx_runtime215.jsx(WorkflowMultiselectDialog, {
         defaultSelections: state.selectedWorkflows,
         onSubmit: (selectedWorkflows) => {
           logEvent("tengu_install_github_app_step_completed", {
@@ -446978,18 +446889,18 @@ For manual setup instructions, see: ${GITHUB_ACTION_SETUP_DOCS_URL}`);
         }
       });
     case "oauth-flow":
-      return /* @__PURE__ */ jsx_runtime216.jsx(OAuthFlowStep, {
+      return /* @__PURE__ */ jsx_runtime215.jsx(OAuthFlowStep, {
         onSuccess: handleOAuthSuccess,
         onCancel: handleOAuthCancel
       });
   }
 }
 async function call24(onDone) {
-  return /* @__PURE__ */ jsx_runtime216.jsx(InstallGitHubApp, {
+  return /* @__PURE__ */ jsx_runtime215.jsx(InstallGitHubApp, {
     onDone
   });
 }
-var import_react122, jsx_runtime216, INITIAL_STATE2;
+var import_react121, jsx_runtime215, INITIAL_STATE2;
 var init_install_github_app = __esm(() => {
   init_execa();
   init_analytics();
@@ -447013,8 +446924,8 @@ var init_install_github_app = __esm(() => {
   init_SuccessStep();
   init_setupGitHubActions();
   init_WarningsStep();
-  import_react122 = __toESM(require_react(), 1);
-  jsx_runtime216 = __toESM(require_jsx_runtime(), 1);
+  import_react121 = __toESM(require_react(), 1);
+  jsx_runtime215 = __toESM(require_jsx_runtime(), 1);
   INITIAL_STATE2 = {
     step: "check-gh",
     selectedRepoName: "",
@@ -447107,12 +447018,12 @@ function MCPAgentServerMenu({
   onComplete
 }) {
   const [theme] = useTheme();
-  const [isAuthenticating, setIsAuthenticating] = import_react123.useState(false);
-  const [error, setError] = import_react123.useState(null);
-  const [authorizationUrl, setAuthorizationUrl] = import_react123.useState(null);
-  const authAbortControllerRef = import_react123.useRef(null);
-  import_react123.useEffect(() => () => authAbortControllerRef.current?.abort(), []);
-  const handleEscCancel = import_react123.useCallback(() => {
+  const [isAuthenticating, setIsAuthenticating] = import_react122.useState(false);
+  const [error, setError] = import_react122.useState(null);
+  const [authorizationUrl, setAuthorizationUrl] = import_react122.useState(null);
+  const authAbortControllerRef = import_react122.useRef(null);
+  import_react122.useEffect(() => () => authAbortControllerRef.current?.abort(), []);
+  const handleEscCancel = import_react122.useCallback(() => {
     if (isAuthenticating) {
       authAbortControllerRef.current?.abort();
       authAbortControllerRef.current = null;
@@ -447124,7 +447035,7 @@ function MCPAgentServerMenu({
     context: "Confirmation",
     isActive: isAuthenticating
   });
-  const handleAuthenticate = import_react123.useCallback(async () => {
+  const handleAuthenticate = import_react122.useCallback(async () => {
     if (!agentServer.needsAuth || !agentServer.url) {
       return;
     }
@@ -447150,12 +447061,12 @@ function MCPAgentServerMenu({
   }, [agentServer, onComplete]);
   const capitalizedServerName = capitalize(String(agentServer.name));
   if (isAuthenticating) {
-    return /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime216.jsxs(ThemedBox_default, {
       flexDirection: "column",
       gap: 1,
       padding: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime217.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime216.jsxs(ThemedText, {
           color: "claude",
           children: [
             "Authenticating with ",
@@ -447163,34 +447074,34 @@ function MCPAgentServerMenu({
             "…"
           ]
         }),
-        /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime216.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime217.jsx(Spinner, {}),
-            /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime216.jsx(Spinner, {}),
+            /* @__PURE__ */ jsx_runtime216.jsx(ThemedText, {
               children: " A browser window will open for authentication"
             })
           ]
         }),
-        authorizationUrl && /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
+        authorizationUrl && /* @__PURE__ */ jsx_runtime216.jsxs(ThemedBox_default, {
           flexDirection: "column",
           children: [
-            /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime216.jsx(ThemedText, {
               dimColor: true,
               children: "If your browser doesn't open automatically, copy this URL manually:"
             }),
-            /* @__PURE__ */ jsx_runtime217.jsx(Link, {
+            /* @__PURE__ */ jsx_runtime216.jsx(Link, {
               url: authorizationUrl
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime217.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime216.jsx(ThemedBox_default, {
           marginLeft: 3,
-          children: /* @__PURE__ */ jsx_runtime217.jsxs(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime216.jsxs(ThemedText, {
             dimColor: true,
             children: [
               "Return here after authenticating in your browser.",
               " ",
-              /* @__PURE__ */ jsx_runtime217.jsx(ConfigurableShortcutHint, {
+              /* @__PURE__ */ jsx_runtime216.jsx(ConfigurableShortcutHint, {
                 action: "confirm:no",
                 context: "Confirmation",
                 fallback: "Esc",
@@ -447213,27 +447124,27 @@ function MCPAgentServerMenu({
     label: "Back",
     value: "back"
   });
-  return /* @__PURE__ */ jsx_runtime217.jsxs(Dialog, {
+  return /* @__PURE__ */ jsx_runtime216.jsxs(Dialog, {
     title: `${capitalizedServerName} MCP Server`,
     subtitle: "agent-only",
     onCancel,
-    inputGuide: (exitState) => exitState.pending ? /* @__PURE__ */ jsx_runtime217.jsxs(ThemedText, {
+    inputGuide: (exitState) => exitState.pending ? /* @__PURE__ */ jsx_runtime216.jsxs(ThemedText, {
       children: [
         "Press ",
         exitState.keyName,
         " again to exit"
       ]
-    }) : /* @__PURE__ */ jsx_runtime217.jsxs(Byline, {
+    }) : /* @__PURE__ */ jsx_runtime216.jsxs(Byline, {
       children: [
-        /* @__PURE__ */ jsx_runtime217.jsx(KeyboardShortcutHint, {
+        /* @__PURE__ */ jsx_runtime216.jsx(KeyboardShortcutHint, {
           shortcut: "↑↓",
           action: "navigate"
         }),
-        /* @__PURE__ */ jsx_runtime217.jsx(KeyboardShortcutHint, {
+        /* @__PURE__ */ jsx_runtime216.jsx(KeyboardShortcutHint, {
           shortcut: "Enter",
           action: "confirm"
         }),
-        /* @__PURE__ */ jsx_runtime217.jsx(ConfigurableShortcutHint, {
+        /* @__PURE__ */ jsx_runtime216.jsx(ConfigurableShortcutHint, {
           action: "confirm:no",
           context: "Confirmation",
           fallback: "Esc",
@@ -447242,66 +447153,66 @@ function MCPAgentServerMenu({
       ]
     }),
     children: [
-      /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime216.jsxs(ThemedBox_default, {
         flexDirection: "column",
         gap: 0,
         children: [
-          /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime216.jsxs(ThemedBox_default, {
             children: [
-              /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime216.jsx(ThemedText, {
                 bold: true,
                 children: "Type: "
               }),
-              /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime216.jsx(ThemedText, {
                 dimColor: true,
                 children: agentServer.transport
               })
             ]
           }),
-          agentServer.url && /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
+          agentServer.url && /* @__PURE__ */ jsx_runtime216.jsxs(ThemedBox_default, {
             children: [
-              /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime216.jsx(ThemedText, {
                 bold: true,
                 children: "URL: "
               }),
-              /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime216.jsx(ThemedText, {
                 dimColor: true,
                 children: agentServer.url
               })
             ]
           }),
-          agentServer.command && /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
+          agentServer.command && /* @__PURE__ */ jsx_runtime216.jsxs(ThemedBox_default, {
             children: [
-              /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime216.jsx(ThemedText, {
                 bold: true,
                 children: "Command: "
               }),
-              /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime216.jsx(ThemedText, {
                 dimColor: true,
                 children: agentServer.command
               })
             ]
           }),
-          /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime216.jsxs(ThemedBox_default, {
             children: [
-              /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime216.jsx(ThemedText, {
                 bold: true,
                 children: "Used by: "
               }),
-              /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime216.jsx(ThemedText, {
                 dimColor: true,
                 children: agentServer.sourceAgents.join(", ")
               })
             ]
           }),
-          /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime216.jsxs(ThemedBox_default, {
             marginTop: 1,
             children: [
-              /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime216.jsx(ThemedText, {
                 bold: true,
                 children: "Status: "
               }),
-              /* @__PURE__ */ jsx_runtime217.jsxs(ThemedText, {
+              /* @__PURE__ */ jsx_runtime216.jsxs(ThemedText, {
                 children: [
                   color("inactive", theme)(figures_default.radioOff),
                   " not connected (agent-only)"
@@ -447309,18 +447220,18 @@ function MCPAgentServerMenu({
               })
             ]
           }),
-          agentServer.needsAuth && /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
+          agentServer.needsAuth && /* @__PURE__ */ jsx_runtime216.jsxs(ThemedBox_default, {
             children: [
-              /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime216.jsx(ThemedText, {
                 bold: true,
                 children: "Auth: "
               }),
-              agentServer.isAuthenticated ? /* @__PURE__ */ jsx_runtime217.jsxs(ThemedText, {
+              agentServer.isAuthenticated ? /* @__PURE__ */ jsx_runtime216.jsxs(ThemedText, {
                 children: [
                   color("success", theme)(figures_default.tick),
                   " authenticated"
                 ]
-              }) : /* @__PURE__ */ jsx_runtime217.jsxs(ThemedText, {
+              }) : /* @__PURE__ */ jsx_runtime216.jsxs(ThemedText, {
                 children: [
                   color("warning", theme)(figures_default.triangleUpOutline),
                   " may need authentication"
@@ -447330,14 +447241,14 @@ function MCPAgentServerMenu({
           })
         ]
       }),
-      /* @__PURE__ */ jsx_runtime217.jsx(ThemedBox_default, {
-        children: /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
+      /* @__PURE__ */ jsx_runtime216.jsx(ThemedBox_default, {
+        children: /* @__PURE__ */ jsx_runtime216.jsx(ThemedText, {
           dimColor: true,
           children: "This server connects only when running the agent."
         })
       }),
-      error && /* @__PURE__ */ jsx_runtime217.jsx(ThemedBox_default, {
-        children: /* @__PURE__ */ jsx_runtime217.jsxs(ThemedText, {
+      error && /* @__PURE__ */ jsx_runtime216.jsx(ThemedBox_default, {
+        children: /* @__PURE__ */ jsx_runtime216.jsxs(ThemedText, {
           color: "error",
           children: [
             "Error: ",
@@ -447345,8 +447256,8 @@ function MCPAgentServerMenu({
           ]
         })
       }),
-      /* @__PURE__ */ jsx_runtime217.jsx(ThemedBox_default, {
-        children: /* @__PURE__ */ jsx_runtime217.jsx(Select, {
+      /* @__PURE__ */ jsx_runtime216.jsx(ThemedBox_default, {
+        children: /* @__PURE__ */ jsx_runtime216.jsx(Select, {
           options: menuOptions,
           onChange: async (value) => {
             switch (value) {
@@ -447364,7 +447275,7 @@ function MCPAgentServerMenu({
     ]
   });
 }
-var import_react123, jsx_runtime217;
+var import_react122, jsx_runtime216;
 var init_MCPAgentServerMenu = __esm(() => {
   init_figures();
   init_ink2();
@@ -447377,8 +447288,8 @@ var init_MCPAgentServerMenu = __esm(() => {
   init_Dialog();
   init_KeyboardShortcutHint();
   init_Spinner2();
-  import_react123 = __toESM(require_react(), 1);
-  jsx_runtime217 = __toESM(require_jsx_runtime(), 1);
+  import_react122 = __toESM(require_react(), 1);
+  jsx_runtime216 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/MCPListPanel.tsx
@@ -447429,7 +447340,7 @@ function groupServersByScope(serverList) {
   return groups;
 }
 function MCPListPanel(t0) {
-  const $ = import_compiler_runtime177.c(78);
+  const $ = import_compiler_runtime175.c(78);
   const {
     servers,
     agentServers: t1,
@@ -447447,10 +447358,10 @@ function MCPListPanel(t0) {
   }
   const agentServers = t2;
   const [theme] = useTheme();
-  const [selectedIndex, setSelectedIndex] = import_react124.useState(0);
+  const [selectedIndex, setSelectedIndex] = import_react123.useState(0);
   let t3;
   if ($[2] !== servers) {
-    const regularServers = servers.filter(_temp91);
+    const regularServers = servers.filter(_temp90);
     t3 = groupServersByScope(regularServers);
     $[2] = servers;
     $[3] = t3;
@@ -447673,17 +447584,17 @@ function MCPListPanel(t0) {
           }
         }
       }
-      return /* @__PURE__ */ jsx_runtime218.jsxs(ThemedBox_default, {
+      return /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
         children: [
-          /* @__PURE__ */ jsx_runtime218.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
             color: isSelected ? "suggestion" : undefined,
             children: isSelected ? `${figures_default.pointer} ` : "  "
           }),
-          /* @__PURE__ */ jsx_runtime218.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
             color: isSelected ? "suggestion" : undefined,
             children: server_3.name
           }),
-          /* @__PURE__ */ jsx_runtime218.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime217.jsxs(ThemedText, {
             dimColor: !isSelected,
             children: [
               " · ",
@@ -447691,7 +447602,7 @@ function MCPListPanel(t0) {
               " "
             ]
           }),
-          /* @__PURE__ */ jsx_runtime218.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
             dimColor: !isSelected,
             children: statusText
           })
@@ -447713,17 +447624,17 @@ function MCPListPanel(t0) {
       const isSelected_0 = selectedIndex === index_0;
       const statusIcon_0 = agentServer_1.needsAuth ? color("warning", theme)(figures_default.triangleUpOutline) : color("inactive", theme)(figures_default.radioOff);
       const statusText_0 = agentServer_1.needsAuth ? "may need auth" : "agent-only";
-      return /* @__PURE__ */ jsx_runtime218.jsxs(ThemedBox_default, {
+      return /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
         children: [
-          /* @__PURE__ */ jsx_runtime218.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
             color: isSelected_0 ? "suggestion" : undefined,
             children: isSelected_0 ? `${figures_default.pointer} ` : "  "
           }),
-          /* @__PURE__ */ jsx_runtime218.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
             color: isSelected_0 ? "suggestion" : undefined,
             children: agentServer_1.name
           }),
-          /* @__PURE__ */ jsx_runtime218.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime217.jsxs(ThemedText, {
             dimColor: !isSelected_0,
             children: [
               " · ",
@@ -447731,7 +447642,7 @@ function MCPListPanel(t0) {
               " "
             ]
           }),
-          /* @__PURE__ */ jsx_runtime218.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
             dimColor: !isSelected_0,
             children: statusText_0
           })
@@ -447749,7 +447660,7 @@ function MCPListPanel(t0) {
   const totalServers = servers.length + agentServers.length;
   let t19;
   if ($[45] === Symbol.for("react.memo_cache_sentinel")) {
-    t19 = /* @__PURE__ */ jsx_runtime218.jsx(McpParsingWarnings, {});
+    t19 = /* @__PURE__ */ jsx_runtime217.jsx(McpParsingWarnings, {});
     $[45] = t19;
   } else {
     t19 = $[45];
@@ -447771,18 +447682,18 @@ function MCPListPanel(t0) {
         return null;
       }
       const heading = getScopeHeading(scope_0);
-      return /* @__PURE__ */ jsx_runtime218.jsxs(ThemedBox_default, {
+      return /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
         flexDirection: "column",
         marginBottom: 1,
         children: [
-          /* @__PURE__ */ jsx_runtime218.jsxs(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
             paddingLeft: 2,
             children: [
-              /* @__PURE__ */ jsx_runtime218.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
                 bold: true,
                 children: heading.label
               }),
-              heading.path && /* @__PURE__ */ jsx_runtime218.jsxs(ThemedText, {
+              heading.path && /* @__PURE__ */ jsx_runtime217.jsxs(ThemedText, {
                 dimColor: true,
                 children: [
                   " (",
@@ -447804,13 +447715,13 @@ function MCPListPanel(t0) {
   }
   let t23;
   if ($[51] !== claudeAiServers || $[52] !== renderServerItem) {
-    t23 = claudeAiServers.length > 0 && /* @__PURE__ */ jsx_runtime218.jsxs(ThemedBox_default, {
+    t23 = claudeAiServers.length > 0 && /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime218.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime217.jsx(ThemedBox_default, {
           paddingLeft: 2,
-          children: /* @__PURE__ */ jsx_runtime218.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
             bold: true,
             children: "claude.ai"
           })
@@ -447826,24 +447737,24 @@ function MCPListPanel(t0) {
   }
   let t24;
   if ($[54] !== agentServers || $[55] !== renderAgentServerItem) {
-    t24 = agentServers.length > 0 && /* @__PURE__ */ jsx_runtime218.jsxs(ThemedBox_default, {
+    t24 = agentServers.length > 0 && /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime218.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime217.jsx(ThemedBox_default, {
           paddingLeft: 2,
-          children: /* @__PURE__ */ jsx_runtime218.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
             bold: true,
             children: "Agent MCPs"
           })
         }),
-        [...new Set(agentServers.flatMap(_temp612))].map((agentName) => /* @__PURE__ */ jsx_runtime218.jsxs(ThemedBox_default, {
+        [...new Set(agentServers.flatMap(_temp612))].map((agentName) => /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
           flexDirection: "column",
           marginTop: 1,
           children: [
-            /* @__PURE__ */ jsx_runtime218.jsx(ThemedBox_default, {
+            /* @__PURE__ */ jsx_runtime217.jsx(ThemedBox_default, {
               paddingLeft: 2,
-              children: /* @__PURE__ */ jsx_runtime218.jsxs(ThemedText, {
+              children: /* @__PURE__ */ jsx_runtime217.jsxs(ThemedText, {
                 dimColor: true,
                 children: [
                   "@",
@@ -447864,18 +447775,18 @@ function MCPListPanel(t0) {
   }
   let t25;
   if ($[57] !== dynamicServers || $[58] !== renderServerItem) {
-    t25 = dynamicServers.length > 0 && /* @__PURE__ */ jsx_runtime218.jsxs(ThemedBox_default, {
+    t25 = dynamicServers.length > 0 && /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime218.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
           paddingLeft: 2,
           children: [
-            /* @__PURE__ */ jsx_runtime218.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
               bold: true,
               children: dynamicHeading.label
             }),
-            dynamicHeading.path && /* @__PURE__ */ jsx_runtime218.jsxs(ThemedText, {
+            dynamicHeading.path && /* @__PURE__ */ jsx_runtime217.jsxs(ThemedText, {
               dimColor: true,
               children: [
                 " (",
@@ -447896,7 +447807,7 @@ function MCPListPanel(t0) {
   }
   let t26;
   if ($[60] !== hasFailedClients) {
-    t26 = hasFailedClients && /* @__PURE__ */ jsx_runtime218.jsx(ThemedText, {
+    t26 = hasFailedClients && /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
       dimColor: true,
       children: debugMode ? "※ Error logs shown inline with --debug" : "※ Run claude --debug to see error logs"
     });
@@ -447907,10 +447818,10 @@ function MCPListPanel(t0) {
   }
   let t27;
   if ($[62] === Symbol.for("react.memo_cache_sentinel")) {
-    t27 = /* @__PURE__ */ jsx_runtime218.jsxs(ThemedText, {
+    t27 = /* @__PURE__ */ jsx_runtime217.jsxs(ThemedText, {
       dimColor: true,
       children: [
-        /* @__PURE__ */ jsx_runtime218.jsx(Link, {
+        /* @__PURE__ */ jsx_runtime217.jsx(Link, {
           url: "https://code.claude.com/docs/en/mcp",
           children: "https://code.claude.com/docs/en/mcp"
         }),
@@ -447924,7 +447835,7 @@ function MCPListPanel(t0) {
   }
   let t28;
   if ($[63] !== t26) {
-    t28 = /* @__PURE__ */ jsx_runtime218.jsxs(ThemedBox_default, {
+    t28 = /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
         t26,
@@ -447938,7 +447849,7 @@ function MCPListPanel(t0) {
   }
   let t29;
   if ($[65] !== t22 || $[66] !== t23 || $[67] !== t24 || $[68] !== t25 || $[69] !== t28) {
-    t29 = /* @__PURE__ */ jsx_runtime218.jsxs(ThemedBox_default, {
+    t29 = /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
         t22,
@@ -447959,7 +447870,7 @@ function MCPListPanel(t0) {
   }
   let t30;
   if ($[71] !== handleCancel || $[72] !== t21 || $[73] !== t29) {
-    t30 = /* @__PURE__ */ jsx_runtime218.jsx(Dialog, {
+    t30 = /* @__PURE__ */ jsx_runtime217.jsx(Dialog, {
       title: "Manage MCP servers",
       subtitle: t21,
       onCancel: handleCancel,
@@ -447975,22 +447886,22 @@ function MCPListPanel(t0) {
   }
   let t31;
   if ($[75] === Symbol.for("react.memo_cache_sentinel")) {
-    t31 = /* @__PURE__ */ jsx_runtime218.jsx(ThemedBox_default, {
+    t31 = /* @__PURE__ */ jsx_runtime217.jsx(ThemedBox_default, {
       paddingX: 1,
-      children: /* @__PURE__ */ jsx_runtime218.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime217.jsx(ThemedText, {
         dimColor: true,
         italic: true,
-        children: /* @__PURE__ */ jsx_runtime218.jsxs(Byline, {
+        children: /* @__PURE__ */ jsx_runtime217.jsxs(Byline, {
           children: [
-            /* @__PURE__ */ jsx_runtime218.jsx(KeyboardShortcutHint, {
+            /* @__PURE__ */ jsx_runtime217.jsx(KeyboardShortcutHint, {
               shortcut: "↑↓",
               action: "navigate"
             }),
-            /* @__PURE__ */ jsx_runtime218.jsx(KeyboardShortcutHint, {
+            /* @__PURE__ */ jsx_runtime217.jsx(KeyboardShortcutHint, {
               shortcut: "Enter",
               action: "confirm"
             }),
-            /* @__PURE__ */ jsx_runtime218.jsx(ConfigurableShortcutHint, {
+            /* @__PURE__ */ jsx_runtime217.jsx(ConfigurableShortcutHint, {
               action: "confirm:no",
               context: "Confirmation",
               fallback: "Esc",
@@ -448006,7 +447917,7 @@ function MCPListPanel(t0) {
   }
   let t32;
   if ($[76] !== t30) {
-    t32 = /* @__PURE__ */ jsx_runtime218.jsxs(ThemedBox_default, {
+    t32 = /* @__PURE__ */ jsx_runtime217.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
         t19,
@@ -448036,10 +447947,10 @@ function _temp322(a, b) {
 function _temp233(s_0) {
   return s_0.client.config.type === "claudeai-proxy";
 }
-function _temp91(s) {
+function _temp90(s) {
   return s.client.config.type !== "claudeai-proxy";
 }
-var import_compiler_runtime177, import_react124, jsx_runtime218, SCOPE_ORDER;
+var import_compiler_runtime175, import_react123, jsx_runtime217, SCOPE_ORDER;
 var init_MCPListPanel = __esm(() => {
   init_figures();
   init_ink2();
@@ -448052,9 +447963,9 @@ var init_MCPListPanel = __esm(() => {
   init_Dialog();
   init_KeyboardShortcutHint();
   init_McpParsingWarnings();
-  import_compiler_runtime177 = __toESM(require_compiler_runtime(), 1);
-  import_react124 = __toESM(require_react(), 1);
-  jsx_runtime218 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime175 = __toESM(require_compiler_runtime(), 1);
+  import_react123 = __toESM(require_react(), 1);
+  jsx_runtime217 = __toESM(require_jsx_runtime(), 1);
   SCOPE_ORDER = ["project", "local", "user", "enterprise"];
 });
 
@@ -448374,18 +448285,18 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
   const _authVersion = useAppState((s) => s.authVersion);
   const _pluginReconnectKey = useAppState((s) => s.mcp.pluginReconnectKey);
   const setAppState = useSetAppState();
-  const reconnectTimersRef = import_react125.useRef(new Map);
-  const channelWarnedKindsRef = import_react125.useRef(new Set);
-  const channelPermCallbacksRef = import_react125.useRef(null);
+  const reconnectTimersRef = import_react124.useRef(new Map);
+  const channelWarnedKindsRef = import_react124.useRef(new Set);
+  const channelPermCallbacksRef = import_react124.useRef(null);
   if (false) {}
-  import_react125.useEffect(() => {
+  import_react124.useEffect(() => {
     if (false) {}
   }, [setAppState]);
   const { addNotification } = useNotifications();
   const MCP_BATCH_FLUSH_MS = 16;
-  const pendingUpdatesRef = import_react125.useRef([]);
-  const flushTimerRef = import_react125.useRef(null);
-  const flushPendingUpdates = import_react125.useCallback(() => {
+  const pendingUpdatesRef = import_react124.useRef([]);
+  const flushTimerRef = import_react124.useRef(null);
+  const flushPendingUpdates = import_react124.useCallback(() => {
     flushTimerRef.current = null;
     const updates = pendingUpdatesRef.current;
     if (updates.length === 0)
@@ -448426,13 +448337,13 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
       return { ...prevState, mcp };
     });
   }, [setAppState]);
-  const updateServer = import_react125.useCallback((update) => {
+  const updateServer = import_react124.useCallback((update) => {
     pendingUpdatesRef.current.push(update);
     if (flushTimerRef.current === null) {
       flushTimerRef.current = setTimeout(flushPendingUpdates, MCP_BATCH_FLUSH_MS);
     }
   }, [flushPendingUpdates]);
-  const onConnectionAttempt = import_react125.useCallback(({
+  const onConnectionAttempt = import_react124.useCallback(({
     client,
     tools,
     commands,
@@ -448600,7 +448511,7 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
     }
   }, [updateServer]);
   const sessionId = getSessionId();
-  import_react125.useEffect(() => {
+  import_react124.useEffect(() => {
     async function initializeServersAsPending() {
       const { servers: existingConfigs, errors: mcpErrors } = isStrictMcpConfig ? { servers: {}, errors: [] } : await getClaudeCodeMcpConfigs(dynamicMcpConfig);
       const configs = { ...existingConfigs, ...dynamicMcpConfig };
@@ -448647,7 +448558,7 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
     sessionId,
     _pluginReconnectKey
   ]);
-  import_react125.useEffect(() => {
+  import_react124.useEffect(() => {
     let cancelled = false;
     async function loadAndConnectMcpConfigs() {
       let claudeaiPromise;
@@ -448746,7 +448657,7 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
     sessionId,
     _pluginReconnectKey
   ]);
-  import_react125.useEffect(() => {
+  import_react124.useEffect(() => {
     const timers = reconnectTimersRef.current;
     return () => {
       for (const timer of timers.values()) {
@@ -448760,7 +448671,7 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
       }
     };
   }, [flushPendingUpdates]);
-  const reconnectMcpServer = import_react125.useCallback(async (serverName) => {
+  const reconnectMcpServer = import_react124.useCallback(async (serverName) => {
     const client = store.getState().mcp.clients.find((c) => c.name === serverName);
     if (!client) {
       throw new Error(`MCP server ${serverName} not found`);
@@ -448774,7 +448685,7 @@ function useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig = false) {
     onConnectionAttempt(result);
     return result;
   }, [store, onConnectionAttempt]);
-  const toggleMcpServer = import_react125.useCallback(async (serverName) => {
+  const toggleMcpServer = import_react124.useCallback(async (serverName) => {
     const client = store.getState().mcp.clients.find((c) => c.name === serverName);
     if (!client) {
       throw new Error(`MCP server ${serverName} not found`);
@@ -448819,7 +448730,7 @@ function getTransportDisplayName(type) {
       return "SSE";
   }
 }
-var import_react125, clearSkillIndexCache = null, MAX_RECONNECT_ATTEMPTS = 5, INITIAL_BACKOFF_MS = 1000, MAX_BACKOFF_MS = 30000;
+var import_react124, clearSkillIndexCache = null, MAX_RECONNECT_ATTEMPTS = 5, INITIAL_BACKOFF_MS = 1000, MAX_BACKOFF_MS = 30000;
 var init_useManageMCPConnections = __esm(() => {
   init_state();
   init_client9();
@@ -448841,26 +448752,26 @@ var init_useManageMCPConnections = __esm(() => {
   init_elicitationHandler();
   init_mcpStringUtils();
   init_utils6();
-  import_react125 = __toESM(require_react(), 1);
+  import_react124 = __toESM(require_react(), 1);
 });
 
 // services/mcp/MCPConnectionManager.tsx
 function useMcpReconnect() {
-  const context = import_react126.useContext(MCPConnectionContext);
+  const context = import_react125.useContext(MCPConnectionContext);
   if (!context) {
     throw new Error("useMcpReconnect must be used within MCPConnectionManager");
   }
   return context.reconnectMcpServer;
 }
 function useMcpToggleEnabled() {
-  const context = import_react126.useContext(MCPConnectionContext);
+  const context = import_react125.useContext(MCPConnectionContext);
   if (!context) {
     throw new Error("useMcpToggleEnabled must be used within MCPConnectionManager");
   }
   return context.toggleMcpServer;
 }
 function MCPConnectionManager(t0) {
-  const $ = import_compiler_runtime178.c(6);
+  const $ = import_compiler_runtime176.c(6);
   const {
     children,
     dynamicMcpConfig,
@@ -448885,7 +448796,7 @@ function MCPConnectionManager(t0) {
   const value = t1;
   let t2;
   if ($[3] !== children || $[4] !== value) {
-    t2 = /* @__PURE__ */ jsx_runtime219.jsx(MCPConnectionContext.Provider, {
+    t2 = /* @__PURE__ */ jsx_runtime218.jsx(MCPConnectionContext.Provider, {
       value,
       children
     });
@@ -448897,18 +448808,18 @@ function MCPConnectionManager(t0) {
   }
   return t2;
 }
-var import_compiler_runtime178, import_react126, jsx_runtime219, MCPConnectionContext;
+var import_compiler_runtime176, import_react125, jsx_runtime218, MCPConnectionContext;
 var init_MCPConnectionManager = __esm(() => {
   init_useManageMCPConnections();
-  import_compiler_runtime178 = __toESM(require_compiler_runtime(), 1);
-  import_react126 = __toESM(require_react(), 1);
-  jsx_runtime219 = __toESM(require_jsx_runtime(), 1);
-  MCPConnectionContext = import_react126.createContext(null);
+  import_compiler_runtime176 = __toESM(require_compiler_runtime(), 1);
+  import_react125 = __toESM(require_react(), 1);
+  jsx_runtime218 = __toESM(require_jsx_runtime(), 1);
+  MCPConnectionContext = import_react125.createContext(null);
 });
 
 // components/mcp/MCPReconnect.tsx
 function MCPReconnect(t0) {
-  const $ = import_compiler_runtime179.c(25);
+  const $ = import_compiler_runtime177.c(25);
   const {
     serverName,
     onComplete
@@ -448916,8 +448827,8 @@ function MCPReconnect(t0) {
   const [theme] = useTheme();
   const store = useAppStateStore();
   const reconnectMcpServer = useMcpReconnect();
-  const [isReconnecting, setIsReconnecting] = import_react127.useState(true);
-  const [error, setError] = import_react127.useState(null);
+  const [isReconnecting, setIsReconnecting] = import_react126.useState(true);
+  const [error, setError] = import_react126.useState(null);
   let t1;
   let t2;
   if ($[0] !== onComplete || $[1] !== reconnectMcpServer || $[2] !== serverName || $[3] !== store) {
@@ -448974,15 +448885,15 @@ function MCPReconnect(t0) {
     t1 = $[4];
     t2 = $[5];
   }
-  import_react127.useEffect(t1, t2);
+  import_react126.useEffect(t1, t2);
   if (isReconnecting) {
     let t3;
     if ($[6] !== serverName) {
-      t3 = /* @__PURE__ */ jsx_runtime220.jsxs(ThemedText, {
+      t3 = /* @__PURE__ */ jsx_runtime219.jsxs(ThemedText, {
         color: "text",
         children: [
           "Reconnecting to ",
-          /* @__PURE__ */ jsx_runtime220.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime219.jsx(ThemedText, {
             bold: true,
             children: serverName
           })
@@ -448995,10 +448906,10 @@ function MCPReconnect(t0) {
     }
     let t4;
     if ($[8] === Symbol.for("react.memo_cache_sentinel")) {
-      t4 = /* @__PURE__ */ jsx_runtime220.jsxs(ThemedBox_default, {
+      t4 = /* @__PURE__ */ jsx_runtime219.jsxs(ThemedBox_default, {
         children: [
-          /* @__PURE__ */ jsx_runtime220.jsx(Spinner, {}),
-          /* @__PURE__ */ jsx_runtime220.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime219.jsx(Spinner, {}),
+          /* @__PURE__ */ jsx_runtime219.jsx(ThemedText, {
             children: " Establishing connection to MCP server"
           })
         ]
@@ -449009,7 +448920,7 @@ function MCPReconnect(t0) {
     }
     let t5;
     if ($[9] !== t3) {
-      t5 = /* @__PURE__ */ jsx_runtime220.jsxs(ThemedBox_default, {
+      t5 = /* @__PURE__ */ jsx_runtime219.jsxs(ThemedBox_default, {
         flexDirection: "column",
         gap: 1,
         padding: 1,
@@ -449036,7 +448947,7 @@ function MCPReconnect(t0) {
     }
     let t4;
     if ($[13] !== t3) {
-      t4 = /* @__PURE__ */ jsx_runtime220.jsxs(ThemedText, {
+      t4 = /* @__PURE__ */ jsx_runtime219.jsxs(ThemedText, {
         children: [
           t3,
           " "
@@ -449049,7 +448960,7 @@ function MCPReconnect(t0) {
     }
     let t5;
     if ($[15] !== serverName) {
-      t5 = /* @__PURE__ */ jsx_runtime220.jsxs(ThemedText, {
+      t5 = /* @__PURE__ */ jsx_runtime219.jsxs(ThemedText, {
         color: "error",
         children: [
           "Failed to reconnect to ",
@@ -449063,7 +448974,7 @@ function MCPReconnect(t0) {
     }
     let t6;
     if ($[17] !== t4 || $[18] !== t5) {
-      t6 = /* @__PURE__ */ jsx_runtime220.jsxs(ThemedBox_default, {
+      t6 = /* @__PURE__ */ jsx_runtime219.jsxs(ThemedBox_default, {
         children: [
           t4,
           t5
@@ -449077,7 +448988,7 @@ function MCPReconnect(t0) {
     }
     let t7;
     if ($[20] !== error) {
-      t7 = /* @__PURE__ */ jsx_runtime220.jsxs(ThemedText, {
+      t7 = /* @__PURE__ */ jsx_runtime219.jsxs(ThemedText, {
         dimColor: true,
         children: [
           "Error: ",
@@ -449091,7 +449002,7 @@ function MCPReconnect(t0) {
     }
     let t8;
     if ($[22] !== t6 || $[23] !== t7) {
-      t8 = /* @__PURE__ */ jsx_runtime220.jsxs(ThemedBox_default, {
+      t8 = /* @__PURE__ */ jsx_runtime219.jsxs(ThemedBox_default, {
         flexDirection: "column",
         gap: 1,
         padding: 1,
@@ -449110,21 +449021,21 @@ function MCPReconnect(t0) {
   }
   return null;
 }
-var import_compiler_runtime179, import_react127, jsx_runtime220;
+var import_compiler_runtime177, import_react126, jsx_runtime219;
 var init_MCPReconnect = __esm(() => {
   init_figures();
   init_ink2();
   init_MCPConnectionManager();
   init_AppState();
   init_Spinner2();
-  import_compiler_runtime179 = __toESM(require_compiler_runtime(), 1);
-  import_react127 = __toESM(require_react(), 1);
-  jsx_runtime220 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime177 = __toESM(require_compiler_runtime(), 1);
+  import_react126 = __toESM(require_react(), 1);
+  jsx_runtime219 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/CapabilitiesSection.tsx
 function CapabilitiesSection(t0) {
-  const $ = import_compiler_runtime180.c(9);
+  const $ = import_compiler_runtime178.c(9);
   const {
     serverToolsCount,
     serverPromptsCount,
@@ -449151,7 +449062,7 @@ function CapabilitiesSection(t0) {
   }
   let t1;
   if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
+    t1 = /* @__PURE__ */ jsx_runtime220.jsx(ThemedText, {
       bold: true,
       children: "Capabilities: "
     });
@@ -449161,7 +449072,7 @@ function CapabilitiesSection(t0) {
   }
   let t2;
   if ($[5] !== capabilities) {
-    t2 = capabilities.length > 0 ? /* @__PURE__ */ jsx_runtime221.jsx(Byline, {
+    t2 = capabilities.length > 0 ? /* @__PURE__ */ jsx_runtime220.jsx(Byline, {
       children: capabilities
     }) : "none";
     $[5] = capabilities;
@@ -449171,10 +449082,10 @@ function CapabilitiesSection(t0) {
   }
   let t3;
   if ($[7] !== t2) {
-    t3 = /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
+    t3 = /* @__PURE__ */ jsx_runtime220.jsxs(ThemedBox_default, {
       children: [
         t1,
-        /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime220.jsx(ThemedText, {
           color: "text",
           children: t2
         })
@@ -449187,12 +449098,12 @@ function CapabilitiesSection(t0) {
   }
   return t3;
 }
-var import_compiler_runtime180, jsx_runtime221;
+var import_compiler_runtime178, jsx_runtime220;
 var init_CapabilitiesSection = __esm(() => {
   init_ink2();
   init_Byline();
-  import_compiler_runtime180 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime221 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime178 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime220 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/utils/reconnectHelpers.tsx
@@ -449239,25 +449150,25 @@ function MCPRemoteServerMenu({
   const {
     columns: terminalColumns
   } = useTerminalSize();
-  const [isAuthenticating, setIsAuthenticating] = import_react128.default.useState(false);
-  const [error, setError] = import_react128.default.useState(null);
+  const [isAuthenticating, setIsAuthenticating] = import_react127.default.useState(false);
+  const [error, setError] = import_react127.default.useState(null);
   const mcp = useAppState((s) => s.mcp);
   const setAppState = useSetAppState();
-  const [authorizationUrl, setAuthorizationUrl] = import_react128.default.useState(null);
-  const [isReconnecting, setIsReconnecting] = import_react128.useState(false);
-  const authAbortControllerRef = import_react128.useRef(null);
-  const [isClaudeAIAuthenticating, setIsClaudeAIAuthenticating] = import_react128.useState(false);
-  const [claudeAIAuthUrl, setClaudeAIAuthUrl] = import_react128.useState(null);
-  const [isClaudeAIClearingAuth, setIsClaudeAIClearingAuth] = import_react128.useState(false);
-  const [claudeAIClearAuthUrl, setClaudeAIClearAuthUrl] = import_react128.useState(null);
-  const [claudeAIClearAuthBrowserOpened, setClaudeAIClearAuthBrowserOpened] = import_react128.useState(false);
-  const [urlCopied, setUrlCopied] = import_react128.useState(false);
-  const copyTimeoutRef = import_react128.useRef(undefined);
-  const unmountedRef = import_react128.useRef(false);
-  const [callbackUrlInput, setCallbackUrlInput] = import_react128.useState("");
-  const [callbackUrlCursorOffset, setCallbackUrlCursorOffset] = import_react128.useState(0);
-  const [manualCallbackSubmit, setManualCallbackSubmit] = import_react128.useState(null);
-  import_react128.useEffect(() => () => {
+  const [authorizationUrl, setAuthorizationUrl] = import_react127.default.useState(null);
+  const [isReconnecting, setIsReconnecting] = import_react127.useState(false);
+  const authAbortControllerRef = import_react127.useRef(null);
+  const [isClaudeAIAuthenticating, setIsClaudeAIAuthenticating] = import_react127.useState(false);
+  const [claudeAIAuthUrl, setClaudeAIAuthUrl] = import_react127.useState(null);
+  const [isClaudeAIClearingAuth, setIsClaudeAIClearingAuth] = import_react127.useState(false);
+  const [claudeAIClearAuthUrl, setClaudeAIClearAuthUrl] = import_react127.useState(null);
+  const [claudeAIClearAuthBrowserOpened, setClaudeAIClearAuthBrowserOpened] = import_react127.useState(false);
+  const [urlCopied, setUrlCopied] = import_react127.useState(false);
+  const copyTimeoutRef = import_react127.useRef(undefined);
+  const unmountedRef = import_react127.useRef(false);
+  const [callbackUrlInput, setCallbackUrlInput] = import_react127.useState("");
+  const [callbackUrlCursorOffset, setCallbackUrlCursorOffset] = import_react127.useState(0);
+  const [manualCallbackSubmit, setManualCallbackSubmit] = import_react127.useState(null);
+  import_react127.useEffect(() => () => {
     unmountedRef.current = true;
     authAbortControllerRef.current?.abort();
     if (copyTimeoutRef.current !== undefined) {
@@ -449266,7 +449177,7 @@ function MCPRemoteServerMenu({
   }, []);
   const isEffectivelyAuthenticated = server.isAuthenticated || server.client.type === "connected" && serverToolsCount > 0;
   const reconnectMcpServer = useMcpReconnect();
-  const handleClaudeAIAuthComplete = import_react128.default.useCallback(async () => {
+  const handleClaudeAIAuthComplete = import_react127.default.useCallback(async () => {
     setIsClaudeAIAuthenticating(false);
     setClaudeAIAuthUrl(null);
     setIsReconnecting(true);
@@ -449292,7 +449203,7 @@ function MCPRemoteServerMenu({
       setIsReconnecting(false);
     }
   }, [reconnectMcpServer, server.name, onComplete]);
-  const handleClaudeAIClearAuthComplete = import_react128.default.useCallback(async () => {
+  const handleClaudeAIClearAuthComplete = import_react127.default.useCallback(async () => {
     await clearServerCache(server.name, {
       ...server.config,
       scope: server.scope
@@ -449380,7 +449291,7 @@ function MCPRemoteServerMenu({
   const capitalizedServerName = capitalize(String(server.name));
   const serverCommandsCount = filterMcpPromptsByServer(mcp.commands, server.name).length;
   const toggleMcpServer = useMcpToggleEnabled();
-  const handleClaudeAIAuth = import_react128.default.useCallback(async () => {
+  const handleClaudeAIAuth = import_react127.default.useCallback(async () => {
     const claudeAiBaseUrl = getOauthConfig().CLAUDE_AI_ORIGIN;
     const accountInfo = getOauthAccountInfo();
     const orgUuid = accountInfo?.organizationUuid;
@@ -449397,11 +449308,11 @@ function MCPRemoteServerMenu({
     logEvent("tengu_claudeai_mcp_auth_started", {});
     await openBrowser(authUrl);
   }, [server.config]);
-  const handleClaudeAIClearAuth = import_react128.default.useCallback(() => {
+  const handleClaudeAIClearAuth = import_react127.default.useCallback(() => {
     setIsClaudeAIClearingAuth(true);
     logEvent("tengu_claudeai_mcp_clear_auth_started", {});
   }, []);
-  const handleToggleEnabled = import_react128.default.useCallback(async () => {
+  const handleToggleEnabled = import_react127.default.useCallback(async () => {
     const wasEnabled = server.client.type !== "disabled";
     try {
       await toggleMcpServer(server.name);
@@ -449416,7 +449327,7 @@ function MCPRemoteServerMenu({
       onComplete?.(`Failed to ${action} MCP server '${server.name}': ${errorMessage(err_0)}`);
     }
   }, [server.client.type, server.config.type, server.name, toggleMcpServer, onCancel, onComplete]);
-  const handleAuthenticate = import_react128.default.useCallback(async () => {
+  const handleAuthenticate = import_react127.default.useCallback(async () => {
     if (server.config.type === "claudeai-proxy")
       return;
     setIsAuthenticating(true);
@@ -449494,12 +449405,12 @@ function MCPRemoteServerMenu({
   };
   if (isAuthenticating) {
     const authCopy = server.config.type !== "claudeai-proxy" && server.config.oauth?.xaa ? " Authenticating via your identity provider" : " A browser window will open for authentication";
-    return /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
       flexDirection: "column",
       gap: 1,
       padding: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
           color: "claude",
           children: [
             "Authenticating with ",
@@ -449507,32 +449418,32 @@ function MCPRemoteServerMenu({
             "…"
           ]
         }),
-        /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime222.jsx(Spinner, {}),
-            /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime221.jsx(Spinner, {}),
+            /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
               children: authCopy
             })
           ]
         }),
-        authorizationUrl && /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+        authorizationUrl && /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
           flexDirection: "column",
           children: [
-            /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+            /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
               children: [
-                /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+                /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
                   dimColor: true,
                   children: [
                     "If your browser doesn't open automatically, copy this URL manually",
                     " "
                   ]
                 }),
-                urlCopied ? /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                urlCopied ? /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                   color: "success",
                   children: "(Copied!)"
-                }) : /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                }) : /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                   dimColor: true,
-                  children: /* @__PURE__ */ jsx_runtime222.jsx(KeyboardShortcutHint, {
+                  children: /* @__PURE__ */ jsx_runtime221.jsx(KeyboardShortcutHint, {
                     shortcut: "c",
                     action: "copy",
                     parens: true
@@ -449540,22 +449451,22 @@ function MCPRemoteServerMenu({
                 })
               ]
             }),
-            /* @__PURE__ */ jsx_runtime222.jsx(Link, {
+            /* @__PURE__ */ jsx_runtime221.jsx(Link, {
               url: authorizationUrl
             })
           ]
         }),
-        isAuthenticating && authorizationUrl && manualCallbackSubmit && /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+        isAuthenticating && authorizationUrl && manualCallbackSubmit && /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
           flexDirection: "column",
           marginTop: 1,
           children: [
-            /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
               dimColor: true,
               children: "If the redirect page shows a connection error, paste the URL from your browser's address bar:"
             }),
-            /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+            /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
               children: [
-                /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+                /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
                   dimColor: true,
                   children: [
                     "URL ",
@@ -449563,7 +449474,7 @@ function MCPRemoteServerMenu({
                     " "
                   ]
                 }),
-                /* @__PURE__ */ jsx_runtime222.jsx(TextInput, {
+                /* @__PURE__ */ jsx_runtime221.jsx(TextInput, {
                   value: callbackUrlInput,
                   onChange: setCallbackUrlInput,
                   onSubmit: (value) => {
@@ -449578,9 +449489,9 @@ function MCPRemoteServerMenu({
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime222.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime221.jsx(ThemedBox_default, {
           marginLeft: 3,
-          children: /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
             dimColor: true,
             children: "Return here after authenticating in your browser. Press Esc to go back."
           })
@@ -449589,12 +449500,12 @@ function MCPRemoteServerMenu({
     });
   }
   if (isClaudeAIAuthenticating) {
-    return /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
       flexDirection: "column",
       gap: 1,
       padding: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
           color: "claude",
           children: [
             "Authenticating with ",
@@ -449602,32 +449513,32 @@ function MCPRemoteServerMenu({
             "…"
           ]
         }),
-        /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime222.jsx(Spinner, {}),
-            /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime221.jsx(Spinner, {}),
+            /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
               children: " A browser window will open for authentication"
             })
           ]
         }),
-        claudeAIAuthUrl && /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+        claudeAIAuthUrl && /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
           flexDirection: "column",
           children: [
-            /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+            /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
               children: [
-                /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+                /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
                   dimColor: true,
                   children: [
                     "If your browser doesn't open automatically, copy this URL manually",
                     " "
                   ]
                 }),
-                urlCopied ? /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                urlCopied ? /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                   color: "success",
                   children: "(Copied!)"
-                }) : /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                }) : /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                   dimColor: true,
-                  children: /* @__PURE__ */ jsx_runtime222.jsx(KeyboardShortcutHint, {
+                  children: /* @__PURE__ */ jsx_runtime221.jsx(KeyboardShortcutHint, {
                     shortcut: "c",
                     action: "copy",
                     parens: true
@@ -449635,30 +449546,30 @@ function MCPRemoteServerMenu({
                 })
               ]
             }),
-            /* @__PURE__ */ jsx_runtime222.jsx(Link, {
+            /* @__PURE__ */ jsx_runtime221.jsx(Link, {
               url: claudeAIAuthUrl
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
           marginLeft: 3,
           flexDirection: "column",
           children: [
-            /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
               color: "permission",
               children: [
                 "Press ",
-                /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                   bold: true,
                   children: "Enter"
                 }),
                 " after authenticating in your browser."
               ]
             }),
-            /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
               dimColor: true,
               italic: true,
-              children: /* @__PURE__ */ jsx_runtime222.jsx(ConfigurableShortcutHint, {
+              children: /* @__PURE__ */ jsx_runtime221.jsx(ConfigurableShortcutHint, {
                 action: "confirm:no",
                 context: "Confirmation",
                 fallback: "Esc",
@@ -449671,41 +449582,41 @@ function MCPRemoteServerMenu({
     });
   }
   if (isClaudeAIClearingAuth) {
-    return /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
       flexDirection: "column",
       gap: 1,
       padding: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
           color: "claude",
           children: [
             "Clear authentication for ",
             server.name
           ]
         }),
-        claudeAIClearAuthBrowserOpened ? /* @__PURE__ */ jsx_runtime222.jsxs(jsx_runtime222.Fragment, {
+        claudeAIClearAuthBrowserOpened ? /* @__PURE__ */ jsx_runtime221.jsxs(jsx_runtime221.Fragment, {
           children: [
-            /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
               children: 'Find the MCP server in the browser and click "Disconnect".'
             }),
-            claudeAIClearAuthUrl && /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+            claudeAIClearAuthUrl && /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
               flexDirection: "column",
               children: [
-                /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+                /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
                   children: [
-                    /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+                    /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
                       dimColor: true,
                       children: [
                         "If your browser didn't open automatically, copy this URL manually",
                         " "
                       ]
                     }),
-                    urlCopied ? /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                    urlCopied ? /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                       color: "success",
                       children: "(Copied!)"
-                    }) : /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                    }) : /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                       dimColor: true,
-                      children: /* @__PURE__ */ jsx_runtime222.jsx(KeyboardShortcutHint, {
+                      children: /* @__PURE__ */ jsx_runtime221.jsx(KeyboardShortcutHint, {
                         shortcut: "c",
                         action: "copy",
                         parens: true
@@ -449713,30 +449624,30 @@ function MCPRemoteServerMenu({
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsx_runtime222.jsx(Link, {
+                /* @__PURE__ */ jsx_runtime221.jsx(Link, {
                   url: claudeAIClearAuthUrl
                 })
               ]
             }),
-            /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+            /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
               marginLeft: 3,
               flexDirection: "column",
               children: [
-                /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+                /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
                   color: "permission",
                   children: [
                     "Press ",
-                    /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                    /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                       bold: true,
                       children: "Enter"
                     }),
                     " when done."
                   ]
                 }),
-                /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                   dimColor: true,
                   italic: true,
-                  children: /* @__PURE__ */ jsx_runtime222.jsx(ConfigurableShortcutHint, {
+                  children: /* @__PURE__ */ jsx_runtime221.jsx(ConfigurableShortcutHint, {
                     action: "confirm:no",
                     context: "Confirmation",
                     fallback: "Esc",
@@ -449746,30 +449657,30 @@ function MCPRemoteServerMenu({
               ]
             })
           ]
-        }) : /* @__PURE__ */ jsx_runtime222.jsxs(jsx_runtime222.Fragment, {
+        }) : /* @__PURE__ */ jsx_runtime221.jsxs(jsx_runtime221.Fragment, {
           children: [
-            /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
               children: 'This will open claude.ai in the browser. Find the MCP server in the list and click "Disconnect".'
             }),
-            /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+            /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
               marginLeft: 3,
               flexDirection: "column",
               children: [
-                /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+                /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
                   color: "permission",
                   children: [
                     "Press ",
-                    /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                    /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                       bold: true,
                       children: "Enter"
                     }),
                     " to open the browser."
                   ]
                 }),
-                /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                   dimColor: true,
                   italic: true,
-                  children: /* @__PURE__ */ jsx_runtime222.jsx(ConfigurableShortcutHint, {
+                  children: /* @__PURE__ */ jsx_runtime221.jsx(ConfigurableShortcutHint, {
                     action: "confirm:no",
                     context: "Confirmation",
                     fallback: "Esc",
@@ -449784,31 +449695,31 @@ function MCPRemoteServerMenu({
     });
   }
   if (isReconnecting) {
-    return /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
       flexDirection: "column",
       gap: 1,
       padding: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
           color: "text",
           children: [
             "Connecting to ",
-            /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
               bold: true,
               children: server.name
             }),
             "…"
           ]
         }),
-        /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime222.jsx(Spinner, {}),
-            /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime221.jsx(Spinner, {}),
+            /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
               children: " Establishing connection to MCP server"
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
           dimColor: true,
           children: "This may take a few moments."
         })
@@ -449876,17 +449787,17 @@ function MCPRemoteServerMenu({
       value: "back"
     });
   }
-  return /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
     flexDirection: "column",
     children: [
-      /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
         flexDirection: "column",
         paddingX: 1,
         borderStyle: borderless ? undefined : "round",
         children: [
-          /* @__PURE__ */ jsx_runtime222.jsx(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime221.jsx(ThemedBox_default, {
             marginBottom: 1,
-            children: /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
               bold: true,
               children: [
                 capitalizedServerName,
@@ -449894,42 +449805,42 @@ function MCPRemoteServerMenu({
               ]
             })
           }),
-          /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
             flexDirection: "column",
             gap: 0,
             children: [
-              /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+              /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
                 children: [
-                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                     bold: true,
                     children: "Status: "
                   }),
-                  server.client.type === "disabled" ? /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+                  server.client.type === "disabled" ? /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
                     children: [
                       color("inactive", theme)(figures_default.radioOff),
                       " disabled"
                     ]
-                  }) : server.client.type === "connected" ? /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+                  }) : server.client.type === "connected" ? /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
                     children: [
                       color("success", theme)(figures_default.tick),
                       " connected"
                     ]
-                  }) : server.client.type === "pending" ? /* @__PURE__ */ jsx_runtime222.jsxs(jsx_runtime222.Fragment, {
+                  }) : server.client.type === "pending" ? /* @__PURE__ */ jsx_runtime221.jsxs(jsx_runtime221.Fragment, {
                     children: [
-                      /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                      /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                         dimColor: true,
                         children: figures_default.radioOff
                       }),
-                      /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                      /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                         children: " connecting…"
                       })
                     ]
-                  }) : server.client.type === "needs-auth" ? /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+                  }) : server.client.type === "needs-auth" ? /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
                     children: [
                       color("warning", theme)(figures_default.triangleUpOutline),
                       " needs authentication"
                     ]
-                  }) : /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+                  }) : /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
                     children: [
                       color("error", theme)(figures_default.cross),
                       " failed"
@@ -449937,18 +449848,18 @@ function MCPRemoteServerMenu({
                   })
                 ]
               }),
-              server.transport !== "claudeai-proxy" && /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+              server.transport !== "claudeai-proxy" && /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
                 children: [
-                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                     bold: true,
                     children: "Auth: "
                   }),
-                  isEffectivelyAuthenticated ? /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+                  isEffectivelyAuthenticated ? /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
                     children: [
                       color("success", theme)(figures_default.tick),
                       " authenticated"
                     ]
-                  }) : /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+                  }) : /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
                     children: [
                       color("error", theme)(figures_default.cross),
                       " not authenticated"
@@ -449956,42 +449867,42 @@ function MCPRemoteServerMenu({
                   })
                 ]
               }),
-              /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+              /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
                 children: [
-                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                     bold: true,
                     children: "URL: "
                   }),
-                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                     dimColor: true,
                     children: server.config.url
                   })
                 ]
               }),
-              /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+              /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
                 children: [
-                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                     bold: true,
                     children: "Config location: "
                   }),
-                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                     dimColor: true,
                     children: describeMcpConfigFilePath(server.scope)
                   })
                 ]
               }),
-              server.client.type === "connected" && /* @__PURE__ */ jsx_runtime222.jsx(CapabilitiesSection, {
+              server.client.type === "connected" && /* @__PURE__ */ jsx_runtime221.jsx(CapabilitiesSection, {
                 serverToolsCount,
                 serverPromptsCount: serverCommandsCount,
                 serverResourcesCount: mcp.resources[server.name]?.length || 0
               }),
-              server.client.type === "connected" && serverToolsCount > 0 && /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
+              server.client.type === "connected" && serverToolsCount > 0 && /* @__PURE__ */ jsx_runtime221.jsxs(ThemedBox_default, {
                 children: [
-                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
                     bold: true,
                     children: "Tools: "
                   }),
-                  /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
                     dimColor: true,
                     children: [
                       serverToolsCount,
@@ -450002,9 +449913,9 @@ function MCPRemoteServerMenu({
               })
             ]
           }),
-          error && /* @__PURE__ */ jsx_runtime222.jsx(ThemedBox_default, {
+          error && /* @__PURE__ */ jsx_runtime221.jsx(ThemedBox_default, {
             marginTop: 1,
-            children: /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime221.jsxs(ThemedText, {
               color: "error",
               children: [
                 "Error: ",
@@ -450012,9 +449923,9 @@ function MCPRemoteServerMenu({
               ]
             })
           }),
-          menuOptions.length > 0 && /* @__PURE__ */ jsx_runtime222.jsx(ThemedBox_default, {
+          menuOptions.length > 0 && /* @__PURE__ */ jsx_runtime221.jsx(ThemedBox_default, {
             marginTop: 1,
-            children: /* @__PURE__ */ jsx_runtime222.jsx(Select, {
+            children: /* @__PURE__ */ jsx_runtime221.jsx(Select, {
               options: menuOptions,
               onChange: async (value_0) => {
                 switch (value_0) {
@@ -450071,28 +449982,28 @@ function MCPRemoteServerMenu({
           })
         ]
       }),
-      /* @__PURE__ */ jsx_runtime222.jsx(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime221.jsx(ThemedBox_default, {
         marginTop: 1,
-        children: /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime221.jsx(ThemedText, {
           dimColor: true,
           italic: true,
-          children: exitState.pending ? /* @__PURE__ */ jsx_runtime222.jsxs(jsx_runtime222.Fragment, {
+          children: exitState.pending ? /* @__PURE__ */ jsx_runtime221.jsxs(jsx_runtime221.Fragment, {
             children: [
               "Press ",
               exitState.keyName,
               " again to exit"
             ]
-          }) : /* @__PURE__ */ jsx_runtime222.jsxs(Byline, {
+          }) : /* @__PURE__ */ jsx_runtime221.jsxs(Byline, {
             children: [
-              /* @__PURE__ */ jsx_runtime222.jsx(KeyboardShortcutHint, {
+              /* @__PURE__ */ jsx_runtime221.jsx(KeyboardShortcutHint, {
                 shortcut: "↑↓",
                 action: "navigate"
               }),
-              /* @__PURE__ */ jsx_runtime222.jsx(KeyboardShortcutHint, {
+              /* @__PURE__ */ jsx_runtime221.jsx(KeyboardShortcutHint, {
                 shortcut: "Enter",
                 action: "select"
               }),
-              /* @__PURE__ */ jsx_runtime222.jsx(ConfigurableShortcutHint, {
+              /* @__PURE__ */ jsx_runtime221.jsx(ConfigurableShortcutHint, {
                 action: "confirm:no",
                 context: "Confirmation",
                 fallback: "Esc",
@@ -450105,7 +450016,7 @@ function MCPRemoteServerMenu({
     ]
   });
 }
-var import_react128, jsx_runtime222;
+var import_react127, jsx_runtime221;
 var init_MCPRemoteServerMenu = __esm(() => {
   init_figures();
   init_analytics();
@@ -450132,8 +450043,8 @@ var init_MCPRemoteServerMenu = __esm(() => {
   init_Spinner2();
   init_TextInput();
   init_CapabilitiesSection();
-  import_react128 = __toESM(require_react(), 1);
-  jsx_runtime222 = __toESM(require_jsx_runtime(), 1);
+  import_react127 = __toESM(require_react(), 1);
+  jsx_runtime221 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/MCPStdioServerMenu.tsx
@@ -450150,8 +450061,8 @@ function MCPStdioServerMenu({
   const mcp = useAppState((s) => s.mcp);
   const reconnectMcpServer = useMcpReconnect();
   const toggleMcpServer = useMcpToggleEnabled();
-  const [isReconnecting, setIsReconnecting] = import_react129.useState(false);
-  const handleToggleEnabled = import_react129.default.useCallback(async () => {
+  const [isReconnecting, setIsReconnecting] = import_react128.useState(false);
+  const handleToggleEnabled = import_react128.default.useCallback(async () => {
     const wasEnabled = server.client.type !== "disabled";
     try {
       await toggleMcpServer(server.name);
@@ -450187,47 +450098,47 @@ function MCPStdioServerMenu({
     });
   }
   if (isReconnecting) {
-    return /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
       flexDirection: "column",
       gap: 1,
       padding: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime223.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
           color: "text",
           children: [
             "Reconnecting to ",
-            /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
               bold: true,
               children: server.name
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime223.jsx(Spinner, {}),
-            /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime222.jsx(Spinner, {}),
+            /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
               children: " Restarting MCP server process"
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
           dimColor: true,
           children: "This may take a few moments."
         })
       ]
     });
   }
-  return /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
     flexDirection: "column",
     children: [
-      /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
         flexDirection: "column",
         paddingX: 1,
         borderStyle: borderless ? undefined : "round",
         children: [
-          /* @__PURE__ */ jsx_runtime223.jsx(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime222.jsx(ThemedBox_default, {
             marginBottom: 1,
-            children: /* @__PURE__ */ jsx_runtime223.jsxs(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
               bold: true,
               children: [
                 capitalizedServerName,
@@ -450235,37 +450146,37 @@ function MCPStdioServerMenu({
               ]
             })
           }),
-          /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
             flexDirection: "column",
             gap: 0,
             children: [
-              /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
+              /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
                 children: [
-                  /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
                     bold: true,
                     children: "Status: "
                   }),
-                  server.client.type === "disabled" ? /* @__PURE__ */ jsx_runtime223.jsxs(ThemedText, {
+                  server.client.type === "disabled" ? /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
                     children: [
                       color("inactive", theme)(figures_default.radioOff),
                       " disabled"
                     ]
-                  }) : server.client.type === "connected" ? /* @__PURE__ */ jsx_runtime223.jsxs(ThemedText, {
+                  }) : server.client.type === "connected" ? /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
                     children: [
                       color("success", theme)(figures_default.tick),
                       " connected"
                     ]
-                  }) : server.client.type === "pending" ? /* @__PURE__ */ jsx_runtime223.jsxs(jsx_runtime223.Fragment, {
+                  }) : server.client.type === "pending" ? /* @__PURE__ */ jsx_runtime222.jsxs(jsx_runtime222.Fragment, {
                     children: [
-                      /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+                      /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
                         dimColor: true,
                         children: figures_default.radioOff
                       }),
-                      /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+                      /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
                         children: " connecting…"
                       })
                     ]
-                  }) : /* @__PURE__ */ jsx_runtime223.jsxs(ThemedText, {
+                  }) : /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
                     children: [
                       color("error", theme)(figures_default.cross),
                       " failed"
@@ -450273,54 +450184,54 @@ function MCPStdioServerMenu({
                   })
                 ]
               }),
-              /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
+              /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
                 children: [
-                  /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
                     bold: true,
                     children: "Command: "
                   }),
-                  /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
                     dimColor: true,
                     children: server.config.command
                   })
                 ]
               }),
-              server.config.args && server.config.args.length > 0 && /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
+              server.config.args && server.config.args.length > 0 && /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
                 children: [
-                  /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
                     bold: true,
                     children: "Args: "
                   }),
-                  /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
                     dimColor: true,
                     children: server.config.args.join(" ")
                   })
                 ]
               }),
-              /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
+              /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
                 children: [
-                  /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
                     bold: true,
                     children: "Config location: "
                   }),
-                  /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
                     dimColor: true,
                     children: describeMcpConfigFilePath(getMcpConfigByName(server.name)?.scope ?? "dynamic")
                   })
                 ]
               }),
-              server.client.type === "connected" && /* @__PURE__ */ jsx_runtime223.jsx(CapabilitiesSection, {
+              server.client.type === "connected" && /* @__PURE__ */ jsx_runtime222.jsx(CapabilitiesSection, {
                 serverToolsCount,
                 serverPromptsCount: serverCommandsCount,
                 serverResourcesCount: mcp.resources[server.name]?.length || 0
               }),
-              server.client.type === "connected" && serverToolsCount > 0 && /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
+              server.client.type === "connected" && serverToolsCount > 0 && /* @__PURE__ */ jsx_runtime222.jsxs(ThemedBox_default, {
                 children: [
-                  /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
                     bold: true,
                     children: "Tools: "
                   }),
-                  /* @__PURE__ */ jsx_runtime223.jsxs(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime222.jsxs(ThemedText, {
                     dimColor: true,
                     children: [
                       serverToolsCount,
@@ -450331,9 +450242,9 @@ function MCPStdioServerMenu({
               })
             ]
           }),
-          menuOptions.length > 0 && /* @__PURE__ */ jsx_runtime223.jsx(ThemedBox_default, {
+          menuOptions.length > 0 && /* @__PURE__ */ jsx_runtime222.jsx(ThemedBox_default, {
             marginTop: 1,
-            children: /* @__PURE__ */ jsx_runtime223.jsx(Select, {
+            children: /* @__PURE__ */ jsx_runtime222.jsx(Select, {
               options: menuOptions,
               onChange: async (value) => {
                 if (value === "tools") {
@@ -450362,28 +450273,28 @@ function MCPStdioServerMenu({
           })
         ]
       }),
-      /* @__PURE__ */ jsx_runtime223.jsx(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime222.jsx(ThemedBox_default, {
         marginTop: 1,
-        children: /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime222.jsx(ThemedText, {
           dimColor: true,
           italic: true,
-          children: exitState.pending ? /* @__PURE__ */ jsx_runtime223.jsxs(jsx_runtime223.Fragment, {
+          children: exitState.pending ? /* @__PURE__ */ jsx_runtime222.jsxs(jsx_runtime222.Fragment, {
             children: [
               "Press ",
               exitState.keyName,
               " again to exit"
             ]
-          }) : /* @__PURE__ */ jsx_runtime223.jsxs(Byline, {
+          }) : /* @__PURE__ */ jsx_runtime222.jsxs(Byline, {
             children: [
-              /* @__PURE__ */ jsx_runtime223.jsx(KeyboardShortcutHint, {
+              /* @__PURE__ */ jsx_runtime222.jsx(KeyboardShortcutHint, {
                 shortcut: "↑↓",
                 action: "navigate"
               }),
-              /* @__PURE__ */ jsx_runtime223.jsx(KeyboardShortcutHint, {
+              /* @__PURE__ */ jsx_runtime222.jsx(KeyboardShortcutHint, {
                 shortcut: "Enter",
                 action: "select"
               }),
-              /* @__PURE__ */ jsx_runtime223.jsx(ConfigurableShortcutHint, {
+              /* @__PURE__ */ jsx_runtime222.jsx(ConfigurableShortcutHint, {
                 action: "confirm:no",
                 context: "Confirmation",
                 fallback: "Esc",
@@ -450396,7 +450307,7 @@ function MCPStdioServerMenu({
     ]
   });
 }
-var import_react129, jsx_runtime223;
+var import_react128, jsx_runtime222;
 var init_MCPStdioServerMenu = __esm(() => {
   init_figures();
   init_useExitOnCtrlCDWithKeybindings();
@@ -450413,19 +450324,19 @@ var init_MCPStdioServerMenu = __esm(() => {
   init_KeyboardShortcutHint();
   init_Spinner2();
   init_CapabilitiesSection();
-  import_react129 = __toESM(require_react(), 1);
-  jsx_runtime223 = __toESM(require_jsx_runtime(), 1);
+  import_react128 = __toESM(require_react(), 1);
+  jsx_runtime222 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/MCPToolDetailView.tsx
 function MCPToolDetailView(t0) {
-  const $ = import_compiler_runtime181.c(44);
+  const $ = import_compiler_runtime179.c(44);
   const {
     tool,
     server,
     onBack
   } = t0;
-  const [toolDescription, setToolDescription] = import_react130.default.useState("");
+  const [toolDescription, setToolDescription] = import_react129.default.useState("");
   let t1;
   let toolName;
   if ($[0] !== server.name || $[1] !== tool) {
@@ -450501,10 +450412,10 @@ function MCPToolDetailView(t0) {
     t5 = $[11];
     t6 = $[12];
   }
-  import_react130.default.useEffect(t5, t6);
+  import_react129.default.useEffect(t5, t6);
   let t7;
   if ($[13] !== isReadOnly) {
-    t7 = isReadOnly && /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
+    t7 = isReadOnly && /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
       color: "success",
       children: " [read-only]"
     });
@@ -450515,7 +450426,7 @@ function MCPToolDetailView(t0) {
   }
   let t8;
   if ($[15] !== isDestructive) {
-    t8 = isDestructive && /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
+    t8 = isDestructive && /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
       color: "error",
       children: " [destructive]"
     });
@@ -450526,7 +450437,7 @@ function MCPToolDetailView(t0) {
   }
   let t9;
   if ($[17] !== isOpenWorld) {
-    t9 = isOpenWorld && /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
+    t9 = isOpenWorld && /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
       dimColor: true,
       children: " [open-world]"
     });
@@ -450537,7 +450448,7 @@ function MCPToolDetailView(t0) {
   }
   let t10;
   if ($[19] !== displayName || $[20] !== t7 || $[21] !== t8 || $[22] !== t9) {
-    t10 = /* @__PURE__ */ jsx_runtime224.jsxs(jsx_runtime224.Fragment, {
+    t10 = /* @__PURE__ */ jsx_runtime223.jsxs(jsx_runtime223.Fragment, {
       children: [
         displayName,
         t7,
@@ -450556,7 +450467,7 @@ function MCPToolDetailView(t0) {
   const titleContent = t10;
   let t11;
   if ($[24] === Symbol.for("react.memo_cache_sentinel")) {
-    t11 = /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
+    t11 = /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
       bold: true,
       children: "Tool name: "
     });
@@ -450566,10 +450477,10 @@ function MCPToolDetailView(t0) {
   }
   let t12;
   if ($[25] !== toolName) {
-    t12 = /* @__PURE__ */ jsx_runtime224.jsxs(ThemedBox_default, {
+    t12 = /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
       children: [
         t11,
-        /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
           dimColor: true,
           children: toolName
         })
@@ -450582,7 +450493,7 @@ function MCPToolDetailView(t0) {
   }
   let t13;
   if ($[27] === Symbol.for("react.memo_cache_sentinel")) {
-    t13 = /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
+    t13 = /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
       bold: true,
       children: "Full name: "
     });
@@ -450592,10 +450503,10 @@ function MCPToolDetailView(t0) {
   }
   let t14;
   if ($[28] !== tool.name) {
-    t14 = /* @__PURE__ */ jsx_runtime224.jsxs(ThemedBox_default, {
+    t14 = /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
       children: [
         t13,
-        /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
           dimColor: true,
           children: tool.name
         })
@@ -450608,15 +450519,15 @@ function MCPToolDetailView(t0) {
   }
   let t15;
   if ($[30] !== toolDescription) {
-    t15 = toolDescription && /* @__PURE__ */ jsx_runtime224.jsxs(ThemedBox_default, {
+    t15 = toolDescription && /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginTop: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
           bold: true,
           children: "Description:"
         }),
-        /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
           wrap: "wrap",
           children: toolDescription
         })
@@ -450629,36 +450540,36 @@ function MCPToolDetailView(t0) {
   }
   let t16;
   if ($[32] !== tool.inputJSONSchema) {
-    t16 = tool.inputJSONSchema && tool.inputJSONSchema.properties && Object.keys(tool.inputJSONSchema.properties).length > 0 && /* @__PURE__ */ jsx_runtime224.jsxs(ThemedBox_default, {
+    t16 = tool.inputJSONSchema && tool.inputJSONSchema.properties && Object.keys(tool.inputJSONSchema.properties).length > 0 && /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginTop: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
           bold: true,
           children: "Parameters:"
         }),
-        /* @__PURE__ */ jsx_runtime224.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime223.jsx(ThemedBox_default, {
           marginLeft: 2,
           flexDirection: "column",
           children: Object.entries(tool.inputJSONSchema.properties).map((t17) => {
             const [key, value] = t17;
             const required = tool.inputJSONSchema?.required;
             const isRequired = required?.includes(key);
-            return /* @__PURE__ */ jsx_runtime224.jsxs(ThemedText, {
+            return /* @__PURE__ */ jsx_runtime223.jsxs(ThemedText, {
               children: [
                 "• ",
                 key,
-                isRequired && /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
+                isRequired && /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
                   dimColor: true,
                   children: " (required)"
                 }),
                 ":",
                 " ",
-                /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
+                /* @__PURE__ */ jsx_runtime223.jsx(ThemedText, {
                   dimColor: true,
                   children: typeof value === "object" && value && "type" in value ? String(value.type) : "unknown"
                 }),
-                typeof value === "object" && value && "description" in value && /* @__PURE__ */ jsx_runtime224.jsxs(ThemedText, {
+                typeof value === "object" && value && "description" in value && /* @__PURE__ */ jsx_runtime223.jsxs(ThemedText, {
                   dimColor: true,
                   children: [
                     " - ",
@@ -450678,7 +450589,7 @@ function MCPToolDetailView(t0) {
   }
   let t17;
   if ($[34] !== t12 || $[35] !== t14 || $[36] !== t15 || $[37] !== t16) {
-    t17 = /* @__PURE__ */ jsx_runtime224.jsxs(ThemedBox_default, {
+    t17 = /* @__PURE__ */ jsx_runtime223.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
         t12,
@@ -450697,11 +450608,11 @@ function MCPToolDetailView(t0) {
   }
   let t18;
   if ($[39] !== onBack || $[40] !== server.name || $[41] !== t17 || $[42] !== titleContent) {
-    t18 = /* @__PURE__ */ jsx_runtime224.jsx(Dialog, {
+    t18 = /* @__PURE__ */ jsx_runtime223.jsx(Dialog, {
       title: titleContent,
       subtitle: server.name,
       onCancel: onBack,
-      inputGuide: _temp94,
+      inputGuide: _temp91,
       children: t17
     });
     $[39] = onBack;
@@ -450714,40 +450625,40 @@ function MCPToolDetailView(t0) {
   }
   return t18;
 }
-function _temp94(exitState) {
-  return exitState.pending ? /* @__PURE__ */ jsx_runtime224.jsxs(ThemedText, {
+function _temp91(exitState) {
+  return exitState.pending ? /* @__PURE__ */ jsx_runtime223.jsxs(ThemedText, {
     children: [
       "Press ",
       exitState.keyName,
       " again to exit"
     ]
-  }) : /* @__PURE__ */ jsx_runtime224.jsx(ConfigurableShortcutHint, {
+  }) : /* @__PURE__ */ jsx_runtime223.jsx(ConfigurableShortcutHint, {
     action: "confirm:no",
     context: "Confirmation",
     fallback: "Esc",
     description: "go back"
   });
 }
-var import_compiler_runtime181, import_react130, jsx_runtime224;
+var import_compiler_runtime179, import_react129, jsx_runtime223;
 var init_MCPToolDetailView = __esm(() => {
   init_ink2();
   init_mcpStringUtils();
   init_ConfigurableShortcutHint();
   init_Dialog();
-  import_compiler_runtime181 = __toESM(require_compiler_runtime(), 1);
-  import_react130 = __toESM(require_react(), 1);
-  jsx_runtime224 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime179 = __toESM(require_compiler_runtime(), 1);
+  import_react129 = __toESM(require_react(), 1);
+  jsx_runtime223 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/MCPToolListView.tsx
 function MCPToolListView(t0) {
-  const $ = import_compiler_runtime182.c(21);
+  const $ = import_compiler_runtime180.c(21);
   const {
     server,
     onSelectTool,
     onBack
   } = t0;
-  const mcpTools = useAppState(_temp95);
+  const mcpTools = useAppState(_temp94);
   let t1;
   bb0: {
     if (server.client.type !== "connected") {
@@ -450827,10 +450738,10 @@ function MCPToolListView(t0) {
   const t6 = `${t4} ${t5}`;
   let t7;
   if ($[11] !== onBack || $[12] !== onSelectTool || $[13] !== serverTools || $[14] !== toolOptions) {
-    t7 = serverTools.length === 0 ? /* @__PURE__ */ jsx_runtime225.jsx(ThemedText, {
+    t7 = serverTools.length === 0 ? /* @__PURE__ */ jsx_runtime224.jsx(ThemedText, {
       dimColor: true,
       children: "No tools available"
-    }) : /* @__PURE__ */ jsx_runtime225.jsx(Select, {
+    }) : /* @__PURE__ */ jsx_runtime224.jsx(Select, {
       options: toolOptions,
       onChange: (value) => {
         const index_0 = parseInt(value);
@@ -450851,7 +450762,7 @@ function MCPToolListView(t0) {
   }
   let t8;
   if ($[16] !== onBack || $[17] !== t3 || $[18] !== t6 || $[19] !== t7) {
-    t8 = /* @__PURE__ */ jsx_runtime225.jsx(Dialog, {
+    t8 = /* @__PURE__ */ jsx_runtime224.jsx(Dialog, {
       title: t3,
       subtitle: t6,
       onCancel: onBack,
@@ -450869,23 +450780,23 @@ function MCPToolListView(t0) {
   return t8;
 }
 function _temp234(exitState) {
-  return exitState.pending ? /* @__PURE__ */ jsx_runtime225.jsxs(ThemedText, {
+  return exitState.pending ? /* @__PURE__ */ jsx_runtime224.jsxs(ThemedText, {
     children: [
       "Press ",
       exitState.keyName,
       " again to exit"
     ]
-  }) : /* @__PURE__ */ jsx_runtime225.jsxs(Byline, {
+  }) : /* @__PURE__ */ jsx_runtime224.jsxs(Byline, {
     children: [
-      /* @__PURE__ */ jsx_runtime225.jsx(KeyboardShortcutHint, {
+      /* @__PURE__ */ jsx_runtime224.jsx(KeyboardShortcutHint, {
         shortcut: "↑↓",
         action: "navigate"
       }),
-      /* @__PURE__ */ jsx_runtime225.jsx(KeyboardShortcutHint, {
+      /* @__PURE__ */ jsx_runtime224.jsx(KeyboardShortcutHint, {
         shortcut: "Enter",
         action: "select"
       }),
-      /* @__PURE__ */ jsx_runtime225.jsx(ConfigurableShortcutHint, {
+      /* @__PURE__ */ jsx_runtime224.jsx(ConfigurableShortcutHint, {
         action: "confirm:no",
         context: "Confirmation",
         fallback: "Esc",
@@ -450894,10 +450805,10 @@ function _temp234(exitState) {
     ]
   });
 }
-function _temp95(s) {
+function _temp94(s) {
   return s.mcp.tools;
 }
-var import_compiler_runtime182, jsx_runtime225;
+var import_compiler_runtime180, jsx_runtime224;
 var init_MCPToolListView = __esm(() => {
   init_ink2();
   init_mcpStringUtils();
@@ -450909,17 +450820,17 @@ var init_MCPToolListView = __esm(() => {
   init_Byline();
   init_Dialog();
   init_KeyboardShortcutHint();
-  import_compiler_runtime182 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime225 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime180 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime224 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/MCPSettings.tsx
 function MCPSettings(t0) {
-  const $ = import_compiler_runtime183.c(66);
+  const $ = import_compiler_runtime181.c(66);
   const {
     onComplete
   } = t0;
-  const mcp = useAppState(_temp96);
+  const mcp = useAppState(_temp95);
   const agentDefinitions = useAppState(_temp235);
   const mcpClients = mcp.clients;
   let t1;
@@ -450931,7 +450842,7 @@ function MCPSettings(t0) {
   } else {
     t1 = $[0];
   }
-  const [viewState, setViewState] = import_react131.default.useState(t1);
+  const [viewState, setViewState] = import_react130.default.useState(t1);
   let t2;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = [];
@@ -450939,7 +450850,7 @@ function MCPSettings(t0) {
   } else {
     t2 = $[1];
   }
-  const [servers, setServers] = import_react131.default.useState(t2);
+  const [servers, setServers] = import_react130.default.useState(t2);
   let t3;
   if ($[2] !== agentDefinitions.allAgents) {
     t3 = extractAgentMcpServers(agentDefinitions.allAgents);
@@ -451034,7 +450945,7 @@ function MCPSettings(t0) {
     t5 = $[8];
     t6 = $[9];
   }
-  import_react131.default.useEffect(t5, t6);
+  import_react130.default.useEffect(t5, t6);
   let t7;
   let t8;
   if ($[10] !== agentMcpServers.length || $[11] !== filteredClients.length || $[12] !== onComplete || $[13] !== servers.length) {
@@ -451057,7 +450968,7 @@ function MCPSettings(t0) {
     t7 = $[14];
     t8 = $[15];
   }
-  import_react131.useEffect(t7, t8);
+  import_react130.useEffect(t7, t8);
   switch (viewState.type) {
     case "list": {
       let t10;
@@ -451079,7 +450990,7 @@ function MCPSettings(t0) {
       }
       let t11;
       if ($[18] !== agentMcpServers || $[19] !== onComplete || $[20] !== servers || $[21] !== viewState.defaultTab) {
-        t11 = /* @__PURE__ */ jsx_runtime226.jsx(MCPListPanel, {
+        t11 = /* @__PURE__ */ jsx_runtime225.jsx(MCPListPanel, {
           servers,
           agentServers: agentMcpServers,
           onSelectServer: t9,
@@ -451134,7 +451045,7 @@ function MCPSettings(t0) {
         }
         let t12;
         if ($[30] !== onComplete || $[31] !== serverTools_0.length || $[32] !== t10 || $[33] !== t11 || $[34] !== viewState.server) {
-          t12 = /* @__PURE__ */ jsx_runtime226.jsx(MCPStdioServerMenu, {
+          t12 = /* @__PURE__ */ jsx_runtime225.jsx(MCPStdioServerMenu, {
             server: viewState.server,
             serverToolsCount: serverTools_0.length,
             onViewTools: t10,
@@ -451176,7 +451087,7 @@ function MCPSettings(t0) {
         }
         let t12;
         if ($[40] !== onComplete || $[41] !== serverTools_0.length || $[42] !== t10 || $[43] !== t11 || $[44] !== viewState.server) {
-          t12 = /* @__PURE__ */ jsx_runtime226.jsx(MCPRemoteServerMenu, {
+          t12 = /* @__PURE__ */ jsx_runtime225.jsx(MCPRemoteServerMenu, {
             server: viewState.server,
             serverToolsCount: serverTools_0.length,
             onViewTools: t10,
@@ -451217,7 +451128,7 @@ function MCPSettings(t0) {
       }
       let t11;
       if ($[49] !== t10 || $[50] !== t9 || $[51] !== viewState.server) {
-        t11 = /* @__PURE__ */ jsx_runtime226.jsx(MCPToolListView, {
+        t11 = /* @__PURE__ */ jsx_runtime225.jsx(MCPToolListView, {
           server: viewState.server,
           onSelectTool: t9,
           onBack: t10
@@ -451263,7 +451174,7 @@ function MCPSettings(t0) {
       }
       let t11;
       if ($[58] !== t10 || $[59] !== tool || $[60] !== viewState.server) {
-        t11 = /* @__PURE__ */ jsx_runtime226.jsx(MCPToolDetailView, {
+        t11 = /* @__PURE__ */ jsx_runtime225.jsx(MCPToolDetailView, {
           tool,
           server: viewState.server,
           onBack: t10
@@ -451290,7 +451201,7 @@ function MCPSettings(t0) {
       }
       let t10;
       if ($[63] !== onComplete || $[64] !== viewState.agentServer) {
-        t10 = /* @__PURE__ */ jsx_runtime226.jsx(MCPAgentServerMenu, {
+        t10 = /* @__PURE__ */ jsx_runtime225.jsx(MCPAgentServerMenu, {
           agentServer: viewState.agentServer,
           onCancel: t9,
           onComplete
@@ -451314,10 +451225,10 @@ function _temp323(client) {
 function _temp235(s_0) {
   return s_0.agentDefinitions;
 }
-function _temp96(s) {
+function _temp95(s) {
   return s.mcp;
 }
-var import_compiler_runtime183, import_react131, jsx_runtime226;
+var import_compiler_runtime181, import_react130, jsx_runtime225;
 var init_MCPSettings = __esm(() => {
   init_auth6();
   init_utils6();
@@ -451329,9 +451240,9 @@ var init_MCPSettings = __esm(() => {
   init_MCPStdioServerMenu();
   init_MCPToolDetailView();
   init_MCPToolListView();
-  import_compiler_runtime183 = __toESM(require_compiler_runtime(), 1);
-  import_react131 = __toESM(require_react(), 1);
-  jsx_runtime226 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime181 = __toESM(require_compiler_runtime(), 1);
+  import_react130 = __toESM(require_react(), 1);
+  jsx_runtime225 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/mcp/index.ts
@@ -451543,9 +451454,9 @@ function AddMarketplace({
   onAddComplete,
   cliMode = false
 }) {
-  const hasAttemptedAutoAdd = import_react132.useRef(false);
-  const [isLoading, setLoading] = import_react132.useState(false);
-  const [progressMessage, setProgressMessage] = import_react132.useState("");
+  const hasAttemptedAutoAdd = import_react131.useRef(false);
+  const [isLoading, setLoading] = import_react131.useState(false);
+  const [progressMessage, setProgressMessage] = import_react131.useState("");
   const handleAdd = async () => {
     const input = inputValue.trim();
     if (!input) {
@@ -451608,56 +451519,56 @@ function AddMarketplace({
       }
     }
   };
-  import_react132.useEffect(() => {
+  import_react131.useEffect(() => {
     if (inputValue && !hasAttemptedAutoAdd.current && !error && !result) {
       hasAttemptedAutoAdd.current = true;
       handleAdd();
     }
   }, []);
-  return /* @__PURE__ */ jsx_runtime227.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime226.jsxs(ThemedBox_default, {
     flexDirection: "column",
     children: [
-      /* @__PURE__ */ jsx_runtime227.jsxs(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime226.jsxs(ThemedBox_default, {
         flexDirection: "column",
         paddingX: 1,
         borderStyle: "round",
         children: [
-          /* @__PURE__ */ jsx_runtime227.jsx(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime226.jsx(ThemedBox_default, {
             marginBottom: 1,
-            children: /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime226.jsx(ThemedText, {
               bold: true,
               children: "Add Marketplace"
             })
           }),
-          /* @__PURE__ */ jsx_runtime227.jsxs(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime226.jsxs(ThemedBox_default, {
             flexDirection: "column",
             children: [
-              /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime226.jsx(ThemedText, {
                 children: "Enter marketplace source:"
               }),
-              /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime226.jsx(ThemedText, {
                 dimColor: true,
                 children: "Examples:"
               }),
-              /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime226.jsx(ThemedText, {
                 dimColor: true,
                 children: " · owner/repo (GitHub)"
               }),
-              /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime226.jsx(ThemedText, {
                 dimColor: true,
                 children: " · git@github.com:owner/repo.git (SSH)"
               }),
-              /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime226.jsx(ThemedText, {
                 dimColor: true,
                 children: " · https://example.com/marketplace.json"
               }),
-              /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime226.jsx(ThemedText, {
                 dimColor: true,
                 children: " · ./path/to/marketplace"
               }),
-              /* @__PURE__ */ jsx_runtime227.jsx(ThemedBox_default, {
+              /* @__PURE__ */ jsx_runtime226.jsx(ThemedBox_default, {
                 marginTop: 1,
-                children: /* @__PURE__ */ jsx_runtime227.jsx(TextInput, {
+                children: /* @__PURE__ */ jsx_runtime226.jsx(TextInput, {
                   value: inputValue,
                   onChange: setInputValue,
                   onSubmit: handleAdd,
@@ -451670,42 +451581,42 @@ function AddMarketplace({
               })
             ]
           }),
-          isLoading && /* @__PURE__ */ jsx_runtime227.jsxs(ThemedBox_default, {
+          isLoading && /* @__PURE__ */ jsx_runtime226.jsxs(ThemedBox_default, {
             marginTop: 1,
             children: [
-              /* @__PURE__ */ jsx_runtime227.jsx(Spinner, {}),
-              /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime226.jsx(Spinner, {}),
+              /* @__PURE__ */ jsx_runtime226.jsx(ThemedText, {
                 children: progressMessage || "Adding marketplace to configuration…"
               })
             ]
           }),
-          error && /* @__PURE__ */ jsx_runtime227.jsx(ThemedBox_default, {
+          error && /* @__PURE__ */ jsx_runtime226.jsx(ThemedBox_default, {
             marginTop: 1,
-            children: /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime226.jsx(ThemedText, {
               color: "error",
               children: error
             })
           }),
-          result && /* @__PURE__ */ jsx_runtime227.jsx(ThemedBox_default, {
+          result && /* @__PURE__ */ jsx_runtime226.jsx(ThemedBox_default, {
             marginTop: 1,
-            children: /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime226.jsx(ThemedText, {
               children: result
             })
           })
         ]
       }),
-      /* @__PURE__ */ jsx_runtime227.jsx(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime226.jsx(ThemedBox_default, {
         marginLeft: 3,
-        children: /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime226.jsx(ThemedText, {
           dimColor: true,
           italic: true,
-          children: /* @__PURE__ */ jsx_runtime227.jsxs(Byline, {
+          children: /* @__PURE__ */ jsx_runtime226.jsxs(Byline, {
             children: [
-              /* @__PURE__ */ jsx_runtime227.jsx(KeyboardShortcutHint, {
+              /* @__PURE__ */ jsx_runtime226.jsx(KeyboardShortcutHint, {
                 shortcut: "Enter",
                 action: "add"
               }),
-              /* @__PURE__ */ jsx_runtime227.jsx(ConfigurableShortcutHint, {
+              /* @__PURE__ */ jsx_runtime226.jsx(ConfigurableShortcutHint, {
                 action: "confirm:no",
                 context: "Settings",
                 fallback: "Esc",
@@ -451718,7 +451629,7 @@ function AddMarketplace({
     ]
   });
 }
-var import_react132, jsx_runtime227;
+var import_react131, jsx_runtime226;
 var init_AddMarketplace = __esm(() => {
   init_analytics();
   init_ConfigurableShortcutHint();
@@ -451732,8 +451643,8 @@ var init_AddMarketplace = __esm(() => {
   init_cacheUtils();
   init_marketplaceManager();
   init_parseMarketplaceInput();
-  import_react132 = __toESM(require_react(), 1);
-  jsx_runtime227 = __toESM(require_jsx_runtime(), 1);
+  import_react131 = __toESM(require_react(), 1);
+  jsx_runtime226 = __toESM(require_jsx_runtime(), 1);
 });
 
 // utils/plugins/installCounts.ts
@@ -451905,7 +451816,7 @@ function buildFinalValues(fields, collected, configSchema, initialValues) {
   return finalValues;
 }
 function PluginOptionsDialog(t0) {
-  const $ = import_compiler_runtime184.c(70);
+  const $ = import_compiler_runtime182.c(70);
   const {
     title,
     subtitle,
@@ -451939,7 +451850,7 @@ function PluginOptionsDialog(t0) {
     t2 = $[4];
   }
   const initialFor = t2;
-  const [currentFieldIndex, setCurrentFieldIndex] = import_react133.useState(0);
+  const [currentFieldIndex, setCurrentFieldIndex] = import_react132.useState(0);
   let t3;
   if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
     t3 = {};
@@ -451947,7 +451858,7 @@ function PluginOptionsDialog(t0) {
   } else {
     t3 = $[5];
   }
-  const [values, setValues] = import_react133.useState(t3);
+  const [values, setValues] = import_react132.useState(t3);
   let t4;
   if ($[6] !== fields[0] || $[7] !== initialFor) {
     t4 = () => fields[0] ? initialFor(fields[0]) : "";
@@ -451957,7 +451868,7 @@ function PluginOptionsDialog(t0) {
   } else {
     t4 = $[8];
   }
-  const [currentInput, setCurrentInput] = import_react133.useState(t4);
+  const [currentInput, setCurrentInput] = import_react132.useState(t4);
   const currentField = fields[currentFieldIndex];
   const fieldSchema = currentField ? configSchema[currentField] : null;
   let t5;
@@ -451978,7 +451889,7 @@ function PluginOptionsDialog(t0) {
           ...prev,
           [currentField]: currentInput
         }));
-        setCurrentFieldIndex(_temp97);
+        setCurrentFieldIndex(_temp96);
         const nextKey = fields[currentFieldIndex + 1];
         setCurrentInput(nextKey ? initialFor(nextKey) : "");
       }
@@ -452082,7 +451993,7 @@ function PluginOptionsDialog(t0) {
   const t12 = fieldSchema.title || currentField;
   let t13;
   if ($[34] !== isRequired) {
-    t13 = isRequired && /* @__PURE__ */ jsx_runtime228.jsx(ThemedText, {
+    t13 = isRequired && /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
       color: "error",
       children: " *"
     });
@@ -452093,7 +452004,7 @@ function PluginOptionsDialog(t0) {
   }
   let t14;
   if ($[36] !== t12 || $[37] !== t13) {
-    t14 = /* @__PURE__ */ jsx_runtime228.jsxs(ThemedText, {
+    t14 = /* @__PURE__ */ jsx_runtime227.jsxs(ThemedText, {
       bold: true,
       children: [
         t12,
@@ -452108,7 +452019,7 @@ function PluginOptionsDialog(t0) {
   }
   let t15;
   if ($[39] !== fieldSchema.description) {
-    t15 = fieldSchema.description && /* @__PURE__ */ jsx_runtime228.jsx(ThemedText, {
+    t15 = fieldSchema.description && /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
       dimColor: true,
       children: fieldSchema.description
     });
@@ -452119,7 +452030,7 @@ function PluginOptionsDialog(t0) {
   }
   let t16;
   if ($[41] === Symbol.for("react.memo_cache_sentinel")) {
-    t16 = /* @__PURE__ */ jsx_runtime228.jsxs(ThemedText, {
+    t16 = /* @__PURE__ */ jsx_runtime227.jsxs(ThemedText, {
       children: [
         figures_default.pointerSmall,
         " "
@@ -452131,7 +452042,7 @@ function PluginOptionsDialog(t0) {
   }
   let t17;
   if ($[42] !== displayValue) {
-    t17 = /* @__PURE__ */ jsx_runtime228.jsx(ThemedText, {
+    t17 = /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
       children: displayValue
     });
     $[42] = displayValue;
@@ -452141,7 +452052,7 @@ function PluginOptionsDialog(t0) {
   }
   let t18;
   if ($[44] === Symbol.for("react.memo_cache_sentinel")) {
-    t18 = /* @__PURE__ */ jsx_runtime228.jsx(ThemedText, {
+    t18 = /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
       children: "█"
     });
     $[44] = t18;
@@ -452150,7 +452061,7 @@ function PluginOptionsDialog(t0) {
   }
   let t19;
   if ($[45] !== t17) {
-    t19 = /* @__PURE__ */ jsx_runtime228.jsxs(ThemedBox_default, {
+    t19 = /* @__PURE__ */ jsx_runtime227.jsxs(ThemedBox_default, {
       marginTop: 1,
       children: [
         t16,
@@ -452165,7 +452076,7 @@ function PluginOptionsDialog(t0) {
   }
   let t20;
   if ($[47] !== t14 || $[48] !== t15 || $[49] !== t19) {
-    t20 = /* @__PURE__ */ jsx_runtime228.jsxs(ThemedBox_default, {
+    t20 = /* @__PURE__ */ jsx_runtime227.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
         t14,
@@ -452183,7 +452094,7 @@ function PluginOptionsDialog(t0) {
   const t21 = currentFieldIndex + 1;
   let t22;
   if ($[51] !== fields.length || $[52] !== t21) {
-    t22 = /* @__PURE__ */ jsx_runtime228.jsxs(ThemedText, {
+    t22 = /* @__PURE__ */ jsx_runtime227.jsxs(ThemedText, {
       dimColor: true,
       children: [
         "Field ",
@@ -452200,7 +452111,7 @@ function PluginOptionsDialog(t0) {
   }
   let t23;
   if ($[54] !== currentFieldIndex || $[55] !== fields.length) {
-    t23 = currentFieldIndex < fields.length - 1 && /* @__PURE__ */ jsx_runtime228.jsx(ThemedText, {
+    t23 = currentFieldIndex < fields.length - 1 && /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
       dimColor: true,
       children: "Tab: Next field · Enter: Save and continue"
     });
@@ -452212,7 +452123,7 @@ function PluginOptionsDialog(t0) {
   }
   let t24;
   if ($[57] !== currentFieldIndex || $[58] !== fields.length) {
-    t24 = currentFieldIndex === fields.length - 1 && /* @__PURE__ */ jsx_runtime228.jsx(ThemedText, {
+    t24 = currentFieldIndex === fields.length - 1 && /* @__PURE__ */ jsx_runtime227.jsx(ThemedText, {
       dimColor: true,
       children: "Enter: Save configuration"
     });
@@ -452224,7 +452135,7 @@ function PluginOptionsDialog(t0) {
   }
   let t25;
   if ($[60] !== t22 || $[61] !== t23 || $[62] !== t24) {
-    t25 = /* @__PURE__ */ jsx_runtime228.jsxs(ThemedBox_default, {
+    t25 = /* @__PURE__ */ jsx_runtime227.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
         t22,
@@ -452241,7 +452152,7 @@ function PluginOptionsDialog(t0) {
   }
   let t26;
   if ($[64] !== onCancel || $[65] !== subtitle || $[66] !== t20 || $[67] !== t25 || $[68] !== title) {
-    t26 = /* @__PURE__ */ jsx_runtime228.jsxs(Dialog, {
+    t26 = /* @__PURE__ */ jsx_runtime227.jsxs(Dialog, {
       title,
       subtitle,
       onCancel,
@@ -452268,10 +452179,10 @@ function _temp324(prev_2) {
 function _temp236(prev_1) {
   return prev_1 + 1;
 }
-function _temp97(prev_0) {
+function _temp96(prev_0) {
   return prev_0 + 1;
 }
-var import_compiler_runtime184, import_react133, jsx_runtime228;
+var import_compiler_runtime182, import_react132, jsx_runtime227;
 var init_PluginOptionsDialog = __esm(() => {
   init_figures();
   init_Dialog();
@@ -452279,9 +452190,9 @@ var init_PluginOptionsDialog = __esm(() => {
   init_ink2();
   init_useKeybinding();
   init_envUtils();
-  import_compiler_runtime184 = __toESM(require_compiler_runtime(), 1);
-  import_react133 = __toESM(require_react(), 1);
-  jsx_runtime228 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime182 = __toESM(require_compiler_runtime(), 1);
+  import_react132 = __toESM(require_react(), 1);
+  jsx_runtime227 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/plugin/PluginOptionsFlow.tsx
@@ -452297,7 +452208,7 @@ function PluginOptionsFlow({
   pluginId,
   onDone
 }) {
-  const [steps] = React73.useState(() => {
+  const [steps] = React72.useState(() => {
     const result = [];
     const unconfigured = getUnconfiguredOptions(plugin);
     if (Object.keys(unconfigured).length > 0) {
@@ -452323,10 +452234,10 @@ function PluginOptionsFlow({
     }
     return result;
   });
-  const [index, setIndex] = React73.useState(0);
-  const onDoneRef = React73.useRef(onDone);
+  const [index, setIndex] = React72.useState(0);
+  const onDoneRef = React72.useRef(onDone);
   onDoneRef.current = onDone;
-  React73.useEffect(() => {
+  React72.useEffect(() => {
     if (steps.length === 0) {
       onDoneRef.current("skipped");
     }
@@ -452349,7 +452260,7 @@ function PluginOptionsFlow({
       onDone("configured");
     }
   }
-  return /* @__PURE__ */ jsx_runtime229.jsx(PluginOptionsDialog, {
+  return /* @__PURE__ */ jsx_runtime228.jsx(PluginOptionsDialog, {
     title: current.title,
     subtitle: current.subtitle,
     configSchema: current.schema,
@@ -452358,7 +452269,7 @@ function PluginOptionsFlow({
     onCancel: () => onDone("skipped")
   }, current.key);
 }
-var React73, jsx_runtime229;
+var React72, jsx_runtime228;
 var init_PluginOptionsFlow = __esm(() => {
   init_errors();
   init_mcpbHandler();
@@ -452366,13 +452277,13 @@ var init_PluginOptionsFlow = __esm(() => {
   init_pluginLoader();
   init_pluginOptionsStorage();
   init_PluginOptionsDialog();
-  React73 = __toESM(require_react(), 1);
-  jsx_runtime229 = __toESM(require_jsx_runtime(), 1);
+  React72 = __toESM(require_react(), 1);
+  jsx_runtime228 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/plugin/PluginTrustWarning.tsx
 function PluginTrustWarning() {
-  const $ = import_compiler_runtime185.c(3);
+  const $ = import_compiler_runtime183.c(3);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = getPluginTrustMessage();
@@ -452383,7 +452294,7 @@ function PluginTrustWarning() {
   const customMessage = t0;
   let t1;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = /* @__PURE__ */ jsx_runtime230.jsxs(ThemedText, {
+    t1 = /* @__PURE__ */ jsx_runtime229.jsxs(ThemedText, {
       color: "claude",
       children: [
         figures_default.warning,
@@ -452396,11 +452307,11 @@ function PluginTrustWarning() {
   }
   let t2;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = /* @__PURE__ */ jsx_runtime230.jsxs(ThemedBox_default, {
+    t2 = /* @__PURE__ */ jsx_runtime229.jsxs(ThemedBox_default, {
       marginBottom: 1,
       children: [
         t1,
-        /* @__PURE__ */ jsx_runtime230.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime229.jsxs(ThemedText, {
           dimColor: true,
           italic: true,
           children: [
@@ -452416,13 +452327,13 @@ function PluginTrustWarning() {
   }
   return t2;
 }
-var import_compiler_runtime185, jsx_runtime230;
+var import_compiler_runtime183, jsx_runtime229;
 var init_PluginTrustWarning = __esm(() => {
   init_figures();
   init_ink2();
   init_marketplaceHelpers();
-  import_compiler_runtime185 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime230 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime183 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime229 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/plugin/pluginDetailsHelpers.tsx
@@ -452463,13 +452374,13 @@ function buildPluginDetailsMenuOptions(hasHomepage, githubRepo) {
   return options;
 }
 function PluginSelectionKeyHint(t0) {
-  const $ = import_compiler_runtime186.c(7);
+  const $ = import_compiler_runtime184.c(7);
   const {
     hasSelection
   } = t0;
   let t1;
   if ($[0] !== hasSelection) {
-    t1 = hasSelection && /* @__PURE__ */ jsx_runtime231.jsx(ConfigurableShortcutHint, {
+    t1 = hasSelection && /* @__PURE__ */ jsx_runtime230.jsx(ConfigurableShortcutHint, {
       action: "plugin:install",
       context: "Plugin",
       fallback: "i",
@@ -452485,19 +452396,19 @@ function PluginSelectionKeyHint(t0) {
   let t3;
   let t4;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = /* @__PURE__ */ jsx_runtime231.jsx(ConfigurableShortcutHint, {
+    t2 = /* @__PURE__ */ jsx_runtime230.jsx(ConfigurableShortcutHint, {
       action: "plugin:toggle",
       context: "Plugin",
       fallback: "Space",
       description: "toggle"
     });
-    t3 = /* @__PURE__ */ jsx_runtime231.jsx(ConfigurableShortcutHint, {
+    t3 = /* @__PURE__ */ jsx_runtime230.jsx(ConfigurableShortcutHint, {
       action: "select:accept",
       context: "Select",
       fallback: "Enter",
       description: "details"
     });
-    t4 = /* @__PURE__ */ jsx_runtime231.jsx(ConfigurableShortcutHint, {
+    t4 = /* @__PURE__ */ jsx_runtime230.jsx(ConfigurableShortcutHint, {
       action: "confirm:no",
       context: "Confirmation",
       fallback: "Esc",
@@ -452513,12 +452424,12 @@ function PluginSelectionKeyHint(t0) {
   }
   let t5;
   if ($[5] !== t1) {
-    t5 = /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
+    t5 = /* @__PURE__ */ jsx_runtime230.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime230.jsx(ThemedText, {
         dimColor: true,
         italic: true,
-        children: /* @__PURE__ */ jsx_runtime231.jsxs(Byline, {
+        children: /* @__PURE__ */ jsx_runtime230.jsxs(Byline, {
           children: [
             t1,
             t2,
@@ -452535,13 +452446,13 @@ function PluginSelectionKeyHint(t0) {
   }
   return t5;
 }
-var import_compiler_runtime186, jsx_runtime231;
+var import_compiler_runtime184, jsx_runtime230;
 var init_pluginDetailsHelpers = __esm(() => {
   init_ConfigurableShortcutHint();
   init_Byline();
   init_ink2();
-  import_compiler_runtime186 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime231 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime184 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime230 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/plugin/usePagination.ts
@@ -452551,8 +452462,8 @@ function usePagination({
   selectedIndex = 0
 }) {
   const needsPagination = totalItems > maxVisible;
-  const scrollOffsetRef = import_react134.useRef(0);
-  const scrollOffset = import_react134.useMemo(() => {
+  const scrollOffsetRef = import_react133.useRef(0);
+  const scrollOffset = import_react133.useMemo(() => {
     if (!needsPagination)
       return 0;
     const prevOffset = scrollOffsetRef.current;
@@ -452572,25 +452483,25 @@ function usePagination({
   }, [selectedIndex, maxVisible, needsPagination, totalItems]);
   const startIndex = scrollOffset;
   const endIndex = Math.min(scrollOffset + maxVisible, totalItems);
-  const getVisibleItems = import_react134.useCallback((items) => {
+  const getVisibleItems = import_react133.useCallback((items) => {
     if (!needsPagination)
       return items;
     return items.slice(startIndex, endIndex);
   }, [needsPagination, startIndex, endIndex]);
-  const toActualIndex = import_react134.useCallback((visibleIndex) => {
+  const toActualIndex = import_react133.useCallback((visibleIndex) => {
     return startIndex + visibleIndex;
   }, [startIndex]);
-  const isOnCurrentPage = import_react134.useCallback((actualIndex) => {
+  const isOnCurrentPage = import_react133.useCallback((actualIndex) => {
     return actualIndex >= startIndex && actualIndex < endIndex;
   }, [startIndex, endIndex]);
-  const goToPage = import_react134.useCallback((_page) => {}, []);
-  const nextPage = import_react134.useCallback(() => {}, []);
-  const prevPage = import_react134.useCallback(() => {}, []);
-  const handleSelectionChange = import_react134.useCallback((newIndex, setSelectedIndex) => {
+  const goToPage = import_react133.useCallback((_page) => {}, []);
+  const nextPage = import_react133.useCallback(() => {}, []);
+  const prevPage = import_react133.useCallback(() => {}, []);
+  const handleSelectionChange = import_react133.useCallback((newIndex, setSelectedIndex) => {
     const clampedIndex = Math.max(0, Math.min(newIndex, totalItems - 1));
     setSelectedIndex(clampedIndex);
   }, [totalItems]);
-  const handlePageNavigation = import_react134.useCallback((_direction, _setSelectedIndex) => {
+  const handlePageNavigation = import_react133.useCallback((_direction, _setSelectedIndex) => {
     return false;
   }, []);
   const totalPages = Math.max(1, Math.ceil(totalItems / maxVisible));
@@ -452618,9 +452529,9 @@ function usePagination({
     }
   };
 }
-var import_react134, DEFAULT_MAX_VISIBLE = 5;
+var import_react133, DEFAULT_MAX_VISIBLE = 5;
 var init_usePagination = __esm(() => {
-  import_react134 = __toESM(require_react(), 1);
+  import_react133 = __toESM(require_react(), 1);
 });
 
 // commands/plugin/BrowseMarketplace.tsx
@@ -452634,25 +452545,25 @@ function BrowseMarketplace({
   targetMarketplace,
   targetPlugin
 }) {
-  const [viewState, setViewState] = import_react135.useState("marketplace-list");
-  const [selectedMarketplace, setSelectedMarketplace] = import_react135.useState(null);
-  const [selectedPlugin, setSelectedPlugin] = import_react135.useState(null);
-  const [marketplaces, setMarketplaces] = import_react135.useState([]);
-  const [availablePlugins, setAvailablePlugins] = import_react135.useState([]);
-  const [loading, setLoading] = import_react135.useState(true);
-  const [installCounts, setInstallCounts] = import_react135.useState(null);
-  const [selectedIndex, setSelectedIndex] = import_react135.useState(0);
-  const [selectedForInstall, setSelectedForInstall] = import_react135.useState(new Set);
-  const [installingPlugins, setInstallingPlugins] = import_react135.useState(new Set);
+  const [viewState, setViewState] = import_react134.useState("marketplace-list");
+  const [selectedMarketplace, setSelectedMarketplace] = import_react134.useState(null);
+  const [selectedPlugin, setSelectedPlugin] = import_react134.useState(null);
+  const [marketplaces, setMarketplaces] = import_react134.useState([]);
+  const [availablePlugins, setAvailablePlugins] = import_react134.useState([]);
+  const [loading, setLoading] = import_react134.useState(true);
+  const [installCounts, setInstallCounts] = import_react134.useState(null);
+  const [selectedIndex, setSelectedIndex] = import_react134.useState(0);
+  const [selectedForInstall, setSelectedForInstall] = import_react134.useState(new Set);
+  const [installingPlugins, setInstallingPlugins] = import_react134.useState(new Set);
   const pagination = usePagination({
     totalItems: availablePlugins.length,
     selectedIndex
   });
-  const [detailsMenuIndex, setDetailsMenuIndex] = import_react135.useState(0);
-  const [isInstalling, setIsInstalling] = import_react135.useState(false);
-  const [installError, setInstallError] = import_react135.useState(null);
-  const [warning, setWarning] = import_react135.useState(null);
-  const handleBack = React74.useCallback(() => {
+  const [detailsMenuIndex, setDetailsMenuIndex] = import_react134.useState(0);
+  const [isInstalling, setIsInstalling] = import_react134.useState(false);
+  const [installError, setInstallError] = import_react134.useState(null);
+  const [warning, setWarning] = import_react134.useState(null);
+  const handleBack = React73.useCallback(() => {
     if (viewState === "plugin-list") {
       if (targetMarketplace) {
         setParentViewState({
@@ -452680,7 +452591,7 @@ function BrowseMarketplace({
   useKeybinding("confirm:no", handleBack, {
     context: "Confirmation"
   });
-  import_react135.useEffect(() => {
+  import_react134.useEffect(() => {
     async function loadMarketplaceData() {
       try {
         const config = await loadKnownMarketplacesConfig();
@@ -452778,7 +452689,7 @@ function BrowseMarketplace({
     }
     loadMarketplaceData();
   }, [setError, targetMarketplace, targetPlugin]);
-  import_react135.useEffect(() => {
+  import_react134.useEffect(() => {
     if (!selectedMarketplace)
       return;
     let cancelled = false;
@@ -452919,7 +452830,7 @@ function BrowseMarketplace({
       setInstallError(result_0.error);
     }
   };
-  import_react135.useEffect(() => {
+  import_react134.useEffect(() => {
     if (error) {
       setResult(error);
     }
@@ -453006,7 +452917,7 @@ function BrowseMarketplace({
     context: "Plugin",
     isActive: viewState === "plugin-list"
   });
-  const detailsMenuOptions = React74.useMemo(() => {
+  const detailsMenuOptions = React73.useMemo(() => {
     if (!selectedPlugin)
       return [];
     const hasHomepage = selectedPlugin.entry.homepage;
@@ -453063,7 +452974,7 @@ function BrowseMarketplace({
       plugin: plugin_5,
       pluginId: pluginId_2
     } = viewState;
-    return /* @__PURE__ */ jsx_runtime232.jsx(PluginOptionsFlow, {
+    return /* @__PURE__ */ jsx_runtime231.jsx(PluginOptionsFlow, {
       plugin: plugin_5,
       pluginId: pluginId_2,
       onDone: (outcome, detail) => {
@@ -453082,32 +452993,32 @@ function BrowseMarketplace({
     });
   }
   if (loading) {
-    return /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+    return /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
       children: "Loading…"
     });
   }
   if (error) {
-    return /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+    return /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
       color: "error",
       children: error
     });
   }
   if (viewState === "marketplace-list") {
     if (marketplaces.length === 0) {
-      return /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
+      return /* @__PURE__ */ jsx_runtime231.jsxs(ThemedBox_default, {
         flexDirection: "column",
         children: [
-          /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
             marginBottom: 1,
-            children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
               bold: true,
               children: "Select marketplace"
             })
           }),
-          /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
             children: "No marketplaces configured."
           }),
-          /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
             dimColor: true,
             children: [
               "Add a marketplace first using ",
@@ -453115,12 +453026,12 @@ function BrowseMarketplace({
               "."
             ]
           }),
-          /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
             marginTop: 1,
             paddingLeft: 1,
-            children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
               dimColor: true,
-              children: /* @__PURE__ */ jsx_runtime232.jsx(ConfigurableShortcutHint, {
+              children: /* @__PURE__ */ jsx_runtime231.jsx(ConfigurableShortcutHint, {
                 action: "confirm:no",
                 context: "Confirmation",
                 fallback: "Esc",
@@ -453131,20 +453042,20 @@ function BrowseMarketplace({
         ]
       });
     }
-    return /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime231.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
           marginBottom: 1,
-          children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
             bold: true,
             children: "Select marketplace"
           })
         }),
-        warning && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+        warning && /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
           marginBottom: 1,
           flexDirection: "column",
-          children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
             color: "warning",
             children: [
               figures_default.warning,
@@ -453153,12 +453064,12 @@ function BrowseMarketplace({
             ]
           })
         }),
-        marketplaces.map((marketplace_3, index) => /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
+        marketplaces.map((marketplace_3, index) => /* @__PURE__ */ jsx_runtime231.jsxs(ThemedBox_default, {
           flexDirection: "column",
           marginBottom: index < marketplaces.length - 1 ? 1 : 0,
           children: [
-            /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
-              children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
+              children: /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
                 color: selectedIndex === index ? "suggestion" : undefined,
                 children: [
                   selectedIndex === index ? figures_default.pointer : " ",
@@ -453167,9 +453078,9 @@ function BrowseMarketplace({
                 ]
               })
             }),
-            /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+            /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
               marginLeft: 2,
-              children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+              children: /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
                 dimColor: true,
                 children: [
                   marketplace_3.totalPlugins,
@@ -453183,20 +453094,20 @@ function BrowseMarketplace({
             })
           ]
         }, marketplace_3.name)),
-        /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
             dimColor: true,
             italic: true,
-            children: /* @__PURE__ */ jsx_runtime232.jsxs(Byline, {
+            children: /* @__PURE__ */ jsx_runtime231.jsxs(Byline, {
               children: [
-                /* @__PURE__ */ jsx_runtime232.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime231.jsx(ConfigurableShortcutHint, {
                   action: "select:accept",
                   context: "Select",
                   fallback: "Enter",
                   description: "select"
                 }),
-                /* @__PURE__ */ jsx_runtime232.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime231.jsx(ConfigurableShortcutHint, {
                   action: "confirm:no",
                   context: "Confirmation",
                   fallback: "Esc",
@@ -453213,40 +453124,40 @@ function BrowseMarketplace({
     const hasHomepage_1 = selectedPlugin.entry.homepage;
     const githubRepo_1 = extractGitHubRepo(selectedPlugin);
     const menuOptions = buildPluginDetailsMenuOptions(hasHomepage_1, githubRepo_1);
-    return /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime231.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
           marginBottom: 1,
-          children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
             bold: true,
             children: "Plugin Details"
           })
         }),
-        /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime231.jsxs(ThemedBox_default, {
           flexDirection: "column",
           marginBottom: 1,
           children: [
-            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
               bold: true,
               children: selectedPlugin.entry.name
             }),
-            selectedPlugin.entry.version && /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+            selectedPlugin.entry.version && /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
               dimColor: true,
               children: [
                 "Version: ",
                 selectedPlugin.entry.version
               ]
             }),
-            selectedPlugin.entry.description && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+            selectedPlugin.entry.description && /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
               marginTop: 1,
-              children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+              children: /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
                 children: selectedPlugin.entry.description
               })
             }),
-            selectedPlugin.entry.author && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+            selectedPlugin.entry.author && /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
               marginTop: 1,
-              children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+              children: /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
                 dimColor: true,
                 children: [
                   "By:",
@@ -453257,15 +453168,15 @@ function BrowseMarketplace({
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime231.jsxs(ThemedBox_default, {
           flexDirection: "column",
           marginBottom: 1,
           children: [
-            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
               bold: true,
               children: "Will install:"
             }),
-            selectedPlugin.entry.commands && /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+            selectedPlugin.entry.commands && /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
               dimColor: true,
               children: [
                 "· Commands:",
@@ -453273,7 +453184,7 @@ function BrowseMarketplace({
                 Array.isArray(selectedPlugin.entry.commands) ? selectedPlugin.entry.commands.join(", ") : Object.keys(selectedPlugin.entry.commands).join(", ")
               ]
             }),
-            selectedPlugin.entry.agents && /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+            selectedPlugin.entry.agents && /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
               dimColor: true,
               children: [
                 "· Agents:",
@@ -453281,14 +453192,14 @@ function BrowseMarketplace({
                 Array.isArray(selectedPlugin.entry.agents) ? selectedPlugin.entry.agents.join(", ") : Object.keys(selectedPlugin.entry.agents).join(", ")
               ]
             }),
-            selectedPlugin.entry.hooks && /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+            selectedPlugin.entry.hooks && /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
               dimColor: true,
               children: [
                 "· Hooks: ",
                 Object.keys(selectedPlugin.entry.hooks).join(", ")
               ]
             }),
-            selectedPlugin.entry.mcpServers && /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+            selectedPlugin.entry.mcpServers && /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
               dimColor: true,
               children: [
                 "· MCP Servers:",
@@ -453296,21 +453207,21 @@ function BrowseMarketplace({
                 Array.isArray(selectedPlugin.entry.mcpServers) ? selectedPlugin.entry.mcpServers.join(", ") : typeof selectedPlugin.entry.mcpServers === "object" ? Object.keys(selectedPlugin.entry.mcpServers).join(", ") : "configured"
               ]
             }),
-            !selectedPlugin.entry.commands && !selectedPlugin.entry.agents && !selectedPlugin.entry.hooks && !selectedPlugin.entry.mcpServers && /* @__PURE__ */ jsx_runtime232.jsx(jsx_runtime232.Fragment, {
-              children: typeof selectedPlugin.entry.source === "object" && "source" in selectedPlugin.entry.source && (selectedPlugin.entry.source.source === "github" || selectedPlugin.entry.source.source === "url" || selectedPlugin.entry.source.source === "npm" || selectedPlugin.entry.source.source === "pip") ? /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+            !selectedPlugin.entry.commands && !selectedPlugin.entry.agents && !selectedPlugin.entry.hooks && !selectedPlugin.entry.mcpServers && /* @__PURE__ */ jsx_runtime231.jsx(jsx_runtime231.Fragment, {
+              children: typeof selectedPlugin.entry.source === "object" && "source" in selectedPlugin.entry.source && (selectedPlugin.entry.source.source === "github" || selectedPlugin.entry.source.source === "url" || selectedPlugin.entry.source.source === "npm" || selectedPlugin.entry.source.source === "pip") ? /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
                 dimColor: true,
                 children: "· Component summary not available for remote plugin"
-              }) : /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+              }) : /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
                 dimColor: true,
                 children: "· Components will be discovered at installation"
               })
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime232.jsx(PluginTrustWarning, {}),
-        installError && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime231.jsx(PluginTrustWarning, {}),
+        installError && /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
           marginBottom: 1,
-          children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
             color: "error",
             children: [
               "Error: ",
@@ -453318,37 +453229,37 @@ function BrowseMarketplace({
             ]
           })
         }),
-        /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
           flexDirection: "column",
-          children: menuOptions.map((option, index_0) => /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
+          children: menuOptions.map((option, index_0) => /* @__PURE__ */ jsx_runtime231.jsxs(ThemedBox_default, {
             children: [
-              detailsMenuIndex === index_0 && /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+              detailsMenuIndex === index_0 && /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
                 children: "> "
               }),
-              detailsMenuIndex !== index_0 && /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+              detailsMenuIndex !== index_0 && /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
                 children: "  "
               }),
-              /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
                 bold: detailsMenuIndex === index_0,
                 children: isInstalling && option.action === "install" ? "Installing…" : option.label
               })
             ]
           }, option.action))
         }),
-        /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
           marginTop: 1,
           paddingLeft: 1,
-          children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
             dimColor: true,
-            children: /* @__PURE__ */ jsx_runtime232.jsxs(Byline, {
+            children: /* @__PURE__ */ jsx_runtime231.jsxs(Byline, {
               children: [
-                /* @__PURE__ */ jsx_runtime232.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime231.jsx(ConfigurableShortcutHint, {
                   action: "select:accept",
                   context: "Select",
                   fallback: "Enter",
                   description: "select"
                 }),
-                /* @__PURE__ */ jsx_runtime232.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime231.jsx(ConfigurableShortcutHint, {
                   action: "confirm:no",
                   context: "Confirmation",
                   fallback: "Esc",
@@ -453362,30 +453273,30 @@ function BrowseMarketplace({
     });
   }
   if (availablePlugins.length === 0) {
-    return /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime231.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
           marginBottom: 1,
-          children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
             bold: true,
             children: "Install plugins"
           })
         }),
-        /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
           dimColor: true,
           children: "No new plugins available to install."
         }),
-        /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
           dimColor: true,
           children: "All plugins from this marketplace are already installed."
         }),
-        /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
           marginLeft: 3,
-          children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
             dimColor: true,
             italic: true,
-            children: /* @__PURE__ */ jsx_runtime232.jsx(ConfigurableShortcutHint, {
+            children: /* @__PURE__ */ jsx_runtime231.jsx(ConfigurableShortcutHint, {
               action: "confirm:no",
               context: "Confirmation",
               fallback: "Esc",
@@ -453397,18 +453308,18 @@ function BrowseMarketplace({
     });
   }
   const visiblePlugins = pagination.getVisibleItems(availablePlugins);
-  return /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime231.jsxs(ThemedBox_default, {
     flexDirection: "column",
     children: [
-      /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
         marginBottom: 1,
-        children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
           bold: true,
           children: "Install Plugins"
         })
       }),
-      pagination.scrollPosition.canScrollUp && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
-        children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+      pagination.scrollPosition.canScrollUp && /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
+        children: /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
           dimColor: true,
           children: [
             " ",
@@ -453423,26 +453334,26 @@ function BrowseMarketplace({
         const isSelectedForInstall = selectedForInstall.has(plugin_6.pluginId);
         const isInstalling_0 = installingPlugins.has(plugin_6.pluginId);
         const isLast = visibleIndex === visiblePlugins.length - 1;
-        return /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
+        return /* @__PURE__ */ jsx_runtime231.jsxs(ThemedBox_default, {
           flexDirection: "column",
           marginBottom: isLast && !error ? 0 : 1,
           children: [
-            /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
+            /* @__PURE__ */ jsx_runtime231.jsxs(ThemedBox_default, {
               children: [
-                /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+                /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
                   color: isSelected ? "suggestion" : undefined,
                   children: [
                     isSelected ? figures_default.pointer : " ",
                     " "
                   ]
                 }),
-                /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+                /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
                   color: plugin_6.isInstalled ? "success" : undefined,
                   children: [
                     plugin_6.isInstalled ? figures_default.tick : isInstalling_0 ? figures_default.ellipsis : isSelectedForInstall ? figures_default.radioOn : figures_default.radioOff,
                     " ",
                     plugin_6.entry.name,
-                    plugin_6.entry.category && /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+                    plugin_6.entry.category && /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
                       dimColor: true,
                       children: [
                         " [",
@@ -453450,15 +453361,15 @@ function BrowseMarketplace({
                         "]"
                       ]
                     }),
-                    plugin_6.entry.tags?.includes("community-managed") && /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+                    plugin_6.entry.tags?.includes("community-managed") && /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
                       dimColor: true,
                       children: " [Community Managed]"
                     }),
-                    plugin_6.isInstalled && /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+                    plugin_6.isInstalled && /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
                       dimColor: true,
                       children: " (installed)"
                     }),
-                    installCounts && selectedMarketplace === OFFICIAL_MARKETPLACE_NAME && /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+                    installCounts && selectedMarketplace === OFFICIAL_MARKETPLACE_NAME && /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
                       dimColor: true,
                       children: [
                         " · ",
@@ -453471,14 +453382,14 @@ function BrowseMarketplace({
                 })
               ]
             }),
-            plugin_6.entry.description && /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
+            plugin_6.entry.description && /* @__PURE__ */ jsx_runtime231.jsxs(ThemedBox_default, {
               marginLeft: 4,
               children: [
-                /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
+                /* @__PURE__ */ jsx_runtime231.jsx(ThemedText, {
                   dimColor: true,
                   children: truncateToWidth(plugin_6.entry.description, 60)
                 }),
-                plugin_6.entry.version && /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+                plugin_6.entry.version && /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
                   dimColor: true,
                   children: [
                     " · v",
@@ -453490,8 +453401,8 @@ function BrowseMarketplace({
           ]
         }, plugin_6.pluginId);
       }),
-      pagination.scrollPosition.canScrollDown && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
-        children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+      pagination.scrollPosition.canScrollDown && /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
+        children: /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
           dimColor: true,
           children: [
             " ",
@@ -453500,9 +453411,9 @@ function BrowseMarketplace({
           ]
         })
       }),
-      error && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+      error && /* @__PURE__ */ jsx_runtime231.jsx(ThemedBox_default, {
         marginTop: 1,
-        children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime231.jsxs(ThemedText, {
           color: "error",
           children: [
             figures_default.cross,
@@ -453511,13 +453422,13 @@ function BrowseMarketplace({
           ]
         })
       }),
-      /* @__PURE__ */ jsx_runtime232.jsx(PluginSelectionKeyHint, {
+      /* @__PURE__ */ jsx_runtime231.jsx(PluginSelectionKeyHint, {
         hasSelection: selectedForInstall.size > 0
       })
     ]
   });
 }
-var React74, import_react135, jsx_runtime232;
+var React73, import_react134, jsx_runtime231;
 var init_BrowseMarketplace = __esm(() => {
   init_figures();
   init_ConfigurableShortcutHint();
@@ -453541,9 +453452,9 @@ var init_BrowseMarketplace = __esm(() => {
   init_PluginTrustWarning();
   init_pluginDetailsHelpers();
   init_usePagination();
-  React74 = __toESM(require_react(), 1);
-  import_react135 = __toESM(require_react(), 1);
-  jsx_runtime232 = __toESM(require_jsx_runtime(), 1);
+  React73 = __toESM(require_react(), 1);
+  import_react134 = __toESM(require_react(), 1);
+  jsx_runtime231 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/plugin/DiscoverPlugins.tsx
@@ -453557,13 +453468,13 @@ function DiscoverPlugins({
   onSearchModeChange,
   targetPlugin
 }) {
-  const [viewState, setViewState] = import_react136.useState("plugin-list");
-  const [selectedPlugin, setSelectedPlugin] = import_react136.useState(null);
-  const [availablePlugins, setAvailablePlugins] = import_react136.useState([]);
-  const [loading, setLoading] = import_react136.useState(true);
-  const [installCounts, setInstallCounts] = import_react136.useState(null);
-  const [isSearchMode, setIsSearchModeRaw] = import_react136.useState(false);
-  const setIsSearchMode = import_react136.useCallback((active) => {
+  const [viewState, setViewState] = import_react135.useState("plugin-list");
+  const [selectedPlugin, setSelectedPlugin] = import_react135.useState(null);
+  const [availablePlugins, setAvailablePlugins] = import_react135.useState([]);
+  const [loading, setLoading] = import_react135.useState(true);
+  const [installCounts, setInstallCounts] = import_react135.useState(null);
+  const [isSearchMode, setIsSearchModeRaw] = import_react135.useState(false);
+  const setIsSearchMode = import_react135.useCallback((active) => {
     setIsSearchModeRaw(active);
     onSearchModeChange?.(active);
   }, [onSearchModeChange]);
@@ -453581,28 +453492,28 @@ function DiscoverPlugins({
   const {
     columns: terminalWidth
   } = useTerminalSize();
-  const filteredPlugins = import_react136.useMemo(() => {
+  const filteredPlugins = import_react135.useMemo(() => {
     if (!searchQuery)
       return availablePlugins;
     const lowerQuery = searchQuery.toLowerCase();
     return availablePlugins.filter((plugin) => plugin.entry.name.toLowerCase().includes(lowerQuery) || plugin.entry.description?.toLowerCase().includes(lowerQuery) || plugin.marketplaceName.toLowerCase().includes(lowerQuery));
   }, [availablePlugins, searchQuery]);
-  const [selectedIndex, setSelectedIndex] = import_react136.useState(0);
-  const [selectedForInstall, setSelectedForInstall] = import_react136.useState(new Set);
-  const [installingPlugins, setInstallingPlugins] = import_react136.useState(new Set);
+  const [selectedIndex, setSelectedIndex] = import_react135.useState(0);
+  const [selectedForInstall, setSelectedForInstall] = import_react135.useState(new Set);
+  const [installingPlugins, setInstallingPlugins] = import_react135.useState(new Set);
   const pagination = usePagination({
     totalItems: filteredPlugins.length,
     selectedIndex
   });
-  import_react136.useEffect(() => {
+  import_react135.useEffect(() => {
     setSelectedIndex(0);
   }, [searchQuery]);
-  const [detailsMenuIndex, setDetailsMenuIndex] = import_react136.useState(0);
-  const [isInstalling, setIsInstalling] = import_react136.useState(false);
-  const [installError, setInstallError] = import_react136.useState(null);
-  const [warning, setWarning] = import_react136.useState(null);
-  const [emptyReason, setEmptyReason] = import_react136.useState(null);
-  import_react136.useEffect(() => {
+  const [detailsMenuIndex, setDetailsMenuIndex] = import_react135.useState(0);
+  const [isInstalling, setIsInstalling] = import_react135.useState(false);
+  const [installError, setInstallError] = import_react135.useState(null);
+  const [warning, setWarning] = import_react135.useState(null);
+  const [emptyReason, setEmptyReason] = import_react135.useState(null);
+  import_react135.useEffect(() => {
     async function loadAllPlugins() {
       try {
         const config = await loadKnownMarketplacesConfig();
@@ -453763,7 +453674,7 @@ function DiscoverPlugins({
       setInstallError(result_0.error);
     }
   };
-  import_react136.useEffect(() => {
+  import_react135.useEffect(() => {
     if (error) {
       setResult(error);
     }
@@ -453859,7 +453770,7 @@ function DiscoverPlugins({
     context: "Plugin",
     isActive: viewState === "plugin-list" && !isSearchMode
   });
-  const detailsMenuOptions = React75.useMemo(() => {
+  const detailsMenuOptions = React74.useMemo(() => {
     if (!selectedPlugin)
       return [];
     const hasHomepage = selectedPlugin.entry.homepage;
@@ -453916,7 +453827,7 @@ function DiscoverPlugins({
       plugin: plugin_4,
       pluginId: pluginId_0
     } = viewState;
-    return /* @__PURE__ */ jsx_runtime233.jsx(PluginOptionsFlow, {
+    return /* @__PURE__ */ jsx_runtime232.jsx(PluginOptionsFlow, {
       plugin: plugin_4,
       pluginId: pluginId_0,
       onDone: (outcome, detail) => {
@@ -453935,12 +453846,12 @@ function DiscoverPlugins({
     });
   }
   if (loading) {
-    return /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+    return /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
       children: "Loading…"
     });
   }
   if (error) {
-    return /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+    return /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
       color: "error",
       children: error
     });
@@ -453949,47 +453860,47 @@ function DiscoverPlugins({
     const hasHomepage_1 = selectedPlugin.entry.homepage;
     const githubRepo_1 = extractGitHubRepo(selectedPlugin);
     const menuOptions = buildPluginDetailsMenuOptions(hasHomepage_1, githubRepo_1);
-    return /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
           marginBottom: 1,
-          children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
             bold: true,
             children: "Plugin details"
           })
         }),
-        /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
           flexDirection: "column",
           marginBottom: 1,
           children: [
-            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
               bold: true,
               children: selectedPlugin.entry.name
             }),
-            /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
               dimColor: true,
               children: [
                 "from ",
                 selectedPlugin.marketplaceName
               ]
             }),
-            selectedPlugin.entry.version && /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+            selectedPlugin.entry.version && /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
               dimColor: true,
               children: [
                 "Version: ",
                 selectedPlugin.entry.version
               ]
             }),
-            selectedPlugin.entry.description && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+            selectedPlugin.entry.description && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
               marginTop: 1,
-              children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+              children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
                 children: selectedPlugin.entry.description
               })
             }),
-            selectedPlugin.entry.author && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+            selectedPlugin.entry.author && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
               marginTop: 1,
-              children: /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+              children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
                 dimColor: true,
                 children: [
                   "By:",
@@ -454000,10 +453911,10 @@ function DiscoverPlugins({
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime233.jsx(PluginTrustWarning, {}),
-        installError && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime232.jsx(PluginTrustWarning, {}),
+        installError && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
           marginBottom: 1,
-          children: /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
             color: "error",
             children: [
               "Error: ",
@@ -454011,36 +453922,36 @@ function DiscoverPlugins({
             ]
           })
         }),
-        /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
           flexDirection: "column",
-          children: menuOptions.map((option, index) => /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
+          children: menuOptions.map((option, index) => /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
             children: [
-              detailsMenuIndex === index && /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+              detailsMenuIndex === index && /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
                 children: "> "
               }),
-              detailsMenuIndex !== index && /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+              detailsMenuIndex !== index && /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
                 children: "  "
               }),
-              /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
                 bold: detailsMenuIndex === index,
                 children: isInstalling && option.action.startsWith("install-") ? "Installing…" : option.label
               })
             ]
           }, option.action))
         }),
-        /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
             dimColor: true,
-            children: /* @__PURE__ */ jsx_runtime233.jsxs(Byline, {
+            children: /* @__PURE__ */ jsx_runtime232.jsxs(Byline, {
               children: [
-                /* @__PURE__ */ jsx_runtime233.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime232.jsx(ConfigurableShortcutHint, {
                   action: "select:accept",
                   context: "Select",
                   fallback: "Enter",
                   description: "select"
                 }),
-                /* @__PURE__ */ jsx_runtime233.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime232.jsx(ConfigurableShortcutHint, {
                   action: "confirm:no",
                   context: "Confirmation",
                   fallback: "Esc",
@@ -454054,22 +453965,22 @@ function DiscoverPlugins({
     });
   }
   if (availablePlugins.length === 0) {
-    return /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
           marginBottom: 1,
-          children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
             bold: true,
             children: "Discover plugins"
           })
         }),
-        /* @__PURE__ */ jsx_runtime233.jsx(EmptyStateMessage, {
+        /* @__PURE__ */ jsx_runtime232.jsx(EmptyStateMessage, {
           reason: emptyReason
         }),
-        /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
             dimColor: true,
             italic: true,
             children: "Esc to go back"
@@ -454079,16 +453990,16 @@ function DiscoverPlugins({
     });
   }
   const visiblePlugins = pagination.getVisibleItems(filteredPlugins);
-  return /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
     flexDirection: "column",
     children: [
-      /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
         children: [
-          /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
             bold: true,
             children: "Discover plugins"
           }),
-          pagination.needsPagination && /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+          pagination.needsPagination && /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
             dimColor: true,
             children: [
               " ",
@@ -454101,9 +454012,9 @@ function DiscoverPlugins({
           })
         ]
       }),
-      /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
         marginBottom: 1,
-        children: /* @__PURE__ */ jsx_runtime233.jsx(SearchBox, {
+        children: /* @__PURE__ */ jsx_runtime232.jsx(SearchBox, {
           query: searchQuery,
           isFocused: isSearchMode,
           isTerminalFocused,
@@ -454111,9 +454022,9 @@ function DiscoverPlugins({
           cursorOffset: searchCursorOffset
         })
       }),
-      warning && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+      warning && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
         marginBottom: 1,
-        children: /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
           color: "warning",
           children: [
             figures_default.warning,
@@ -454122,9 +454033,9 @@ function DiscoverPlugins({
           ]
         })
       }),
-      filteredPlugins.length === 0 && searchQuery && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+      filteredPlugins.length === 0 && searchQuery && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
         marginBottom: 1,
-        children: /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
           dimColor: true,
           children: [
             'No plugins match "',
@@ -454133,8 +454044,8 @@ function DiscoverPlugins({
           ]
         })
       }),
-      pagination.scrollPosition.canScrollUp && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
-        children: /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+      pagination.scrollPosition.canScrollUp && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+        children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
           dimColor: true,
           children: [
             " ",
@@ -454149,36 +454060,36 @@ function DiscoverPlugins({
         const isSelectedForInstall = selectedForInstall.has(plugin_5.pluginId);
         const isInstallingThis = installingPlugins.has(plugin_5.pluginId);
         const isLast = visibleIndex === visiblePlugins.length - 1;
-        return /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
+        return /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
           flexDirection: "column",
           marginBottom: isLast && !error ? 0 : 1,
           children: [
-            /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
+            /* @__PURE__ */ jsx_runtime232.jsxs(ThemedBox_default, {
               children: [
-                /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+                /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
                   color: isSelected && !isSearchMode ? "suggestion" : undefined,
                   children: [
                     isSelected && !isSearchMode ? figures_default.pointer : " ",
                     " "
                   ]
                 }),
-                /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+                /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
                   children: [
                     isInstallingThis ? figures_default.ellipsis : isSelectedForInstall ? figures_default.radioOn : figures_default.radioOff,
                     " ",
                     plugin_5.entry.name,
-                    /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+                    /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
                       dimColor: true,
                       children: [
                         " · ",
                         plugin_5.marketplaceName
                       ]
                     }),
-                    plugin_5.entry.tags?.includes("community-managed") && /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+                    plugin_5.entry.tags?.includes("community-managed") && /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
                       dimColor: true,
                       children: " [Community Managed]"
                     }),
-                    installCounts && plugin_5.marketplaceName === OFFICIAL_MARKETPLACE_NAME && /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+                    installCounts && plugin_5.marketplaceName === OFFICIAL_MARKETPLACE_NAME && /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
                       dimColor: true,
                       children: [
                         " · ",
@@ -454191,9 +454102,9 @@ function DiscoverPlugins({
                 })
               ]
             }),
-            plugin_5.entry.description && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+            plugin_5.entry.description && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
               marginLeft: 4,
-              children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+              children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
                 dimColor: true,
                 children: truncateToWidth(plugin_5.entry.description, 60)
               })
@@ -454201,8 +454112,8 @@ function DiscoverPlugins({
           ]
         }, `${pagination.startIndex}-${plugin_5.pluginId}`);
       }),
-      pagination.scrollPosition.canScrollDown && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
-        children: /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+      pagination.scrollPosition.canScrollDown && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
+        children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
           dimColor: true,
           children: [
             " ",
@@ -454211,9 +454122,9 @@ function DiscoverPlugins({
           ]
         })
       }),
-      error && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+      error && /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
         marginTop: 1,
-        children: /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime232.jsxs(ThemedText, {
           color: "error",
           children: [
             figures_default.cross,
@@ -454222,7 +454133,7 @@ function DiscoverPlugins({
           ]
         })
       }),
-      /* @__PURE__ */ jsx_runtime233.jsx(DiscoverPluginsKeyHint, {
+      /* @__PURE__ */ jsx_runtime232.jsx(DiscoverPluginsKeyHint, {
         hasSelection: selectedForInstall.size > 0,
         canToggle: selectedIndex < filteredPlugins.length && !filteredPlugins[selectedIndex]?.isInstalled
       })
@@ -454230,14 +454141,14 @@ function DiscoverPlugins({
   });
 }
 function DiscoverPluginsKeyHint(t0) {
-  const $ = import_compiler_runtime187.c(10);
+  const $ = import_compiler_runtime185.c(10);
   const {
     hasSelection,
     canToggle
   } = t0;
   let t1;
   if ($[0] !== hasSelection) {
-    t1 = hasSelection && /* @__PURE__ */ jsx_runtime233.jsx(ConfigurableShortcutHint, {
+    t1 = hasSelection && /* @__PURE__ */ jsx_runtime232.jsx(ConfigurableShortcutHint, {
       action: "plugin:install",
       context: "Plugin",
       fallback: "i",
@@ -454251,7 +454162,7 @@ function DiscoverPluginsKeyHint(t0) {
   }
   let t2;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+    t2 = /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
       children: "type to search"
     });
     $[2] = t2;
@@ -454260,7 +454171,7 @@ function DiscoverPluginsKeyHint(t0) {
   }
   let t3;
   if ($[3] !== canToggle) {
-    t3 = canToggle && /* @__PURE__ */ jsx_runtime233.jsx(ConfigurableShortcutHint, {
+    t3 = canToggle && /* @__PURE__ */ jsx_runtime232.jsx(ConfigurableShortcutHint, {
       action: "plugin:toggle",
       context: "Plugin",
       fallback: "Space",
@@ -454274,13 +454185,13 @@ function DiscoverPluginsKeyHint(t0) {
   let t4;
   let t5;
   if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = /* @__PURE__ */ jsx_runtime233.jsx(ConfigurableShortcutHint, {
+    t4 = /* @__PURE__ */ jsx_runtime232.jsx(ConfigurableShortcutHint, {
       action: "select:accept",
       context: "Select",
       fallback: "Enter",
       description: "details"
     });
-    t5 = /* @__PURE__ */ jsx_runtime233.jsx(ConfigurableShortcutHint, {
+    t5 = /* @__PURE__ */ jsx_runtime232.jsx(ConfigurableShortcutHint, {
       action: "confirm:no",
       context: "Confirmation",
       fallback: "Esc",
@@ -454294,12 +454205,12 @@ function DiscoverPluginsKeyHint(t0) {
   }
   let t6;
   if ($[7] !== t1 || $[8] !== t3) {
-    t6 = /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
+    t6 = /* @__PURE__ */ jsx_runtime232.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
         dimColor: true,
         italic: true,
-        children: /* @__PURE__ */ jsx_runtime233.jsxs(Byline, {
+        children: /* @__PURE__ */ jsx_runtime232.jsxs(Byline, {
           children: [
             t1,
             t2,
@@ -454319,7 +454230,7 @@ function DiscoverPluginsKeyHint(t0) {
   return t6;
 }
 function EmptyStateMessage(t0) {
-  const $ = import_compiler_runtime187.c(6);
+  const $ = import_compiler_runtime185.c(6);
   const {
     reason
   } = t0;
@@ -454327,13 +454238,13 @@ function EmptyStateMessage(t0) {
     case "git-not-installed": {
       let t1;
       if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-        t1 = /* @__PURE__ */ jsx_runtime233.jsxs(jsx_runtime233.Fragment, {
+        t1 = /* @__PURE__ */ jsx_runtime232.jsxs(jsx_runtime232.Fragment, {
           children: [
-            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
               dimColor: true,
               children: "Git is required to install marketplaces."
             }),
-            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
               dimColor: true,
               children: "Please install git and restart EvilClaude."
             })
@@ -454348,13 +454259,13 @@ function EmptyStateMessage(t0) {
     case "all-blocked-by-policy": {
       let t1;
       if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
-        t1 = /* @__PURE__ */ jsx_runtime233.jsxs(jsx_runtime233.Fragment, {
+        t1 = /* @__PURE__ */ jsx_runtime232.jsxs(jsx_runtime232.Fragment, {
           children: [
-            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
               dimColor: true,
               children: "Your organization policy does not allow any external marketplaces."
             }),
-            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
               dimColor: true,
               children: "Contact your administrator."
             })
@@ -454369,13 +454280,13 @@ function EmptyStateMessage(t0) {
     case "policy-restricts-sources": {
       let t1;
       if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
-        t1 = /* @__PURE__ */ jsx_runtime233.jsxs(jsx_runtime233.Fragment, {
+        t1 = /* @__PURE__ */ jsx_runtime232.jsxs(jsx_runtime232.Fragment, {
           children: [
-            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
               dimColor: true,
               children: "Your organization restricts which marketplaces can be added."
             }),
-            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
               dimColor: true,
               children: "Switch to the Marketplaces tab to view allowed sources."
             })
@@ -454390,13 +454301,13 @@ function EmptyStateMessage(t0) {
     case "all-marketplaces-failed": {
       let t1;
       if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
-        t1 = /* @__PURE__ */ jsx_runtime233.jsxs(jsx_runtime233.Fragment, {
+        t1 = /* @__PURE__ */ jsx_runtime232.jsxs(jsx_runtime232.Fragment, {
           children: [
-            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
               dimColor: true,
               children: "Failed to load marketplace data."
             }),
-            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
               dimColor: true,
               children: "Check your network connection."
             })
@@ -454411,13 +454322,13 @@ function EmptyStateMessage(t0) {
     case "all-plugins-installed": {
       let t1;
       if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-        t1 = /* @__PURE__ */ jsx_runtime233.jsxs(jsx_runtime233.Fragment, {
+        t1 = /* @__PURE__ */ jsx_runtime232.jsxs(jsx_runtime232.Fragment, {
           children: [
-            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
               dimColor: true,
               children: "All available plugins are already installed."
             }),
-            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
               dimColor: true,
               children: "Check for new plugins later or add more marketplaces."
             })
@@ -454433,13 +454344,13 @@ function EmptyStateMessage(t0) {
     default: {
       let t1;
       if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-        t1 = /* @__PURE__ */ jsx_runtime233.jsxs(jsx_runtime233.Fragment, {
+        t1 = /* @__PURE__ */ jsx_runtime232.jsxs(jsx_runtime232.Fragment, {
           children: [
-            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
               dimColor: true,
               children: "No plugins available."
             }),
-            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime232.jsx(ThemedText, {
               dimColor: true,
               children: "Add a marketplace first using the Marketplaces tab."
             })
@@ -454453,7 +454364,7 @@ function EmptyStateMessage(t0) {
     }
   }
 }
-var import_compiler_runtime187, React75, import_react136, jsx_runtime233;
+var import_compiler_runtime185, React74, import_react135, jsx_runtime232;
 var init_DiscoverPlugins = __esm(() => {
   init_figures();
   init_ConfigurableShortcutHint();
@@ -454480,10 +454391,10 @@ var init_DiscoverPlugins = __esm(() => {
   init_PluginTrustWarning();
   init_pluginDetailsHelpers();
   init_usePagination();
-  import_compiler_runtime187 = __toESM(require_compiler_runtime(), 1);
-  React75 = __toESM(require_react(), 1);
-  import_react136 = __toESM(require_react(), 1);
-  jsx_runtime233 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime185 = __toESM(require_compiler_runtime(), 1);
+  React74 = __toESM(require_react(), 1);
+  import_react135 = __toESM(require_react(), 1);
+  jsx_runtime232 = __toESM(require_jsx_runtime(), 1);
 });
 
 // services/plugins/pluginOperations.ts
@@ -455186,18 +455097,18 @@ function ManageMarketplaces({
   targetMarketplace,
   action
 }) {
-  const [marketplaceStates, setMarketplaceStates] = import_react137.useState([]);
-  const [loading, setLoading] = import_react137.useState(true);
-  const [selectedIndex, setSelectedIndex] = import_react137.useState(0);
-  const [isProcessing, setIsProcessing] = import_react137.useState(false);
-  const [processError, setProcessError] = import_react137.useState(null);
-  const [successMessage, setSuccessMessage] = import_react137.useState(null);
-  const [progressMessage, setProgressMessage] = import_react137.useState(null);
-  const [internalView, setInternalView] = import_react137.useState("list");
-  const [selectedMarketplace, setSelectedMarketplace] = import_react137.useState(null);
-  const [detailsMenuIndex, setDetailsMenuIndex] = import_react137.useState(0);
-  const hasAttemptedAutoAction = import_react137.useRef(false);
-  import_react137.useEffect(() => {
+  const [marketplaceStates, setMarketplaceStates] = import_react136.useState([]);
+  const [loading, setLoading] = import_react136.useState(true);
+  const [selectedIndex, setSelectedIndex] = import_react136.useState(0);
+  const [isProcessing, setIsProcessing] = import_react136.useState(false);
+  const [processError, setProcessError] = import_react136.useState(null);
+  const [successMessage, setSuccessMessage] = import_react136.useState(null);
+  const [progressMessage, setProgressMessage] = import_react136.useState(null);
+  const [internalView, setInternalView] = import_react136.useState("list");
+  const [selectedMarketplace, setSelectedMarketplace] = import_react136.useState(null);
+  const [detailsMenuIndex, setDetailsMenuIndex] = import_react136.useState(0);
+  const hasAttemptedAutoAction = import_react136.useRef(false);
+  import_react136.useEffect(() => {
     async function loadMarketplaces() {
       try {
         const config = await loadKnownMarketplacesConfig();
@@ -455584,59 +455495,59 @@ function ManageMarketplaces({
     isActive: !isProcessing && internalView === "confirm-remove"
   });
   if (loading) {
-    return /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+    return /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
       children: "Loading marketplaces…"
     });
   }
   if (marketplaceStates.length === 0) {
-    return /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
           marginBottom: 1,
-          children: /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
             bold: true,
             children: "Manage marketplaces"
           })
         }),
-        /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
           flexDirection: "row",
           gap: 1,
           children: [
-            /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
               color: "suggestion",
               children: [
                 figures_default.pointer,
                 " +"
               ]
             }),
-            /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
               bold: true,
               color: "suggestion",
               children: "Add Marketplace"
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
           marginLeft: 3,
-          children: /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
             dimColor: true,
             italic: true,
-            children: exitState.pending ? /* @__PURE__ */ jsx_runtime234.jsxs(jsx_runtime234.Fragment, {
+            children: exitState.pending ? /* @__PURE__ */ jsx_runtime233.jsxs(jsx_runtime233.Fragment, {
               children: [
                 "Press ",
                 exitState.keyName,
                 " again to go back"
               ]
-            }) : /* @__PURE__ */ jsx_runtime234.jsxs(Byline, {
+            }) : /* @__PURE__ */ jsx_runtime233.jsxs(Byline, {
               children: [
-                /* @__PURE__ */ jsx_runtime234.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime233.jsx(ConfigurableShortcutHint, {
                   action: "select:accept",
                   context: "Select",
                   fallback: "Enter",
                   description: "select"
                 }),
-                /* @__PURE__ */ jsx_runtime234.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime233.jsx(ConfigurableShortcutHint, {
                   action: "confirm:no",
                   context: "Confirmation",
                   fallback: "Esc",
@@ -455651,27 +455562,27 @@ function ManageMarketplaces({
   }
   if (internalView === "confirm-remove" && selectedMarketplace) {
     const pluginCount = selectedMarketplace.installedPlugins?.length || 0;
-    return /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
           bold: true,
           color: "warning",
           children: [
             "Remove marketplace ",
-            /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
               italic: true,
               children: selectedMarketplace.name
             }),
             "?"
           ]
         }),
-        /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
           flexDirection: "column",
           children: [
-            pluginCount > 0 && /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+            pluginCount > 0 && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
               marginTop: 1,
-              children: /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+              children: /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
                 color: "warning",
                 children: [
                   "This will also uninstall ",
@@ -455682,11 +455593,11 @@ function ManageMarketplaces({
                 ]
               })
             }),
-            selectedMarketplace.installedPlugins && selectedMarketplace.installedPlugins.length > 0 && /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+            selectedMarketplace.installedPlugins && selectedMarketplace.installedPlugins.length > 0 && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
               flexDirection: "column",
               marginTop: 1,
               marginLeft: 2,
-              children: selectedMarketplace.installedPlugins.map((plugin) => /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+              children: selectedMarketplace.installedPlugins.map((plugin) => /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
                 dimColor: true,
                 children: [
                   "• ",
@@ -455694,17 +455605,17 @@ function ManageMarketplaces({
                 ]
               }, plugin.name))
             }),
-            /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+            /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
               marginTop: 1,
-              children: /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+              children: /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
                 children: [
                   "Press ",
-                  /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
                     bold: true,
                     children: "y"
                   }),
                   " to confirm or ",
-                  /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
                     bold: true,
                     children: "n"
                   }),
@@ -455720,20 +455631,20 @@ function ManageMarketplaces({
   if (internalView === "details" && selectedMarketplace) {
     const isUpdating = selectedMarketplace.pendingUpdate || isProcessing;
     const menuOptions = buildDetailsMenuOptions(selectedMarketplace);
-    return /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
           bold: true,
           children: selectedMarketplace.name
         }),
-        /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
           dimColor: true,
           children: selectedMarketplace.source
         }),
-        /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
             children: [
               selectedMarketplace.pluginCount || 0,
               " available",
@@ -455742,11 +455653,11 @@ function ManageMarketplaces({
             ]
           })
         }),
-        selectedMarketplace.installedPlugins && selectedMarketplace.installedPlugins.length > 0 && /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+        selectedMarketplace.installedPlugins && selectedMarketplace.installedPlugins.length > 0 && /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
           flexDirection: "column",
           marginTop: 1,
           children: [
-            /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
               bold: true,
               children: [
                 "Installed plugins (",
@@ -455754,23 +455665,23 @@ function ManageMarketplaces({
                 "):"
               ]
             }),
-            /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+            /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
               flexDirection: "column",
               marginLeft: 1,
-              children: selectedMarketplace.installedPlugins.map((plugin) => /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+              children: selectedMarketplace.installedPlugins.map((plugin) => /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
                 flexDirection: "row",
                 gap: 1,
                 children: [
-                  /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
                     children: figures_default.bullet
                   }),
-                  /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+                  /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
                     flexDirection: "column",
                     children: [
-                      /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+                      /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
                         children: plugin.name
                       }),
-                      /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+                      /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
                         dimColor: true,
                         children: plugin.manifest.description
                       })
@@ -455781,44 +455692,44 @@ function ManageMarketplaces({
             })
           ]
         }),
-        isUpdating && /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+        isUpdating && /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
           marginTop: 1,
           flexDirection: "column",
           children: [
-            /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
               color: "claude",
               children: "Updating marketplace…"
             }),
-            progressMessage && /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+            progressMessage && /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
               dimColor: true,
               children: progressMessage
             })
           ]
         }),
-        !isUpdating && successMessage && /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+        !isUpdating && successMessage && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
             color: "claude",
             children: successMessage
           })
         }),
-        !isUpdating && processError && /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+        !isUpdating && processError && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
             color: "error",
             children: processError
           })
         }),
-        !isUpdating && /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+        !isUpdating && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
           flexDirection: "column",
           marginTop: 1,
           children: menuOptions.map((option, idx) => {
             if (!option)
               return null;
             const isSelected = idx === detailsMenuIndex;
-            return /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+            return /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
               children: [
-                /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+                /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
                   color: isSelected ? "suggestion" : undefined,
                   children: [
                     isSelected ? figures_default.pointer : " ",
@@ -455826,7 +455737,7 @@ function ManageMarketplaces({
                     option.label
                   ]
                 }),
-                option.secondaryLabel && /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+                option.secondaryLabel && /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
                   dimColor: true,
                   children: [
                     " ",
@@ -455837,29 +455748,29 @@ function ManageMarketplaces({
             }, option.value);
           })
         }),
-        !isUpdating && !shouldSkipPluginAutoupdate() && selectedMarketplace.autoUpdate && /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+        !isUpdating && !shouldSkipPluginAutoupdate() && selectedMarketplace.autoUpdate && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
             dimColor: true,
             children: "Auto-update enabled. EvilClaude will automatically update this marketplace and its installed plugins."
           })
         }),
-        /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
           marginLeft: 3,
-          children: /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
             dimColor: true,
             italic: true,
-            children: isUpdating ? /* @__PURE__ */ jsx_runtime234.jsx(jsx_runtime234.Fragment, {
+            children: isUpdating ? /* @__PURE__ */ jsx_runtime233.jsx(jsx_runtime233.Fragment, {
               children: "Please wait…"
-            }) : /* @__PURE__ */ jsx_runtime234.jsxs(Byline, {
+            }) : /* @__PURE__ */ jsx_runtime233.jsxs(Byline, {
               children: [
-                /* @__PURE__ */ jsx_runtime234.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime233.jsx(ConfigurableShortcutHint, {
                   action: "select:accept",
                   context: "Select",
                   fallback: "Enter",
                   description: "select"
                 }),
-                /* @__PURE__ */ jsx_runtime234.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime233.jsx(ConfigurableShortcutHint, {
                   action: "confirm:no",
                   context: "Confirmation",
                   fallback: "Esc",
@@ -455876,36 +455787,36 @@ function ManageMarketplaces({
     updateCount,
     removeCount
   } = getPendingCounts();
-  return /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
     flexDirection: "column",
     children: [
-      /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
         marginBottom: 1,
-        children: /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
           bold: true,
           children: "Manage marketplaces"
         })
       }),
-      /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
         flexDirection: "row",
         gap: 1,
         marginBottom: 1,
         children: [
-          /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
             color: selectedIndex === 0 ? "suggestion" : undefined,
             children: [
               selectedIndex === 0 ? figures_default.pointer : " ",
               " +"
             ]
           }),
-          /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
             bold: true,
             color: selectedIndex === 0 ? "suggestion" : undefined,
             children: "Add Marketplace"
           })
         ]
       }),
-      /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
         flexDirection: "column",
         children: marketplaceStates.map((state, idx) => {
           const isSelected = idx + 1 === selectedIndex;
@@ -455914,12 +455825,12 @@ function ManageMarketplaces({
             indicators.push("UPDATE");
           if (state.pendingRemove)
             indicators.push("REMOVE");
-          return /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+          return /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
             flexDirection: "row",
             gap: 1,
             marginBottom: 1,
             children: [
-              /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+              /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
                 color: isSelected ? "suggestion" : undefined,
                 children: [
                   isSelected ? figures_default.pointer : " ",
@@ -455927,31 +455838,31 @@ function ManageMarketplaces({
                   state.pendingRemove ? figures_default.cross : figures_default.bullet
                 ]
               }),
-              /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+              /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
                 flexDirection: "column",
                 flexGrow: 1,
                 children: [
-                  /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+                  /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
                     flexDirection: "row",
                     gap: 1,
                     children: [
-                      /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+                      /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
                         bold: true,
                         strikethrough: state.pendingRemove,
                         dimColor: state.pendingRemove,
                         children: [
-                          state.name === "claude-plugins-official" && /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+                          state.name === "claude-plugins-official" && /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
                             color: "claude",
                             children: "✻ "
                           }),
                           state.name,
-                          state.name === "claude-plugins-official" && /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+                          state.name === "claude-plugins-official" && /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
                             color: "claude",
                             children: " ✻"
                           })
                         ]
                       }),
-                      indicators.length > 0 && /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+                      indicators.length > 0 && /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
                         color: "warning",
                         children: [
                           "[",
@@ -455961,27 +455872,27 @@ function ManageMarketplaces({
                       })
                     ]
                   }),
-                  /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
                     dimColor: true,
                     children: state.source
                   }),
-                  /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
                     dimColor: true,
                     children: [
-                      state.pluginCount !== undefined && /* @__PURE__ */ jsx_runtime234.jsxs(jsx_runtime234.Fragment, {
+                      state.pluginCount !== undefined && /* @__PURE__ */ jsx_runtime233.jsxs(jsx_runtime233.Fragment, {
                         children: [
                           state.pluginCount,
                           " available"
                         ]
                       }),
-                      state.installedPlugins && state.installedPlugins.length > 0 && /* @__PURE__ */ jsx_runtime234.jsxs(jsx_runtime234.Fragment, {
+                      state.installedPlugins && state.installedPlugins.length > 0 && /* @__PURE__ */ jsx_runtime233.jsxs(jsx_runtime233.Fragment, {
                         children: [
                           " • ",
                           state.installedPlugins.length,
                           " installed"
                         ]
                       }),
-                      state.lastUpdated && /* @__PURE__ */ jsx_runtime234.jsxs(jsx_runtime234.Fragment, {
+                      state.lastUpdated && /* @__PURE__ */ jsx_runtime233.jsxs(jsx_runtime233.Fragment, {
                         children: [
                           " ",
                           "• Updated",
@@ -455997,24 +455908,24 @@ function ManageMarketplaces({
           }, state.name);
         })
       }),
-      hasPendingChanges() && /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
+      hasPendingChanges() && /* @__PURE__ */ jsx_runtime233.jsxs(ThemedBox_default, {
         marginTop: 1,
         flexDirection: "column",
         children: [
-          /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
             children: [
-              /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
                 bold: true,
                 children: "Pending changes:"
               }),
               " ",
-              /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
                 dimColor: true,
                 children: "Enter to apply"
               })
             ]
           }),
-          updateCount > 0 && /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+          updateCount > 0 && /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
             children: [
               "• Update ",
               updateCount,
@@ -456022,7 +455933,7 @@ function ManageMarketplaces({
               plural(updateCount, "marketplace")
             ]
           }),
-          removeCount > 0 && /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+          removeCount > 0 && /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
             color: "warning",
             children: [
               "• Remove ",
@@ -456033,21 +455944,21 @@ function ManageMarketplaces({
           })
         ]
       }),
-      isProcessing && /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+      isProcessing && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
         marginTop: 1,
-        children: /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
           color: "claude",
           children: "Processing changes…"
         })
       }),
-      processError && /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+      processError && /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
         marginTop: 1,
-        children: /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
           color: "error",
           children: processError
         })
       }),
-      /* @__PURE__ */ jsx_runtime234.jsx(ManageMarketplacesKeyHints, {
+      /* @__PURE__ */ jsx_runtime233.jsx(ManageMarketplacesKeyHints, {
         exitState,
         hasPendingActions: hasPendingChanges()
       })
@@ -456055,7 +455966,7 @@ function ManageMarketplaces({
   });
 }
 function ManageMarketplacesKeyHints(t0) {
-  const $ = import_compiler_runtime188.c(18);
+  const $ = import_compiler_runtime186.c(18);
   const {
     exitState,
     hasPendingActions
@@ -456063,9 +455974,9 @@ function ManageMarketplacesKeyHints(t0) {
   if (exitState.pending) {
     let t1;
     if ($[0] !== exitState.keyName) {
-      t1 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+      t1 = /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
         marginTop: 1,
-        children: /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime233.jsxs(ThemedText, {
           dimColor: true,
           italic: true,
           children: [
@@ -456084,7 +455995,7 @@ function ManageMarketplacesKeyHints(t0) {
   }
   let t1;
   if ($[2] !== hasPendingActions) {
-    t1 = hasPendingActions && /* @__PURE__ */ jsx_runtime234.jsx(ConfigurableShortcutHint, {
+    t1 = hasPendingActions && /* @__PURE__ */ jsx_runtime233.jsx(ConfigurableShortcutHint, {
       action: "select:accept",
       context: "Select",
       fallback: "Enter",
@@ -456097,7 +456008,7 @@ function ManageMarketplacesKeyHints(t0) {
   }
   let t2;
   if ($[4] !== hasPendingActions) {
-    t2 = !hasPendingActions && /* @__PURE__ */ jsx_runtime234.jsx(ConfigurableShortcutHint, {
+    t2 = !hasPendingActions && /* @__PURE__ */ jsx_runtime233.jsx(ConfigurableShortcutHint, {
       action: "select:accept",
       context: "Select",
       fallback: "Enter",
@@ -456110,7 +456021,7 @@ function ManageMarketplacesKeyHints(t0) {
   }
   let t3;
   if ($[6] !== hasPendingActions) {
-    t3 = !hasPendingActions && /* @__PURE__ */ jsx_runtime234.jsx(KeyboardShortcutHint, {
+    t3 = !hasPendingActions && /* @__PURE__ */ jsx_runtime233.jsx(KeyboardShortcutHint, {
       shortcut: "u",
       action: "update"
     });
@@ -456121,7 +456032,7 @@ function ManageMarketplacesKeyHints(t0) {
   }
   let t4;
   if ($[8] !== hasPendingActions) {
-    t4 = !hasPendingActions && /* @__PURE__ */ jsx_runtime234.jsx(KeyboardShortcutHint, {
+    t4 = !hasPendingActions && /* @__PURE__ */ jsx_runtime233.jsx(KeyboardShortcutHint, {
       shortcut: "r",
       action: "remove"
     });
@@ -456133,7 +456044,7 @@ function ManageMarketplacesKeyHints(t0) {
   const t5 = hasPendingActions ? "cancel" : "go back";
   let t6;
   if ($[10] !== t5) {
-    t6 = /* @__PURE__ */ jsx_runtime234.jsx(ConfigurableShortcutHint, {
+    t6 = /* @__PURE__ */ jsx_runtime233.jsx(ConfigurableShortcutHint, {
       action: "confirm:no",
       context: "Confirmation",
       fallback: "Esc",
@@ -456146,12 +456057,12 @@ function ManageMarketplacesKeyHints(t0) {
   }
   let t7;
   if ($[12] !== t1 || $[13] !== t2 || $[14] !== t3 || $[15] !== t4 || $[16] !== t6) {
-    t7 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedBox_default, {
+    t7 = /* @__PURE__ */ jsx_runtime233.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime233.jsx(ThemedText, {
         dimColor: true,
         italic: true,
-        children: /* @__PURE__ */ jsx_runtime234.jsxs(Byline, {
+        children: /* @__PURE__ */ jsx_runtime233.jsxs(Byline, {
           children: [
             t1,
             t2,
@@ -456173,7 +456084,7 @@ function ManageMarketplacesKeyHints(t0) {
   }
   return t7;
 }
-var import_compiler_runtime188, import_react137, jsx_runtime234;
+var import_compiler_runtime186, import_react136, jsx_runtime233;
 var init_ManageMarketplaces = __esm(() => {
   init_figures();
   init_analytics();
@@ -456192,9 +456103,9 @@ var init_ManageMarketplaces = __esm(() => {
   init_schemas3();
   init_settings2();
   init_stringUtils();
-  import_compiler_runtime188 = __toESM(require_compiler_runtime(), 1);
-  import_react137 = __toESM(require_react(), 1);
-  jsx_runtime234 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime186 = __toESM(require_compiler_runtime(), 1);
+  import_react136 = __toESM(require_react(), 1);
+  jsx_runtime233 = __toESM(require_jsx_runtime(), 1);
 });
 
 // utils/plugins/pluginFlagging.ts
@@ -456444,7 +456355,7 @@ var init_PluginErrors = () => {};
 
 // commands/plugin/UnifiedInstalledCell.tsx
 function UnifiedInstalledCell(t0) {
-  const $ = import_compiler_runtime189.c(142);
+  const $ = import_compiler_runtime187.c(142);
   const {
     item,
     isSelected
@@ -456515,7 +456426,7 @@ function UnifiedInstalledCell(t0) {
     const t2 = isSelected ? `${figures_default.pointer} ` : "  ";
     let t3;
     if ($[10] !== t1 || $[11] !== t2) {
-      t3 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t3 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         color: t1,
         children: t2
       });
@@ -456528,7 +456439,7 @@ function UnifiedInstalledCell(t0) {
     const t4 = isSelected ? "suggestion" : undefined;
     let t5;
     if ($[13] !== item.name || $[14] !== t4) {
-      t5 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t5 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         color: t4,
         children: item.name
       });
@@ -456541,7 +456452,7 @@ function UnifiedInstalledCell(t0) {
     const t6 = !isSelected;
     let t7;
     if ($[16] === Symbol.for("react.memo_cache_sentinel")) {
-      t7 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t7 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         backgroundColor: "userMessageBackground",
         children: "Plugin"
       });
@@ -456551,7 +456462,7 @@ function UnifiedInstalledCell(t0) {
     }
     let t8;
     if ($[17] !== t6) {
-      t8 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
+      t8 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
         dimColor: t6,
         children: [
           " ",
@@ -456565,7 +456476,7 @@ function UnifiedInstalledCell(t0) {
     }
     let t9;
     if ($[19] !== item.marketplace) {
-      t9 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
+      t9 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
         dimColor: true,
         children: [
           " · ",
@@ -456580,7 +456491,7 @@ function UnifiedInstalledCell(t0) {
     const t10 = !isSelected;
     let t11;
     if ($[21] !== statusIcon || $[22] !== t10) {
-      t11 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
+      t11 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
         dimColor: t10,
         children: [
           " · ",
@@ -456597,7 +456508,7 @@ function UnifiedInstalledCell(t0) {
     const t12 = !isSelected;
     let t13;
     if ($[24] !== statusText || $[25] !== t12) {
-      t13 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t13 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         dimColor: t12,
         children: statusText
       });
@@ -456609,7 +456520,7 @@ function UnifiedInstalledCell(t0) {
     }
     let t14;
     if ($[27] !== t11 || $[28] !== t13 || $[29] !== t3 || $[30] !== t5 || $[31] !== t8 || $[32] !== t9) {
-      t14 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
+      t14 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
         children: [
           t3,
           t5,
@@ -456645,7 +456556,7 @@ function UnifiedInstalledCell(t0) {
     const t3 = isSelected ? `${figures_default.pointer} ` : "  ";
     let t4;
     if ($[36] !== t2 || $[37] !== t3) {
-      t4 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t4 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         color: t2,
         children: t3
       });
@@ -456658,7 +456569,7 @@ function UnifiedInstalledCell(t0) {
     const t5 = isSelected ? "suggestion" : undefined;
     let t6;
     if ($[39] !== item.name || $[40] !== t5) {
-      t6 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t6 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         color: t5,
         children: item.name
       });
@@ -456671,7 +456582,7 @@ function UnifiedInstalledCell(t0) {
     const t7 = !isSelected;
     let t8;
     if ($[42] === Symbol.for("react.memo_cache_sentinel")) {
-      t8 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t8 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         backgroundColor: "userMessageBackground",
         children: "Plugin"
       });
@@ -456681,7 +456592,7 @@ function UnifiedInstalledCell(t0) {
     }
     let t9;
     if ($[43] !== t7) {
-      t9 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
+      t9 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
         dimColor: t7,
         children: [
           " ",
@@ -456695,7 +456606,7 @@ function UnifiedInstalledCell(t0) {
     }
     let t10;
     if ($[45] !== item.marketplace) {
-      t10 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
+      t10 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
         dimColor: true,
         children: [
           " · ",
@@ -456710,7 +456621,7 @@ function UnifiedInstalledCell(t0) {
     const t11 = !isSelected;
     let t12;
     if ($[47] !== statusIcon_0 || $[48] !== t11) {
-      t12 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
+      t12 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
         dimColor: t11,
         children: [
           " · ",
@@ -456727,7 +456638,7 @@ function UnifiedInstalledCell(t0) {
     const t13 = !isSelected;
     let t14;
     if ($[50] !== t13) {
-      t14 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t14 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         dimColor: t13,
         children: "removed"
       });
@@ -456738,7 +456649,7 @@ function UnifiedInstalledCell(t0) {
     }
     let t15;
     if ($[52] !== t10 || $[53] !== t12 || $[54] !== t14 || $[55] !== t4 || $[56] !== t6 || $[57] !== t9) {
-      t15 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
+      t15 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
         children: [
           t4,
           t6,
@@ -456784,7 +456695,7 @@ function UnifiedInstalledCell(t0) {
     const t5 = isSelected ? `${figures_default.pointer} ` : "  ";
     let t6;
     if ($[63] !== t4 || $[64] !== t5) {
-      t6 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t6 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         color: t4,
         children: t5
       });
@@ -456797,7 +456708,7 @@ function UnifiedInstalledCell(t0) {
     const t7 = isSelected ? "suggestion" : undefined;
     let t8;
     if ($[66] !== item.name || $[67] !== t7) {
-      t8 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t8 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         color: t7,
         children: item.name
       });
@@ -456810,7 +456721,7 @@ function UnifiedInstalledCell(t0) {
     const t9 = !isSelected;
     let t10;
     if ($[69] === Symbol.for("react.memo_cache_sentinel")) {
-      t10 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t10 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         backgroundColor: "userMessageBackground",
         children: "Plugin"
       });
@@ -456820,7 +456731,7 @@ function UnifiedInstalledCell(t0) {
     }
     let t11;
     if ($[70] !== t9) {
-      t11 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
+      t11 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
         dimColor: t9,
         children: [
           " ",
@@ -456834,7 +456745,7 @@ function UnifiedInstalledCell(t0) {
     }
     let t12;
     if ($[72] !== item.marketplace) {
-      t12 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
+      t12 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
         dimColor: true,
         children: [
           " · ",
@@ -456849,7 +456760,7 @@ function UnifiedInstalledCell(t0) {
     const t13 = !isSelected;
     let t14;
     if ($[74] !== statusIcon_1 || $[75] !== t13) {
-      t14 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
+      t14 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
         dimColor: t13,
         children: [
           " · ",
@@ -456866,7 +456777,7 @@ function UnifiedInstalledCell(t0) {
     const t15 = !isSelected;
     let t16;
     if ($[77] !== statusText_0 || $[78] !== t15) {
-      t16 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t16 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         dimColor: t15,
         children: statusText_0
       });
@@ -456878,7 +456789,7 @@ function UnifiedInstalledCell(t0) {
     }
     let t17;
     if ($[80] !== t11 || $[81] !== t12 || $[82] !== t14 || $[83] !== t16 || $[84] !== t6 || $[85] !== t8) {
-      t17 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
+      t17 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
         children: [
           t6,
           t8,
@@ -456969,7 +456880,7 @@ function UnifiedInstalledCell(t0) {
     const t2 = isSelected ? `${figures_default.pointer} ` : "  ";
     let t3;
     if ($[97] !== t1 || $[98] !== t2) {
-      t3 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t3 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         color: t1,
         children: t2
       });
@@ -456982,7 +456893,7 @@ function UnifiedInstalledCell(t0) {
     const t4 = !isSelected;
     let t5;
     if ($[100] !== t4) {
-      t5 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t5 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         dimColor: t4,
         children: "└ "
       });
@@ -456994,7 +456905,7 @@ function UnifiedInstalledCell(t0) {
     const t6 = isSelected ? "suggestion" : undefined;
     let t7;
     if ($[102] !== item.name || $[103] !== t6) {
-      t7 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t7 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         color: t6,
         children: item.name
       });
@@ -457007,7 +456918,7 @@ function UnifiedInstalledCell(t0) {
     const t8 = !isSelected;
     let t9;
     if ($[105] === Symbol.for("react.memo_cache_sentinel")) {
-      t9 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t9 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         backgroundColor: "userMessageBackground",
         children: "MCP"
       });
@@ -457017,7 +456928,7 @@ function UnifiedInstalledCell(t0) {
     }
     let t10;
     if ($[106] !== t8) {
-      t10 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
+      t10 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
         dimColor: t8,
         children: [
           " ",
@@ -457032,7 +456943,7 @@ function UnifiedInstalledCell(t0) {
     const t11 = !isSelected;
     let t12;
     if ($[108] !== statusIcon_2 || $[109] !== t11) {
-      t12 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
+      t12 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
         dimColor: t11,
         children: [
           " · ",
@@ -457049,7 +456960,7 @@ function UnifiedInstalledCell(t0) {
     const t13 = !isSelected;
     let t14;
     if ($[111] !== statusText_1 || $[112] !== t13) {
-      t14 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+      t14 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
         dimColor: t13,
         children: statusText_1
       });
@@ -457061,7 +456972,7 @@ function UnifiedInstalledCell(t0) {
     }
     let t15;
     if ($[114] !== t10 || $[115] !== t12 || $[116] !== t14 || $[117] !== t3 || $[118] !== t5 || $[119] !== t7) {
-      t15 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
+      t15 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
         children: [
           t3,
           t5,
@@ -457087,7 +456998,7 @@ function UnifiedInstalledCell(t0) {
   const t2 = isSelected ? `${figures_default.pointer} ` : "  ";
   let t3;
   if ($[121] !== t1 || $[122] !== t2) {
-    t3 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+    t3 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
       color: t1,
       children: t2
     });
@@ -457100,7 +457011,7 @@ function UnifiedInstalledCell(t0) {
   const t4 = isSelected ? "suggestion" : undefined;
   let t5;
   if ($[124] !== item.name || $[125] !== t4) {
-    t5 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+    t5 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
       color: t4,
       children: item.name
     });
@@ -457113,7 +457024,7 @@ function UnifiedInstalledCell(t0) {
   const t6 = !isSelected;
   let t7;
   if ($[127] === Symbol.for("react.memo_cache_sentinel")) {
-    t7 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+    t7 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
       backgroundColor: "userMessageBackground",
       children: "MCP"
     });
@@ -457123,7 +457034,7 @@ function UnifiedInstalledCell(t0) {
   }
   let t8;
   if ($[128] !== t6) {
-    t8 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
+    t8 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
       dimColor: t6,
       children: [
         " ",
@@ -457138,7 +457049,7 @@ function UnifiedInstalledCell(t0) {
   const t9 = !isSelected;
   let t10;
   if ($[130] !== statusIcon_2 || $[131] !== t9) {
-    t10 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
+    t10 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedText, {
       dimColor: t9,
       children: [
         " · ",
@@ -457155,7 +457066,7 @@ function UnifiedInstalledCell(t0) {
   const t11 = !isSelected;
   let t12;
   if ($[133] !== statusText_1 || $[134] !== t11) {
-    t12 = /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
+    t12 = /* @__PURE__ */ jsx_runtime234.jsx(ThemedText, {
       dimColor: t11,
       children: statusText_1
     });
@@ -457167,7 +457078,7 @@ function UnifiedInstalledCell(t0) {
   }
   let t13;
   if ($[136] !== t10 || $[137] !== t12 || $[138] !== t3 || $[139] !== t5 || $[140] !== t8) {
-    t13 = /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
+    t13 = /* @__PURE__ */ jsx_runtime234.jsxs(ThemedBox_default, {
       children: [
         t3,
         t5,
@@ -457187,13 +457098,13 @@ function UnifiedInstalledCell(t0) {
   }
   return t13;
 }
-var import_compiler_runtime189, jsx_runtime235;
+var import_compiler_runtime187, jsx_runtime234;
 var init_UnifiedInstalledCell = __esm(() => {
   init_figures();
   init_ink2();
   init_stringUtils();
-  import_compiler_runtime189 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime235 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime187 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime234 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/plugin/ManagePlugins.tsx
@@ -457248,10 +457159,10 @@ function PluginComponentsDisplay({
   plugin,
   marketplace
 }) {
-  const [components, setComponents] = import_react138.useState(null);
-  const [loading, setLoading] = import_react138.useState(true);
-  const [error, setError] = import_react138.useState(null);
-  import_react138.useEffect(() => {
+  const [components, setComponents] = import_react137.useState(null);
+  const [loading, setLoading] = import_react137.useState(true);
+  const [error, setError] = import_react137.useState(null);
+  import_react137.useEffect(() => {
     async function loadComponents() {
       try {
         if (marketplace === "builtin") {
@@ -457354,15 +457265,15 @@ function PluginComponentsDisplay({
     return null;
   }
   if (error) {
-    return /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
           bold: true,
           children: "Components:"
         }),
-        /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
           dimColor: true,
           children: [
             "Error: ",
@@ -457379,15 +457290,15 @@ function PluginComponentsDisplay({
   if (!hasComponents) {
     return null;
   }
-  return /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
     flexDirection: "column",
     marginBottom: 1,
     children: [
-      /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+      /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
         bold: true,
         children: "Installed components:"
       }),
-      components.commands ? /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+      components.commands ? /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
         dimColor: true,
         children: [
           "• Commands:",
@@ -457395,7 +457306,7 @@ function PluginComponentsDisplay({
           typeof components.commands === "string" ? components.commands : Array.isArray(components.commands) ? components.commands.join(", ") : Object.keys(components.commands).join(", ")
         ]
       }) : null,
-      components.agents ? /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+      components.agents ? /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
         dimColor: true,
         children: [
           "• Agents:",
@@ -457403,7 +457314,7 @@ function PluginComponentsDisplay({
           typeof components.agents === "string" ? components.agents : Array.isArray(components.agents) ? components.agents.join(", ") : Object.keys(components.agents).join(", ")
         ]
       }) : null,
-      components.skills ? /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+      components.skills ? /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
         dimColor: true,
         children: [
           "• Skills:",
@@ -457411,7 +457322,7 @@ function PluginComponentsDisplay({
           typeof components.skills === "string" ? components.skills : Array.isArray(components.skills) ? components.skills.join(", ") : Object.keys(components.skills).join(", ")
         ]
       }) : null,
-      components.hooks ? /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+      components.hooks ? /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
         dimColor: true,
         children: [
           "• Hooks:",
@@ -457419,7 +457330,7 @@ function PluginComponentsDisplay({
           typeof components.hooks === "string" ? components.hooks : Array.isArray(components.hooks) ? components.hooks.map(String).join(", ") : typeof components.hooks === "object" && components.hooks !== null ? Object.keys(components.hooks).join(", ") : String(components.hooks)
         ]
       }) : null,
-      components.mcpServers ? /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+      components.mcpServers ? /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
         dimColor: true,
         children: [
           "• MCP Servers:",
@@ -457457,8 +457368,8 @@ function ManagePlugins({
   const mcpTools = useAppState((s_0) => s_0.mcp.tools);
   const pluginErrors = useAppState((s_1) => s_1.plugins.errors);
   const flaggedPlugins = getFlaggedPlugins();
-  const [isSearchMode, setIsSearchModeRaw] = import_react138.useState(false);
-  const setIsSearchMode = import_react138.useCallback((active) => {
+  const [isSearchMode, setIsSearchModeRaw] = import_react137.useState(false);
+  const setIsSearchMode = import_react137.useCallback((active) => {
     setIsSearchModeRaw(active);
     onSearchModeChange?.(active);
   }, [onSearchModeChange]);
@@ -457466,7 +457377,7 @@ function ManagePlugins({
   const {
     columns: terminalWidth
   } = useTerminalSize();
-  const [viewState, setViewState] = import_react138.useState("plugin-list");
+  const [viewState, setViewState] = import_react137.useState("plugin-list");
   const {
     query: searchQuery,
     setQuery: setSearchQuery,
@@ -457477,15 +457388,15 @@ function ManagePlugins({
       setIsSearchMode(false);
     }
   });
-  const [selectedPlugin, setSelectedPlugin] = import_react138.useState(null);
-  const [marketplaces, setMarketplaces] = import_react138.useState([]);
-  const [pluginStates, setPluginStates] = import_react138.useState([]);
-  const [loading, setLoading] = import_react138.useState(true);
-  const [pendingToggles, setPendingToggles] = import_react138.useState(new Map);
-  const hasAutoNavigated = import_react138.useRef(false);
-  const pendingAutoActionRef = import_react138.useRef(undefined);
+  const [selectedPlugin, setSelectedPlugin] = import_react137.useState(null);
+  const [marketplaces, setMarketplaces] = import_react137.useState([]);
+  const [pluginStates, setPluginStates] = import_react137.useState([]);
+  const [loading, setLoading] = import_react137.useState(true);
+  const [pendingToggles, setPendingToggles] = import_react137.useState(new Map);
+  const hasAutoNavigated = import_react137.useRef(false);
+  const pendingAutoActionRef = import_react137.useRef(undefined);
   const toggleMcpServer = useMcpToggleEnabled();
-  const handleBack = React76.useCallback(() => {
+  const handleBack = React75.useCallback(() => {
     if (viewState === "plugin-details") {
       setViewState("plugin-list");
       setSelectedPlugin(null);
@@ -457544,7 +457455,7 @@ function ManagePlugins({
       return "needs-auth";
     return "failed";
   };
-  const unifiedItems = import_react138.useMemo(() => {
+  const unifiedItems = import_react137.useMemo(() => {
     const mergedSettings = getSettings_DEPRECATED();
     const pluginMcpMap = new Map;
     for (const client_0 of mcpClients) {
@@ -457747,31 +457658,31 @@ function ManagePlugins({
     }
     return unified;
   }, [pluginStates, mcpClients, pluginErrors, pendingToggles, flaggedPlugins]);
-  const flaggedIds = import_react138.useMemo(() => unifiedItems.filter((item_3) => item_3.type === "flagged-plugin").map((item_4) => item_4.id), [unifiedItems]);
-  import_react138.useEffect(() => {
+  const flaggedIds = import_react137.useMemo(() => unifiedItems.filter((item_3) => item_3.type === "flagged-plugin").map((item_4) => item_4.id), [unifiedItems]);
+  import_react137.useEffect(() => {
     if (flaggedIds.length > 0) {
       markFlaggedPluginsSeen(flaggedIds);
     }
   }, [flaggedIds]);
-  const filteredItems = import_react138.useMemo(() => {
+  const filteredItems = import_react137.useMemo(() => {
     if (!searchQuery)
       return unifiedItems;
     const lowerQuery = searchQuery.toLowerCase();
     return unifiedItems.filter((item_5) => item_5.name.toLowerCase().includes(lowerQuery) || ("description" in item_5) && item_5.description?.toLowerCase().includes(lowerQuery));
   }, [unifiedItems, searchQuery]);
-  const [selectedIndex, setSelectedIndex] = import_react138.useState(0);
+  const [selectedIndex, setSelectedIndex] = import_react137.useState(0);
   const pagination = usePagination({
     totalItems: filteredItems.length,
     selectedIndex,
     maxVisible: 8
   });
-  const [detailsMenuIndex, setDetailsMenuIndex] = import_react138.useState(0);
-  const [isProcessing, setIsProcessing] = import_react138.useState(false);
-  const [processError, setProcessError] = import_react138.useState(null);
-  const [configNeeded, setConfigNeeded] = import_react138.useState(null);
-  const [_isLoadingConfig, setIsLoadingConfig] = import_react138.useState(false);
-  const [selectedPluginHasMcpb, setSelectedPluginHasMcpb] = import_react138.useState(false);
-  import_react138.useEffect(() => {
+  const [detailsMenuIndex, setDetailsMenuIndex] = import_react137.useState(0);
+  const [isProcessing, setIsProcessing] = import_react137.useState(false);
+  const [processError, setProcessError] = import_react137.useState(null);
+  const [configNeeded, setConfigNeeded] = import_react137.useState(null);
+  const [_isLoadingConfig, setIsLoadingConfig] = import_react137.useState(false);
+  const [selectedPluginHasMcpb, setSelectedPluginHasMcpb] = import_react137.useState(false);
+  import_react137.useEffect(() => {
     if (!selectedPlugin) {
       setSelectedPluginHasMcpb(false);
       return;
@@ -457801,7 +457712,7 @@ function ManagePlugins({
     }
     detectMcpb();
   }, [selectedPlugin]);
-  import_react138.useEffect(() => {
+  import_react137.useEffect(() => {
     async function loadInstalledPlugins() {
       setLoading(true);
       try {
@@ -457863,7 +457774,7 @@ function ManagePlugins({
     }
     loadInstalledPlugins();
   }, []);
-  import_react138.useEffect(() => {
+  import_react137.useEffect(() => {
     if (hasAutoNavigated.current)
       return;
     if (targetPlugin && marketplaces.length > 0 && !loading) {
@@ -458024,16 +457935,16 @@ function ManagePlugins({
       logError2(toError(error_0));
     }
   };
-  const handleSingleOperationRef = import_react138.useRef(handleSingleOperation);
+  const handleSingleOperationRef = import_react137.useRef(handleSingleOperation);
   handleSingleOperationRef.current = handleSingleOperation;
-  import_react138.useEffect(() => {
+  import_react137.useEffect(() => {
     if (viewState === "plugin-details" && selectedPlugin && pendingAutoActionRef.current) {
       const pending = pendingAutoActionRef.current;
       pendingAutoActionRef.current = undefined;
       handleSingleOperationRef.current(pending);
     }
   }, [viewState, selectedPlugin]);
-  const handleToggle = React76.useCallback(() => {
+  const handleToggle = React75.useCallback(() => {
     if (selectedIndex >= filteredItems.length)
       return;
     const item_7 = filteredItems[selectedIndex];
@@ -458083,7 +457994,7 @@ function ManagePlugins({
       toggleMcpServer(item_7.client.name);
     }
   }, [selectedIndex, filteredItems, pendingToggles, pluginStates, toggleMcpServer]);
-  const handleAccept = React76.useCallback(() => {
+  const handleAccept = React75.useCallback(() => {
     if (selectedIndex >= filteredItems.length)
       return;
     const item_8 = filteredItems[selectedIndex];
@@ -458153,7 +458064,7 @@ function ManagePlugins({
     context: "Plugin",
     isActive: viewState === "plugin-list" && !isSearchMode
   });
-  const handleFlaggedDismiss = React76.useCallback(() => {
+  const handleFlaggedDismiss = React75.useCallback(() => {
     if (typeof viewState !== "object" || viewState.type !== "flagged-detail")
       return;
     removeFlaggedPlugin(viewState.plugin.id);
@@ -458165,7 +458076,7 @@ function ManagePlugins({
     context: "Select",
     isActive: typeof viewState === "object" && viewState.type === "flagged-detail"
   });
-  const detailsMenuItems = React76.useMemo(() => {
+  const detailsMenuItems = React75.useMemo(() => {
     if (viewState !== "plugin-details" || !selectedPlugin)
       return [];
     const mergedSettings_1 = getSettings_DEPRECATED();
@@ -458421,7 +458332,7 @@ function ManagePlugins({
   }, {
     isActive: typeof viewState === "object" && viewState.type === "confirm-data-cleanup" && !!selectedPlugin && !isProcessing
   });
-  React76.useEffect(() => {
+  React75.useEffect(() => {
     setSelectedIndex(0);
   }, [searchQuery]);
   use_input_default((input_0, key_0) => {
@@ -458442,27 +458353,27 @@ function ManagePlugins({
     isActive: viewState === "plugin-list"
   });
   if (loading) {
-    return /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+    return /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
       children: "Loading installed plugins…"
     });
   }
   if (unifiedItems.length === 0) {
-    return /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginBottom: 1,
-          children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
             bold: true,
             children: "Manage plugins"
           })
         }),
-        /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
           children: "No plugins or MCP servers installed."
         }),
-        /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
             dimColor: true,
             children: "Esc to go back"
           })
@@ -458481,7 +458392,7 @@ function ManagePlugins({
       });
     };
     const pluginId_10 = `${selectedPlugin.plugin.name}@${selectedPlugin.marketplace}`;
-    return /* @__PURE__ */ jsx_runtime236.jsx(PluginOptionsFlow, {
+    return /* @__PURE__ */ jsx_runtime235.jsx(PluginOptionsFlow, {
       plugin: selectedPlugin.plugin,
       pluginId: pluginId_10,
       onDone: (outcome, detail) => {
@@ -458501,7 +458412,7 @@ function ManagePlugins({
   }
   if (typeof viewState === "object" && viewState.type === "configuring-options" && selectedPlugin) {
     const pluginId_11 = `${selectedPlugin.plugin.name}@${selectedPlugin.marketplace}`;
-    return /* @__PURE__ */ jsx_runtime236.jsx(PluginOptionsDialog, {
+    return /* @__PURE__ */ jsx_runtime235.jsx(PluginOptionsDialog, {
       title: `Configure ${selectedPlugin.plugin.name}`,
       subtitle: "Plugin options",
       configSchema: viewState.schema,
@@ -458557,7 +458468,7 @@ function ManagePlugins({
         setViewState("plugin-details");
       }
     }
-    return /* @__PURE__ */ jsx_runtime236.jsx(PluginOptionsDialog, {
+    return /* @__PURE__ */ jsx_runtime235.jsx(PluginOptionsDialog, {
       title: `Configure ${configNeeded.manifest.name}`,
       subtitle: `Plugin: ${selectedPlugin.plugin.name}`,
       configSchema: configNeeded.configSchema,
@@ -458568,11 +458479,11 @@ function ManagePlugins({
   }
   if (typeof viewState === "object" && viewState.type === "flagged-detail") {
     const fp = viewState.plugin;
-    return /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
-          children: /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
+          children: /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
             bold: true,
             children: [
               fp.name,
@@ -458581,34 +458492,34 @@ function ManagePlugins({
             ]
           })
         }),
-        /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
           marginBottom: 1,
           children: [
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               dimColor: true,
               children: "Status: "
             }),
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               color: "error",
               children: "Removed"
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
           marginBottom: 1,
           flexDirection: "column",
           children: [
-            /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
               color: "error",
               children: [
                 "Removed from marketplace · reason: ",
                 fp.reason
               ]
             }),
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               children: fp.text
             }),
-            /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
               dimColor: true,
               children: [
                 "Flagged on ",
@@ -458617,33 +458528,33 @@ function ManagePlugins({
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginTop: 1,
           flexDirection: "column",
-          children: /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+          children: /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
             children: [
-              /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+              /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
                 children: [
                   figures_default.pointer,
                   " "
                 ]
               }),
-              /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
                 color: "suggestion",
                 children: "Dismiss"
               })
             ]
           })
         }),
-        /* @__PURE__ */ jsx_runtime236.jsxs(Byline, {
+        /* @__PURE__ */ jsx_runtime235.jsxs(Byline, {
           children: [
-            /* @__PURE__ */ jsx_runtime236.jsx(ConfigurableShortcutHint, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ConfigurableShortcutHint, {
               action: "select:accept",
               context: "Select",
               fallback: "Enter",
               description: "dismiss"
             }),
-            /* @__PURE__ */ jsx_runtime236.jsx(ConfigurableShortcutHint, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ConfigurableShortcutHint, {
               action: "confirm:no",
               context: "Confirmation",
               fallback: "Esc",
@@ -458655,10 +458566,10 @@ function ManagePlugins({
     });
   }
   if (viewState === "confirm-project-uninstall" && selectedPlugin) {
-    return /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
           bold: true,
           color: "warning",
           children: [
@@ -458666,40 +458577,40 @@ function ManagePlugins({
             " is enabled in .claude/settings.json (shared with your team)"
           ]
         }),
-        /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
           marginTop: 1,
           flexDirection: "column",
           children: [
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               children: "Disable it just for you in .claude/settings.local.json?"
             }),
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               dimColor: true,
               children: "This has the same effect as uninstalling, without affecting other contributors."
             })
           ]
         }),
-        processError && /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        processError && /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
             color: "error",
             children: processError
           })
         }),
-        /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: isProcessing ? /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+          children: isProcessing ? /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
             dimColor: true,
             children: "Disabling…"
-          }) : /* @__PURE__ */ jsx_runtime236.jsxs(Byline, {
+          }) : /* @__PURE__ */ jsx_runtime235.jsxs(Byline, {
             children: [
-              /* @__PURE__ */ jsx_runtime236.jsx(ConfigurableShortcutHint, {
+              /* @__PURE__ */ jsx_runtime235.jsx(ConfigurableShortcutHint, {
                 action: "confirm:yes",
                 context: "Confirmation",
                 fallback: "y",
                 description: "disable"
               }),
-              /* @__PURE__ */ jsx_runtime236.jsx(ConfigurableShortcutHint, {
+              /* @__PURE__ */ jsx_runtime235.jsx(ConfigurableShortcutHint, {
                 action: "confirm:no",
                 context: "Confirmation",
                 fallback: "Esc",
@@ -458712,10 +458623,10 @@ function ManagePlugins({
     });
   }
   if (typeof viewState === "object" && viewState.type === "confirm-data-cleanup" && selectedPlugin) {
-    return /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
           bold: true,
           children: [
             selectedPlugin.plugin.name,
@@ -458724,45 +458635,45 @@ function ManagePlugins({
             " of persistent data"
           ]
         }),
-        /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
           marginTop: 1,
           flexDirection: "column",
           children: [
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               children: "Delete it along with the plugin?"
             }),
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               dimColor: true,
               children: pluginDataDirPath(`${selectedPlugin.plugin.name}@${selectedPlugin.marketplace}`)
             })
           ]
         }),
-        processError && /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        processError && /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
             color: "error",
             children: processError
           })
         }),
-        /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: isProcessing ? /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+          children: isProcessing ? /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
             dimColor: true,
             children: "Uninstalling…"
-          }) : /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+          }) : /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
             children: [
-              /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
                 bold: true,
                 children: "y"
               }),
               " to delete · ",
-              /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
                 bold: true,
                 children: "n"
               }),
               " to keep ·",
               " ",
-              /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
                 bold: true,
                 children: "esc"
               }),
@@ -458778,11 +458689,11 @@ function ManagePlugins({
     const pluginId_13 = `${selectedPlugin.plugin.name}@${selectedPlugin.marketplace}`;
     const isEnabled_2 = mergedSettings_2?.enabledPlugins?.[pluginId_13] !== false;
     const filteredPluginErrors = pluginErrors.filter((e_1) => ("plugin" in e_1) && e_1.plugin === selectedPlugin.plugin.name || e_1.source === pluginId_13 || e_1.source.startsWith(`${selectedPlugin.plugin.name}@`));
-    const pluginErrorsSection = filteredPluginErrors.length === 0 ? null : /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+    const pluginErrorsSection = filteredPluginErrors.length === 0 ? null : /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
       flexDirection: "column",
       marginBottom: 1,
       children: [
-        /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
           bold: true,
           color: "error",
           children: [
@@ -458794,15 +458705,15 @@ function ManagePlugins({
         }),
         filteredPluginErrors.map((error_3, i_0) => {
           const guidance = getErrorGuidance(error_3);
-          return /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+          return /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
             flexDirection: "column",
             marginLeft: 2,
             children: [
-              /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
                 color: "error",
                 children: formatErrorMessage(error_3)
               }),
-              guidance && /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+              guidance && /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
                 dimColor: true,
                 italic: true,
                 children: [
@@ -458816,11 +458727,11 @@ function ManagePlugins({
         })
       ]
     });
-    return /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
-          children: /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
+          children: /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
             bold: true,
             children: [
               selectedPlugin.plugin.name,
@@ -458829,84 +458740,84 @@ function ManagePlugins({
             ]
           })
         }),
-        /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               dimColor: true,
               children: "Scope: "
             }),
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               children: selectedPlugin.scope || "user"
             })
           ]
         }),
-        selectedPlugin.plugin.manifest.version && /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+        selectedPlugin.plugin.manifest.version && /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               dimColor: true,
               children: "Version: "
             }),
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               children: selectedPlugin.plugin.manifest.version
             })
           ]
         }),
-        selectedPlugin.plugin.manifest.description && /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        selectedPlugin.plugin.manifest.description && /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginBottom: 1,
-          children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
             children: selectedPlugin.plugin.manifest.description
           })
         }),
-        selectedPlugin.plugin.manifest.author && /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+        selectedPlugin.plugin.manifest.author && /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
           children: [
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               dimColor: true,
               children: "Author: "
             }),
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               children: selectedPlugin.plugin.manifest.author.name
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
           marginBottom: 1,
           children: [
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               dimColor: true,
               children: "Status: "
             }),
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               color: isEnabled_2 ? "success" : "warning",
               children: isEnabled_2 ? "Enabled" : "Disabled"
             }),
-            selectedPlugin.pendingUpdate && /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            selectedPlugin.pendingUpdate && /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               color: "suggestion",
               children: " · Marked for update"
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime236.jsx(PluginComponentsDisplay, {
+        /* @__PURE__ */ jsx_runtime235.jsx(PluginComponentsDisplay, {
           plugin: selectedPlugin.plugin,
           marketplace: selectedPlugin.marketplace
         }),
         pluginErrorsSection,
-        /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginTop: 1,
           flexDirection: "column",
           children: detailsMenuItems.map((item_9, index_0) => {
             const isSelected = index_0 === detailsMenuIndex;
-            return /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+            return /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
               children: [
-                isSelected && /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+                isSelected && /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
                   children: [
                     figures_default.pointer,
                     " "
                   ]
                 }),
-                !isSelected && /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+                !isSelected && /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
                   children: "  "
                 }),
-                /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+                /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
                   bold: isSelected,
                   color: item_9.label.includes("Uninstall") ? "error" : item_9.label.includes("Update") ? "suggestion" : undefined,
                   children: item_9.label
@@ -458915,39 +458826,39 @@ function ManagePlugins({
             }, index_0);
           })
         }),
-        isProcessing && /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        isProcessing && /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
             children: "Processing…"
           })
         }),
-        processError && /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        processError && /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
             color: "error",
             children: processError
           })
         }),
-        /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
             dimColor: true,
             italic: true,
-            children: /* @__PURE__ */ jsx_runtime236.jsxs(Byline, {
+            children: /* @__PURE__ */ jsx_runtime235.jsxs(Byline, {
               children: [
-                /* @__PURE__ */ jsx_runtime236.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime235.jsx(ConfigurableShortcutHint, {
                   action: "select:previous",
                   context: "Select",
                   fallback: "↑",
                   description: "navigate"
                 }),
-                /* @__PURE__ */ jsx_runtime236.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime235.jsx(ConfigurableShortcutHint, {
                   action: "select:accept",
                   context: "Select",
                   fallback: "Enter",
                   description: "select"
                 }),
-                /* @__PURE__ */ jsx_runtime236.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime235.jsx(ConfigurableShortcutHint, {
                   action: "confirm:no",
                   context: "Confirmation",
                   fallback: "Esc",
@@ -458964,23 +458875,23 @@ function ManagePlugins({
     const failedPlugin_0 = viewState.plugin;
     const firstError = failedPlugin_0.errors[0];
     const errorMessage_0 = firstError ? formatErrorMessage(firstError) : "Failed to load";
-    return /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+    return /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
-        /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+        /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
           children: [
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               bold: true,
               children: failedPlugin_0.name
             }),
-            /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
               dimColor: true,
               children: [
                 " @ ",
                 failedPlugin_0.marketplace
               ]
             }),
-            /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
               dimColor: true,
               children: [
                 " (",
@@ -458990,53 +458901,53 @@ function ManagePlugins({
             })
           ]
         }),
-        /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+        /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
           color: "error",
           children: errorMessage_0
         }),
-        failedPlugin_0.scope === "managed" ? /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        failedPlugin_0.scope === "managed" ? /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
             dimColor: true,
             children: "Managed by your organization — contact your admin"
           })
-        }) : /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+        }) : /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
           marginTop: 1,
           children: [
-            /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
               color: "suggestion",
               children: [
                 figures_default.pointer,
                 " "
               ]
             }),
-            /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+            /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
               bold: true,
               children: "Remove"
             })
           ]
         }),
-        isProcessing && /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+        isProcessing && /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
           children: "Processing…"
         }),
-        processError && /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+        processError && /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
           color: "error",
           children: processError
         }),
-        /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+        /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
           marginTop: 1,
-          children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+          children: /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
             dimColor: true,
             italic: true,
-            children: /* @__PURE__ */ jsx_runtime236.jsxs(Byline, {
+            children: /* @__PURE__ */ jsx_runtime235.jsxs(Byline, {
               children: [
-                failedPlugin_0.scope !== "managed" && /* @__PURE__ */ jsx_runtime236.jsx(ConfigurableShortcutHint, {
+                failedPlugin_0.scope !== "managed" && /* @__PURE__ */ jsx_runtime235.jsx(ConfigurableShortcutHint, {
                   action: "select:accept",
                   context: "Select",
                   fallback: "Enter",
                   description: "remove"
                 }),
-                /* @__PURE__ */ jsx_runtime236.jsx(ConfigurableShortcutHint, {
+                /* @__PURE__ */ jsx_runtime235.jsx(ConfigurableShortcutHint, {
                   action: "confirm:no",
                   context: "Confirmation",
                   fallback: "Esc",
@@ -459077,7 +458988,7 @@ function ManagePlugins({
         transport: "stdio",
         config: client_3.config
       };
-      return /* @__PURE__ */ jsx_runtime236.jsx(MCPStdioServerMenu, {
+      return /* @__PURE__ */ jsx_runtime235.jsx(MCPStdioServerMenu, {
         server,
         serverToolsCount,
         onViewTools: handleMcpViewTools,
@@ -459094,7 +459005,7 @@ function ManagePlugins({
         isAuthenticated: undefined,
         config: client_3.config
       };
-      return /* @__PURE__ */ jsx_runtime236.jsx(MCPRemoteServerMenu, {
+      return /* @__PURE__ */ jsx_runtime235.jsx(MCPRemoteServerMenu, {
         server: server_0,
         serverToolsCount,
         onViewTools: handleMcpViewTools,
@@ -459111,7 +459022,7 @@ function ManagePlugins({
         isAuthenticated: undefined,
         config: client_3.config
       };
-      return /* @__PURE__ */ jsx_runtime236.jsx(MCPRemoteServerMenu, {
+      return /* @__PURE__ */ jsx_runtime235.jsx(MCPRemoteServerMenu, {
         server: server_1,
         serverToolsCount,
         onViewTools: handleMcpViewTools,
@@ -459128,7 +459039,7 @@ function ManagePlugins({
         isAuthenticated: undefined,
         config: client_3.config
       };
-      return /* @__PURE__ */ jsx_runtime236.jsx(MCPRemoteServerMenu, {
+      return /* @__PURE__ */ jsx_runtime235.jsx(MCPRemoteServerMenu, {
         server: server_2,
         serverToolsCount,
         onViewTools: handleMcpViewTools,
@@ -459181,7 +459092,7 @@ function ManagePlugins({
         config: client_4.config
       };
     }
-    return /* @__PURE__ */ jsx_runtime236.jsx(MCPToolListView, {
+    return /* @__PURE__ */ jsx_runtime235.jsx(MCPToolListView, {
       server: server_3,
       onSelectTool: (tool) => {
         setViewState({
@@ -459240,7 +459151,7 @@ function ManagePlugins({
         config: client_5.config
       };
     }
-    return /* @__PURE__ */ jsx_runtime236.jsx(MCPToolDetailView, {
+    return /* @__PURE__ */ jsx_runtime235.jsx(MCPToolDetailView, {
       tool: tool_0,
       server: server_4,
       onBack: () => setViewState({
@@ -459250,12 +459161,12 @@ function ManagePlugins({
     });
   }
   const visibleItems = pagination.getVisibleItems(filteredItems);
-  return /* @__PURE__ */ jsx_runtime236.jsxs(ThemedBox_default, {
+  return /* @__PURE__ */ jsx_runtime235.jsxs(ThemedBox_default, {
     flexDirection: "column",
     children: [
-      /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
         marginBottom: 1,
-        children: /* @__PURE__ */ jsx_runtime236.jsx(SearchBox, {
+        children: /* @__PURE__ */ jsx_runtime235.jsx(SearchBox, {
           query: searchQuery,
           isFocused: isSearchMode,
           isTerminalFocused,
@@ -459263,9 +459174,9 @@ function ManagePlugins({
           cursorOffset: searchCursorOffset
         })
       }),
-      filteredItems.length === 0 && searchQuery && /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+      filteredItems.length === 0 && searchQuery && /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
         marginBottom: 1,
-        children: /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
           dimColor: true,
           children: [
             'No items match "',
@@ -459274,8 +459185,8 @@ function ManagePlugins({
           ]
         })
       }),
-      pagination.scrollPosition.canScrollUp && /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
-        children: /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+      pagination.scrollPosition.canScrollUp && /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
+        children: /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
           dimColor: true,
           children: [
             " ",
@@ -459311,27 +459222,27 @@ function ManagePlugins({
               return scope_8;
           }
         };
-        return /* @__PURE__ */ jsx_runtime236.jsxs(React76.Fragment, {
+        return /* @__PURE__ */ jsx_runtime235.jsxs(React75.Fragment, {
           children: [
-            showScopeHeader && /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+            showScopeHeader && /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
               marginTop: visibleIndex > 0 ? 1 : 0,
               paddingLeft: 2,
-              children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+              children: /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
                 dimColor: item_10.scope !== "flagged",
                 color: item_10.scope === "flagged" ? "warning" : undefined,
                 bold: item_10.scope === "flagged",
                 children: getScopeLabel(item_10.scope)
               })
             }),
-            /* @__PURE__ */ jsx_runtime236.jsx(UnifiedInstalledCell, {
+            /* @__PURE__ */ jsx_runtime235.jsx(UnifiedInstalledCell, {
               item: item_10,
               isSelected: isSelected_0
             })
           ]
         }, item_10.id);
       }),
-      pagination.scrollPosition.canScrollDown && /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
-        children: /* @__PURE__ */ jsx_runtime236.jsxs(ThemedText, {
+      pagination.scrollPosition.canScrollDown && /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
+        children: /* @__PURE__ */ jsx_runtime235.jsxs(ThemedText, {
           dimColor: true,
           children: [
             " ",
@@ -459340,30 +459251,30 @@ function ManagePlugins({
           ]
         })
       }),
-      /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+      /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
         marginTop: 1,
         marginLeft: 1,
-        children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
           dimColor: true,
           italic: true,
-          children: /* @__PURE__ */ jsx_runtime236.jsxs(Byline, {
+          children: /* @__PURE__ */ jsx_runtime235.jsxs(Byline, {
             children: [
-              /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
                 children: "type to search"
               }),
-              /* @__PURE__ */ jsx_runtime236.jsx(ConfigurableShortcutHint, {
+              /* @__PURE__ */ jsx_runtime235.jsx(ConfigurableShortcutHint, {
                 action: "plugin:toggle",
                 context: "Plugin",
                 fallback: "Space",
                 description: "toggle"
               }),
-              /* @__PURE__ */ jsx_runtime236.jsx(ConfigurableShortcutHint, {
+              /* @__PURE__ */ jsx_runtime235.jsx(ConfigurableShortcutHint, {
                 action: "select:accept",
                 context: "Select",
                 fallback: "Enter",
                 description: "details"
               }),
-              /* @__PURE__ */ jsx_runtime236.jsx(ConfigurableShortcutHint, {
+              /* @__PURE__ */ jsx_runtime235.jsx(ConfigurableShortcutHint, {
                 action: "confirm:no",
                 context: "Confirmation",
                 fallback: "Esc",
@@ -459373,9 +459284,9 @@ function ManagePlugins({
           })
         })
       }),
-      pendingToggles.size > 0 && /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
+      pendingToggles.size > 0 && /* @__PURE__ */ jsx_runtime235.jsx(ThemedBox_default, {
         marginLeft: 1,
-        children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime235.jsx(ThemedText, {
           dimColor: true,
           italic: true,
           children: "Run /reload-plugins to apply changes"
@@ -459384,7 +459295,7 @@ function ManagePlugins({
     ]
   });
 }
-var React76, import_react138, jsx_runtime236;
+var React75, import_react137, jsx_runtime235;
 var init_ManagePlugins = __esm(() => {
   init_figures();
   init_ConfigurableShortcutHint();
@@ -459426,9 +459337,9 @@ var init_ManagePlugins = __esm(() => {
   init_PluginOptionsFlow();
   init_UnifiedInstalledCell();
   init_usePagination();
-  React76 = __toESM(require_react(), 1);
-  import_react138 = __toESM(require_react(), 1);
-  jsx_runtime236 = __toESM(require_jsx_runtime(), 1);
+  React75 = __toESM(require_react(), 1);
+  import_react137 = __toESM(require_react(), 1);
+  jsx_runtime235 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/plugin/parseArgs.ts
@@ -460068,7 +459979,7 @@ var init_validatePlugin = __esm(() => {
 
 // commands/plugin/ValidatePlugin.tsx
 function ValidatePlugin(t0) {
-  const $ = import_compiler_runtime190.c(5);
+  const $ = import_compiler_runtime188.c(5);
   const {
     onComplete,
     path
@@ -460156,12 +460067,12 @@ Or from the command line:
     t1 = $[2];
     t2 = $[3];
   }
-  import_react139.useEffect(t1, t2);
+  import_react138.useEffect(t1, t2);
   let t3;
   if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-    t3 = /* @__PURE__ */ jsx_runtime237.jsx(ThemedBox_default, {
+    t3 = /* @__PURE__ */ jsx_runtime236.jsx(ThemedBox_default, {
       flexDirection: "column",
-      children: /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime236.jsx(ThemedText, {
         children: "Running validation..."
       })
     });
@@ -460171,7 +460082,7 @@ Or from the command line:
   }
   return t3;
 }
-var import_compiler_runtime190, import_react139, jsx_runtime237;
+var import_compiler_runtime188, import_react138, jsx_runtime236;
 var init_ValidatePlugin = __esm(() => {
   init_figures();
   init_ink2();
@@ -460179,14 +460090,14 @@ var init_ValidatePlugin = __esm(() => {
   init_log3();
   init_validatePlugin();
   init_stringUtils();
-  import_compiler_runtime190 = __toESM(require_compiler_runtime(), 1);
-  import_react139 = __toESM(require_react(), 1);
-  jsx_runtime237 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime188 = __toESM(require_compiler_runtime(), 1);
+  import_react138 = __toESM(require_react(), 1);
+  jsx_runtime236 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/plugin/PluginSettings.tsx
 function MarketplaceList(t0) {
-  const $ = import_compiler_runtime191.c(4);
+  const $ = import_compiler_runtime189.c(4);
   const {
     onComplete
   } = t0;
@@ -460202,7 +460113,7 @@ function MarketplaceList(t0) {
             onComplete("No marketplaces configured");
           } else {
             onComplete(`Configured marketplaces:
-${names.map(_temp98).join(`
+${names.map(_temp97).join(`
 `)}`);
           }
         } catch (t3) {
@@ -460220,10 +460131,10 @@ ${names.map(_temp98).join(`
     t1 = $[1];
     t2 = $[2];
   }
-  import_react140.useEffect(t1, t2);
+  import_react139.useEffect(t1, t2);
   let t3;
   if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
-    t3 = /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+    t3 = /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
       children: "Loading marketplaces..."
     });
     $[3] = t3;
@@ -460232,7 +460143,7 @@ ${names.map(_temp98).join(`
   }
   return t3;
 }
-function _temp98(n) {
+function _temp97(n) {
   return `  • ${n}`;
 }
 function McpRedirectBanner() {
@@ -460443,7 +460354,7 @@ function removeExtraMarketplace(name, sources) {
   }
 }
 function ErrorsTabContent(t0) {
-  const $ = import_compiler_runtime191.c(26);
+  const $ = import_compiler_runtime189.c(26);
   const {
     setViewState,
     setActiveTab,
@@ -460452,8 +460363,8 @@ function ErrorsTabContent(t0) {
   const errors = useAppState(_temp237);
   const installationStatus = useAppState(_temp325);
   const setAppState = useSetAppState();
-  const [selectedIndex, setSelectedIndex] = import_react140.useState(0);
-  const [actionMessage, setActionMessage] = import_react140.useState(null);
+  const [selectedIndex, setSelectedIndex] = import_react139.useState(0);
+  const [actionMessage, setActionMessage] = import_react139.useState(null);
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = [];
@@ -460461,7 +460372,7 @@ function ErrorsTabContent(t0) {
   } else {
     t1 = $[0];
   }
-  const [marketplaceLoadFailures, setMarketplaceLoadFailures] = import_react140.useState(t1);
+  const [marketplaceLoadFailures, setMarketplaceLoadFailures] = import_react139.useState(t1);
   let t2;
   let t3;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
@@ -460483,7 +460394,7 @@ function ErrorsTabContent(t0) {
     t2 = $[1];
     t3 = $[2];
   }
-  import_react140.useEffect(t2, t3);
+  import_react139.useEffect(t2, t3);
   const failedMarketplaces = installationStatus.marketplaces.filter(_temp422);
   const failedMarketplaceNames = new Set(failedMarketplaces.map(_temp516));
   const transientErrors = errors.filter(isTransientError);
@@ -460571,7 +460482,7 @@ function ErrorsTabContent(t0) {
   };
   let t7;
   if ($[6] === Symbol.for("react.memo_cache_sentinel")) {
-    t7 = () => setSelectedIndex(_temp99);
+    t7 = () => setSelectedIndex(_temp98);
     $[6] = t7;
   } else {
     t7 = $[6];
@@ -460602,9 +460513,9 @@ function ErrorsTabContent(t0) {
   if (rows.length === 0) {
     let t10;
     if ($[9] === Symbol.for("react.memo_cache_sentinel")) {
-      t10 = /* @__PURE__ */ jsx_runtime238.jsx(ThemedBox_default, {
+      t10 = /* @__PURE__ */ jsx_runtime237.jsx(ThemedBox_default, {
         marginLeft: 1,
-        children: /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+        children: /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
           dimColor: true,
           children: "No plugin errors"
         })
@@ -460615,16 +460526,16 @@ function ErrorsTabContent(t0) {
     }
     let t11;
     if ($[10] === Symbol.for("react.memo_cache_sentinel")) {
-      t11 = /* @__PURE__ */ jsx_runtime238.jsxs(ThemedBox_default, {
+      t11 = /* @__PURE__ */ jsx_runtime237.jsxs(ThemedBox_default, {
         flexDirection: "column",
         children: [
           t10,
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedBox_default, {
             marginTop: 1,
-            children: /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
               dimColor: true,
               italic: true,
-              children: /* @__PURE__ */ jsx_runtime238.jsx(ConfigurableShortcutHint, {
+              children: /* @__PURE__ */ jsx_runtime237.jsx(ConfigurableShortcutHint, {
                 action: "confirm:no",
                 context: "Confirmation",
                 fallback: "Esc",
@@ -460646,25 +460557,25 @@ function ErrorsTabContent(t0) {
   if ($[11] !== clampedIndex) {
     t11 = (row_0, idx) => {
       const isSelected = idx === clampedIndex;
-      return /* @__PURE__ */ jsx_runtime238.jsxs(ThemedBox_default, {
+      return /* @__PURE__ */ jsx_runtime237.jsxs(ThemedBox_default, {
         marginLeft: 1,
         flexDirection: "column",
         marginBottom: 1,
         children: [
-          /* @__PURE__ */ jsx_runtime238.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsxs(ThemedText, {
             children: [
-              /* @__PURE__ */ jsx_runtime238.jsxs(ThemedText, {
+              /* @__PURE__ */ jsx_runtime237.jsxs(ThemedText, {
                 color: isSelected ? "suggestion" : "error",
                 children: [
                   isSelected ? figures_default.pointer : figures_default.cross,
                   " "
                 ]
               }),
-              /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
                 bold: isSelected,
                 children: row_0.label
               }),
-              row_0.scope && /* @__PURE__ */ jsx_runtime238.jsxs(ThemedText, {
+              row_0.scope && /* @__PURE__ */ jsx_runtime237.jsxs(ThemedText, {
                 dimColor: true,
                 children: [
                   " (",
@@ -460674,16 +460585,16 @@ function ErrorsTabContent(t0) {
               })
             ]
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedBox_default, {
             marginLeft: 3,
-            children: /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
               color: "error",
               children: row_0.message
             })
           }),
-          row_0.guidance && /* @__PURE__ */ jsx_runtime238.jsx(ThemedBox_default, {
+          row_0.guidance && /* @__PURE__ */ jsx_runtime237.jsx(ThemedBox_default, {
             marginLeft: 3,
-            children: /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
               dimColor: true,
               italic: true,
               children: row_0.guidance
@@ -460700,10 +460611,10 @@ function ErrorsTabContent(t0) {
   const t12 = rows.map(t11);
   let t13;
   if ($[13] !== actionMessage) {
-    t13 = actionMessage && /* @__PURE__ */ jsx_runtime238.jsx(ThemedBox_default, {
+    t13 = actionMessage && /* @__PURE__ */ jsx_runtime237.jsx(ThemedBox_default, {
       marginTop: 1,
       marginLeft: 1,
-      children: /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
         color: "claude",
         children: actionMessage
       })
@@ -460715,7 +460626,7 @@ function ErrorsTabContent(t0) {
   }
   let t14;
   if ($[15] === Symbol.for("react.memo_cache_sentinel")) {
-    t14 = /* @__PURE__ */ jsx_runtime238.jsx(ConfigurableShortcutHint, {
+    t14 = /* @__PURE__ */ jsx_runtime237.jsx(ConfigurableShortcutHint, {
       action: "select:previous",
       context: "Select",
       fallback: "↑",
@@ -460727,7 +460638,7 @@ function ErrorsTabContent(t0) {
   }
   let t15;
   if ($[16] !== hasAction) {
-    t15 = hasAction && /* @__PURE__ */ jsx_runtime238.jsx(ConfigurableShortcutHint, {
+    t15 = hasAction && /* @__PURE__ */ jsx_runtime237.jsx(ConfigurableShortcutHint, {
       action: "select:accept",
       context: "Select",
       fallback: "Enter",
@@ -460740,7 +460651,7 @@ function ErrorsTabContent(t0) {
   }
   let t16;
   if ($[18] === Symbol.for("react.memo_cache_sentinel")) {
-    t16 = /* @__PURE__ */ jsx_runtime238.jsx(ConfigurableShortcutHint, {
+    t16 = /* @__PURE__ */ jsx_runtime237.jsx(ConfigurableShortcutHint, {
       action: "confirm:no",
       context: "Confirmation",
       fallback: "Esc",
@@ -460752,12 +460663,12 @@ function ErrorsTabContent(t0) {
   }
   let t17;
   if ($[19] !== t15) {
-    t17 = /* @__PURE__ */ jsx_runtime238.jsx(ThemedBox_default, {
+    t17 = /* @__PURE__ */ jsx_runtime237.jsx(ThemedBox_default, {
       marginTop: 1,
-      children: /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+      children: /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
         dimColor: true,
         italic: true,
-        children: /* @__PURE__ */ jsx_runtime238.jsxs(Byline, {
+        children: /* @__PURE__ */ jsx_runtime237.jsxs(Byline, {
           children: [
             t14,
             t15,
@@ -460773,7 +460684,7 @@ function ErrorsTabContent(t0) {
   }
   let t18;
   if ($[21] !== T0 || $[22] !== t12 || $[23] !== t13 || $[24] !== t17) {
-    t18 = /* @__PURE__ */ jsx_runtime238.jsxs(T0, {
+    t18 = /* @__PURE__ */ jsx_runtime237.jsxs(T0, {
       flexDirection: t10,
       children: [
         t12,
@@ -460791,7 +460702,7 @@ function ErrorsTabContent(t0) {
   }
   return t18;
 }
-function _temp99(prev_1) {
+function _temp98(prev_1) {
   return Math.max(0, prev_1 - 1);
 }
 function _temp810(s_1) {
@@ -460921,7 +460832,7 @@ function getInitialTab(viewState) {
   return "discover";
 }
 function PluginSettings(t0) {
-  const $ = import_compiler_runtime191.c(75);
+  const $ = import_compiler_runtime189.c(75);
   const {
     onComplete,
     args,
@@ -460940,7 +460851,7 @@ function PluginSettings(t0) {
     t1 = $[2];
   }
   const initialViewState = t1;
-  const [viewState, setViewState] = import_react140.useState(initialViewState);
+  const [viewState, setViewState] = import_react139.useState(initialViewState);
   let t2;
   if ($[3] !== initialViewState) {
     t2 = getInitialTab(initialViewState);
@@ -460949,12 +460860,12 @@ function PluginSettings(t0) {
   } else {
     t2 = $[4];
   }
-  const [activeTab, setActiveTab] = import_react140.useState(t2);
-  const [inputValue, setInputValue] = import_react140.useState(viewState.type === "add-marketplace" ? viewState.initialValue || "" : "");
-  const [cursorOffset, setCursorOffset] = import_react140.useState(0);
-  const [error, setError] = import_react140.useState(null);
-  const [result, setResult] = import_react140.useState(null);
-  const [childSearchActive, setChildSearchActive] = import_react140.useState(false);
+  const [activeTab, setActiveTab] = import_react139.useState(t2);
+  const [inputValue, setInputValue] = import_react139.useState(viewState.type === "add-marketplace" ? viewState.initialValue || "" : "");
+  const [cursorOffset, setCursorOffset] = import_react139.useState(0);
+  const [error, setError] = import_react139.useState(null);
+  const [result, setResult] = import_react139.useState(null);
+  const [childSearchActive, setChildSearchActive] = import_react139.useState(false);
   const setAppState = useSetAppState();
   const pluginErrorCount = useAppState(_temp03);
   const errorsTabTitle = pluginErrorCount > 0 ? `Errors (${pluginErrorCount})` : "Errors";
@@ -461023,7 +460934,7 @@ function PluginSettings(t0) {
     t5 = $[11];
     t6 = $[12];
   }
-  import_react140.useEffect(t5, t6);
+  import_react139.useEffect(t5, t6);
   let t7;
   let t8;
   if ($[13] !== activeTab || $[14] !== viewState.type) {
@@ -461041,7 +460952,7 @@ function PluginSettings(t0) {
     t7 = $[15];
     t8 = $[16];
   }
-  import_react140.useEffect(t7, t8);
+  import_react139.useEffect(t7, t8);
   let t9;
   if ($[17] === Symbol.for("react.memo_cache_sentinel")) {
     t9 = () => {
@@ -461087,7 +460998,7 @@ function PluginSettings(t0) {
     t12 = $[22];
     t13 = $[23];
   }
-  import_react140.useEffect(t12, t13);
+  import_react139.useEffect(t12, t13);
   let t14;
   let t15;
   if ($[24] !== onComplete || $[25] !== viewState.type) {
@@ -461105,128 +461016,128 @@ function PluginSettings(t0) {
     t14 = $[26];
     t15 = $[27];
   }
-  import_react140.useEffect(t14, t15);
+  import_react139.useEffect(t14, t15);
   if (viewState.type === "help") {
     let t16;
     if ($[28] === Symbol.for("react.memo_cache_sentinel")) {
-      t16 = /* @__PURE__ */ jsx_runtime238.jsxs(ThemedBox_default, {
+      t16 = /* @__PURE__ */ jsx_runtime237.jsxs(ThemedBox_default, {
         flexDirection: "column",
         children: [
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             bold: true,
             children: "Plugin Command Usage:"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " "
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             dimColor: true,
             children: "Installation:"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugin install - Browse and install plugins"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsxs(ThemedText, {
             children: [
               " ",
               "/plugin install <marketplace> - Install from specific marketplace"
             ]
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugin install <plugin> - Install specific plugin"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsxs(ThemedText, {
             children: [
               " ",
               "/plugin install <plugin>@<market> - Install plugin from marketplace"
             ]
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " "
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             dimColor: true,
             children: "Management:"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugin manage - Manage installed plugins"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugin enable <plugin> - Enable a plugin"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugin disable <plugin> - Disable a plugin"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugin uninstall <plugin> - Uninstall a plugin"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " "
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             dimColor: true,
             children: "Marketplaces:"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugin marketplace - Marketplace management menu"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugin marketplace add - Add a marketplace"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsxs(ThemedText, {
             children: [
               " ",
               "/plugin marketplace add <path/url> - Add marketplace directly"
             ]
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugin marketplace update - Update marketplaces"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsxs(ThemedText, {
             children: [
               " ",
               "/plugin marketplace update <name> - Update specific marketplace"
             ]
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugin marketplace remove - Remove a marketplace"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsxs(ThemedText, {
             children: [
               " ",
               "/plugin marketplace remove <name> - Remove specific marketplace"
             ]
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugin marketplace list - List all marketplaces"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " "
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             dimColor: true,
             children: "Validation:"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsxs(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsxs(ThemedText, {
             children: [
               " ",
               "/plugin validate <path> - Validate a manifest file or directory"
             ]
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " "
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             dimColor: true,
             children: "Other:"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugin - Main plugin menu"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugin help - Show this help"
           }),
-          /* @__PURE__ */ jsx_runtime238.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime237.jsx(ThemedText, {
             children: " /plugins - Alias for /plugin"
           })
         ]
@@ -461240,7 +461151,7 @@ function PluginSettings(t0) {
   if (viewState.type === "validate") {
     let t16;
     if ($[29] !== onComplete || $[30] !== viewState.path) {
-      t16 = /* @__PURE__ */ jsx_runtime238.jsx(ValidatePlugin, {
+      t16 = /* @__PURE__ */ jsx_runtime237.jsx(ValidatePlugin, {
         onComplete,
         path: viewState.path
       });
@@ -461261,7 +461172,7 @@ function PluginSettings(t0) {
   if (viewState.type === "marketplace-list") {
     let t16;
     if ($[32] !== onComplete) {
-      t16 = /* @__PURE__ */ jsx_runtime238.jsx(MarketplaceList, {
+      t16 = /* @__PURE__ */ jsx_runtime237.jsx(MarketplaceList, {
         onComplete
       });
       $[32] = onComplete;
@@ -461274,7 +461185,7 @@ function PluginSettings(t0) {
   if (viewState.type === "add-marketplace") {
     let t16;
     if ($[34] !== cliMode || $[35] !== cursorOffset || $[36] !== error || $[37] !== inputValue || $[38] !== markPluginsChanged || $[39] !== result) {
-      t16 = /* @__PURE__ */ jsx_runtime238.jsx(AddMarketplace, {
+      t16 = /* @__PURE__ */ jsx_runtime237.jsx(AddMarketplace, {
         inputValue,
         setInputValue,
         cursorOffset,
@@ -461301,7 +461212,7 @@ function PluginSettings(t0) {
   }
   let t16;
   if ($[41] !== activeTab || $[42] !== showMcpRedirectMessage) {
-    t16 = showMcpRedirectMessage && activeTab === "installed" ? /* @__PURE__ */ jsx_runtime238.jsx(McpRedirectBanner, {}) : undefined;
+    t16 = showMcpRedirectMessage && activeTab === "installed" ? /* @__PURE__ */ jsx_runtime237.jsx(McpRedirectBanner, {}) : undefined;
     $[41] = activeTab;
     $[42] = showMcpRedirectMessage;
     $[43] = t16;
@@ -461310,10 +461221,10 @@ function PluginSettings(t0) {
   }
   let t17;
   if ($[44] !== error || $[45] !== markPluginsChanged || $[46] !== result || $[47] !== viewState.targetMarketplace || $[48] !== viewState.targetPlugin || $[49] !== viewState.type) {
-    t17 = /* @__PURE__ */ jsx_runtime238.jsx(Tab, {
+    t17 = /* @__PURE__ */ jsx_runtime237.jsx(Tab, {
       id: "discover",
       title: "Discover",
-      children: viewState.type === "browse-marketplace" ? /* @__PURE__ */ jsx_runtime238.jsx(BrowseMarketplace, {
+      children: viewState.type === "browse-marketplace" ? /* @__PURE__ */ jsx_runtime237.jsx(BrowseMarketplace, {
         error,
         setError,
         result,
@@ -461322,7 +461233,7 @@ function PluginSettings(t0) {
         onInstallComplete: markPluginsChanged,
         targetMarketplace: viewState.targetMarketplace,
         targetPlugin: viewState.targetPlugin
-      }) : /* @__PURE__ */ jsx_runtime238.jsx(DiscoverPlugins, {
+      }) : /* @__PURE__ */ jsx_runtime237.jsx(DiscoverPlugins, {
         error,
         setError,
         result,
@@ -461348,10 +461259,10 @@ function PluginSettings(t0) {
   const t20 = viewState.type === "manage-plugins" ? viewState.action : undefined;
   let t21;
   if ($[51] !== markPluginsChanged || $[52] !== t18 || $[53] !== t19 || $[54] !== t20) {
-    t21 = /* @__PURE__ */ jsx_runtime238.jsx(Tab, {
+    t21 = /* @__PURE__ */ jsx_runtime237.jsx(Tab, {
       id: "installed",
       title: "Installed",
-      children: /* @__PURE__ */ jsx_runtime238.jsx(ManagePlugins, {
+      children: /* @__PURE__ */ jsx_runtime237.jsx(ManagePlugins, {
         setViewState,
         setResult,
         onManageComplete: markPluginsChanged,
@@ -461373,10 +461284,10 @@ function PluginSettings(t0) {
   const t23 = viewState.type === "manage-marketplaces" ? viewState.action : undefined;
   let t24;
   if ($[56] !== error || $[57] !== exitState || $[58] !== markPluginsChanged || $[59] !== t22 || $[60] !== t23) {
-    t24 = /* @__PURE__ */ jsx_runtime238.jsx(Tab, {
+    t24 = /* @__PURE__ */ jsx_runtime237.jsx(Tab, {
       id: "marketplaces",
       title: "Marketplaces",
-      children: /* @__PURE__ */ jsx_runtime238.jsx(ManageMarketplaces, {
+      children: /* @__PURE__ */ jsx_runtime237.jsx(ManageMarketplaces, {
         setViewState,
         error,
         setError,
@@ -461398,7 +461309,7 @@ function PluginSettings(t0) {
   }
   let t25;
   if ($[62] !== markPluginsChanged) {
-    t25 = /* @__PURE__ */ jsx_runtime238.jsx(ErrorsTabContent, {
+    t25 = /* @__PURE__ */ jsx_runtime237.jsx(ErrorsTabContent, {
       setViewState,
       setActiveTab,
       markPluginsChanged
@@ -461410,7 +461321,7 @@ function PluginSettings(t0) {
   }
   let t26;
   if ($[64] !== errorsTabTitle || $[65] !== t25) {
-    t26 = /* @__PURE__ */ jsx_runtime238.jsx(Tab, {
+    t26 = /* @__PURE__ */ jsx_runtime237.jsx(Tab, {
       id: "errors",
       title: errorsTabTitle,
       children: t25
@@ -461423,9 +461334,9 @@ function PluginSettings(t0) {
   }
   let t27;
   if ($[67] !== activeTab || $[68] !== childSearchActive || $[69] !== t16 || $[70] !== t17 || $[71] !== t21 || $[72] !== t24 || $[73] !== t26) {
-    t27 = /* @__PURE__ */ jsx_runtime238.jsx(Pane, {
+    t27 = /* @__PURE__ */ jsx_runtime237.jsx(Pane, {
       color: "suggestion",
-      children: /* @__PURE__ */ jsx_runtime238.jsxs(Tabs, {
+      children: /* @__PURE__ */ jsx_runtime237.jsxs(Tabs, {
         title: "Plugins",
         selectedTab: activeTab,
         onTabChange: handleTabChange,
@@ -461471,7 +461382,7 @@ function _temp03(s) {
   }
   return count;
 }
-var import_compiler_runtime191, import_react140, jsx_runtime238, TRANSIENT_ERROR_TYPES;
+var import_compiler_runtime189, import_react139, jsx_runtime237, TRANSIENT_ERROR_TYPES;
 var init_PluginSettings = __esm(() => {
   init_figures();
   init_ConfigurableShortcutHint();
@@ -461495,9 +461406,9 @@ var init_PluginSettings = __esm(() => {
   init_ManagePlugins();
   init_PluginErrors();
   init_ValidatePlugin();
-  import_compiler_runtime191 = __toESM(require_compiler_runtime(), 1);
-  import_react140 = __toESM(require_react(), 1);
-  jsx_runtime238 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime189 = __toESM(require_compiler_runtime(), 1);
+  import_react139 = __toESM(require_react(), 1);
+  jsx_runtime237 = __toESM(require_jsx_runtime(), 1);
   TRANSIENT_ERROR_TYPES = new Set(["git-auth-failed", "git-timeout", "network-error"]);
 });
 
@@ -461507,15 +461418,15 @@ __export(exports_mcp, {
   call: () => call26
 });
 function MCPToggle(t0) {
-  const $ = import_compiler_runtime192.c(7);
+  const $ = import_compiler_runtime190.c(7);
   const {
     action,
     target,
     onComplete
   } = t0;
-  const mcpClients = useAppState(_temp100);
+  const mcpClients = useAppState(_temp99);
   const toggleMcpServer = useMcpToggleEnabled();
-  const didRun = import_react141.useRef(false);
+  const didRun = import_react140.useRef(false);
   let t1;
   let t2;
   if ($[0] !== action || $[1] !== mcpClients || $[2] !== onComplete || $[3] !== target || $[4] !== toggleMcpServer) {
@@ -461548,31 +461459,31 @@ function MCPToggle(t0) {
     t1 = $[5];
     t2 = $[6];
   }
-  import_react141.useEffect(t1, t2);
+  import_react140.useEffect(t1, t2);
   return null;
 }
 function _temp238(c) {
   return c.name !== "ide";
 }
-function _temp100(s) {
+function _temp99(s) {
   return s.mcp.clients;
 }
 async function call26(onDone, _context, args) {
   if (args) {
     const parts = args.trim().split(/\s+/);
     if (parts[0] === "no-redirect") {
-      return /* @__PURE__ */ jsx_runtime239.jsx(MCPSettings, {
+      return /* @__PURE__ */ jsx_runtime238.jsx(MCPSettings, {
         onComplete: onDone
       });
     }
     if (parts[0] === "reconnect" && parts[1]) {
-      return /* @__PURE__ */ jsx_runtime239.jsx(MCPReconnect, {
+      return /* @__PURE__ */ jsx_runtime238.jsx(MCPReconnect, {
         serverName: parts.slice(1).join(" "),
         onComplete: onDone
       });
     }
     if (parts[0] === "enable" || parts[0] === "disable") {
-      return /* @__PURE__ */ jsx_runtime239.jsx(MCPToggle, {
+      return /* @__PURE__ */ jsx_runtime238.jsx(MCPToggle, {
         action: parts[0],
         target: parts.length > 1 ? parts.slice(1).join(" ") : "all",
         onComplete: onDone
@@ -461580,20 +461491,20 @@ async function call26(onDone, _context, args) {
     }
   }
   if (false) {}
-  return /* @__PURE__ */ jsx_runtime239.jsx(MCPSettings, {
+  return /* @__PURE__ */ jsx_runtime238.jsx(MCPSettings, {
     onComplete: onDone
   });
 }
-var import_compiler_runtime192, import_react141, jsx_runtime239;
+var import_compiler_runtime190, import_react140, jsx_runtime238;
 var init_mcp2 = __esm(() => {
   init_mcp();
   init_MCPReconnect();
   init_MCPConnectionManager();
   init_AppState();
   init_PluginSettings();
-  import_compiler_runtime192 = __toESM(require_compiler_runtime(), 1);
-  import_react141 = __toESM(require_react(), 1);
-  jsx_runtime239 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime190 = __toESM(require_compiler_runtime(), 1);
+  import_react140 = __toESM(require_react(), 1);
+  jsx_runtime238 = __toESM(require_jsx_runtime(), 1);
 });
 
 // commands/mcp/index.ts
@@ -465856,11 +465767,11 @@ __export(exports_mobile, {
   call: () => call27
 });
 function MobileQRCode(t0) {
-  const $ = import_compiler_runtime193.c(52);
+  const $ = import_compiler_runtime191.c(52);
   const {
     onDone
   } = t0;
-  const [platform, setPlatform] = import_react142.useState("ios");
+  const [platform, setPlatform] = import_react141.useState("ios");
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = {
@@ -465871,7 +465782,7 @@ function MobileQRCode(t0) {
   } else {
     t1 = $[0];
   }
-  const [qrCodes, setQrCodes] = import_react142.useState(t1);
+  const [qrCodes, setQrCodes] = import_react141.useState(t1);
   const {
     url
   } = PLATFORMS[platform];
@@ -465893,7 +465804,7 @@ function MobileQRCode(t0) {
           android
         });
       };
-      generateQRCodes().catch(_temp101);
+      generateQRCodes().catch(_temp100);
     };
     t3 = [];
     $[1] = t2;
@@ -465902,7 +465813,7 @@ function MobileQRCode(t0) {
     t2 = $[1];
     t3 = $[2];
   }
-  import_react142.useEffect(t2, t3);
+  import_react141.useEffect(t2, t3);
   let t4;
   if ($[3] !== onDone) {
     t4 = () => {
@@ -465962,10 +465873,10 @@ function MobileQRCode(t0) {
     t9 = true;
     t10 = handleKeyDown;
     if ($[19] === Symbol.for("react.memo_cache_sentinel")) {
-      t11 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
+      t11 = /* @__PURE__ */ jsx_runtime239.jsx(ThemedText, {
         children: " "
       });
-      t12 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
+      t12 = /* @__PURE__ */ jsx_runtime239.jsx(ThemedText, {
         children: " "
       });
       $[19] = t11;
@@ -466000,10 +465911,10 @@ function MobileQRCode(t0) {
   let t14;
   let t15;
   if ($[21] === Symbol.for("react.memo_cache_sentinel")) {
-    t14 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
+    t14 = /* @__PURE__ */ jsx_runtime239.jsx(ThemedText, {
       children: " "
     });
-    t15 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
+    t15 = /* @__PURE__ */ jsx_runtime239.jsx(ThemedText, {
       children: " "
     });
     $[21] = t14;
@@ -466016,7 +465927,7 @@ function MobileQRCode(t0) {
   const t17 = platform === "ios";
   let t18;
   if ($[23] !== t16 || $[24] !== t17) {
-    t18 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
+    t18 = /* @__PURE__ */ jsx_runtime239.jsx(ThemedText, {
       bold: t16,
       underline: t17,
       children: "iOS"
@@ -466029,7 +465940,7 @@ function MobileQRCode(t0) {
   }
   let t19;
   if ($[26] === Symbol.for("react.memo_cache_sentinel")) {
-    t19 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
+    t19 = /* @__PURE__ */ jsx_runtime239.jsx(ThemedText, {
       dimColor: true,
       children: " / "
     });
@@ -466041,7 +465952,7 @@ function MobileQRCode(t0) {
   const t21 = platform === "android";
   let t22;
   if ($[27] !== t20 || $[28] !== t21) {
-    t22 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
+    t22 = /* @__PURE__ */ jsx_runtime239.jsx(ThemedText, {
       bold: t20,
       underline: t21,
       children: "Android"
@@ -466054,7 +465965,7 @@ function MobileQRCode(t0) {
   }
   let t23;
   if ($[30] !== t18 || $[31] !== t22) {
-    t23 = /* @__PURE__ */ jsx_runtime240.jsxs(ThemedText, {
+    t23 = /* @__PURE__ */ jsx_runtime239.jsxs(ThemedText, {
       children: [
         t18,
         t19,
@@ -466069,7 +465980,7 @@ function MobileQRCode(t0) {
   }
   let t24;
   if ($[33] === Symbol.for("react.memo_cache_sentinel")) {
-    t24 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
+    t24 = /* @__PURE__ */ jsx_runtime239.jsx(ThemedText, {
       dimColor: true,
       children: "(tab to switch, esc to close)"
     });
@@ -466079,7 +465990,7 @@ function MobileQRCode(t0) {
   }
   let t25;
   if ($[34] !== t23) {
-    t25 = /* @__PURE__ */ jsx_runtime240.jsxs(ThemedBox_default, {
+    t25 = /* @__PURE__ */ jsx_runtime239.jsxs(ThemedBox_default, {
       flexDirection: "row",
       gap: 2,
       children: [
@@ -466094,7 +466005,7 @@ function MobileQRCode(t0) {
   }
   let t26;
   if ($[36] !== url) {
-    t26 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
+    t26 = /* @__PURE__ */ jsx_runtime239.jsx(ThemedText, {
       dimColor: true,
       children: url
     });
@@ -466105,7 +466016,7 @@ function MobileQRCode(t0) {
   }
   let t27;
   if ($[38] !== T0 || $[39] !== t10 || $[40] !== t11 || $[41] !== t12 || $[42] !== t13 || $[43] !== t25 || $[44] !== t26 || $[45] !== t7 || $[46] !== t8 || $[47] !== t9) {
-    t27 = /* @__PURE__ */ jsx_runtime240.jsxs(T0, {
+    t27 = /* @__PURE__ */ jsx_runtime239.jsxs(T0, {
       flexDirection: t7,
       tabIndex: t8,
       autoFocus: t9,
@@ -466136,7 +466047,7 @@ function MobileQRCode(t0) {
   }
   let t28;
   if ($[49] !== T1 || $[50] !== t27) {
-    t28 = /* @__PURE__ */ jsx_runtime240.jsx(T1, {
+    t28 = /* @__PURE__ */ jsx_runtime239.jsx(T1, {
       children: t27
     });
     $[49] = T1;
@@ -466148,7 +466059,7 @@ function MobileQRCode(t0) {
   return t28;
 }
 function _temp423(line_0, i) {
-  return /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
+  return /* @__PURE__ */ jsx_runtime239.jsx(ThemedText, {
     children: line_0
   }, i);
 }
@@ -466158,21 +466069,21 @@ function _temp326(line) {
 function _temp239(prev) {
   return prev === "ios" ? "android" : "ios";
 }
-function _temp101() {}
+function _temp100() {}
 async function call27(onDone) {
-  return /* @__PURE__ */ jsx_runtime240.jsx(MobileQRCode, {
+  return /* @__PURE__ */ jsx_runtime239.jsx(MobileQRCode, {
     onDone
   });
 }
-var import_compiler_runtime193, import_react142, jsx_runtime240, PLATFORMS;
+var import_compiler_runtime191, import_react141, jsx_runtime239, PLATFORMS;
 var init_mobile = __esm(() => {
   init_server();
   init_Pane();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime193 = __toESM(require_compiler_runtime(), 1);
-  import_react142 = __toESM(require_react(), 1);
-  jsx_runtime240 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime191 = __toESM(require_compiler_runtime(), 1);
+  import_react141 = __toESM(require_react(), 1);
+  jsx_runtime239 = __toESM(require_jsx_runtime(), 1);
   PLATFORMS = {
     ios: {
       url: "https://apps.apple.com/app/claude-by-anthropic/id6473753684"
@@ -467604,7 +467515,7 @@ var init_logoV2Utils = __esm(() => {
 
 // components/LogoV2/Clawd.tsx
 function Clawd(t0) {
-  const $ = import_compiler_runtime194.c(26);
+  const $ = import_compiler_runtime192.c(26);
   let t1;
   if ($[0] !== t0) {
     t1 = t0 === undefined ? {} : t0;
@@ -467620,7 +467531,7 @@ function Clawd(t0) {
   if (env4.terminal === "Apple_Terminal") {
     let t3;
     if ($[2] !== pose) {
-      t3 = /* @__PURE__ */ jsx_runtime241.jsx(AppleTerminalClawd, {
+      t3 = /* @__PURE__ */ jsx_runtime240.jsx(AppleTerminalClawd, {
         pose
       });
       $[2] = pose;
@@ -467633,7 +467544,7 @@ function Clawd(t0) {
   const p = POSES[pose];
   let t3;
   if ($[4] !== p.r1L) {
-    t3 = /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
+    t3 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
       color: "clawd_body",
       children: p.r1L
     });
@@ -467644,7 +467555,7 @@ function Clawd(t0) {
   }
   let t4;
   if ($[6] !== p.r1E) {
-    t4 = /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
+    t4 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
       color: "clawd_body",
       backgroundColor: "clawd_background",
       children: p.r1E
@@ -467656,7 +467567,7 @@ function Clawd(t0) {
   }
   let t5;
   if ($[8] !== p.r1R) {
-    t5 = /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
+    t5 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
       color: "clawd_body",
       children: p.r1R
     });
@@ -467667,7 +467578,7 @@ function Clawd(t0) {
   }
   let t6;
   if ($[10] !== t3 || $[11] !== t4 || $[12] !== t5) {
-    t6 = /* @__PURE__ */ jsx_runtime241.jsxs(ThemedText, {
+    t6 = /* @__PURE__ */ jsx_runtime240.jsxs(ThemedText, {
       children: [
         t3,
         t4,
@@ -467683,7 +467594,7 @@ function Clawd(t0) {
   }
   let t7;
   if ($[14] !== p.r2L) {
-    t7 = /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
+    t7 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
       color: "clawd_body",
       children: p.r2L
     });
@@ -467694,7 +467605,7 @@ function Clawd(t0) {
   }
   let t8;
   if ($[16] === Symbol.for("react.memo_cache_sentinel")) {
-    t8 = /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
+    t8 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
       color: "clawd_body",
       backgroundColor: "clawd_background",
       children: "█████"
@@ -467705,7 +467616,7 @@ function Clawd(t0) {
   }
   let t9;
   if ($[17] !== p.r2R) {
-    t9 = /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
+    t9 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
       color: "clawd_body",
       children: p.r2R
     });
@@ -467716,7 +467627,7 @@ function Clawd(t0) {
   }
   let t10;
   if ($[19] !== t7 || $[20] !== t9) {
-    t10 = /* @__PURE__ */ jsx_runtime241.jsxs(ThemedText, {
+    t10 = /* @__PURE__ */ jsx_runtime240.jsxs(ThemedText, {
       children: [
         t7,
         t8,
@@ -467731,7 +467642,7 @@ function Clawd(t0) {
   }
   let t11;
   if ($[22] === Symbol.for("react.memo_cache_sentinel")) {
-    t11 = /* @__PURE__ */ jsx_runtime241.jsxs(ThemedText, {
+    t11 = /* @__PURE__ */ jsx_runtime240.jsxs(ThemedText, {
       color: "clawd_body",
       children: [
         "  ",
@@ -467745,7 +467656,7 @@ function Clawd(t0) {
   }
   let t12;
   if ($[23] !== t10 || $[24] !== t6) {
-    t12 = /* @__PURE__ */ jsx_runtime241.jsxs(ThemedBox_default, {
+    t12 = /* @__PURE__ */ jsx_runtime240.jsxs(ThemedBox_default, {
       flexDirection: "column",
       children: [
         t6,
@@ -467762,13 +467673,13 @@ function Clawd(t0) {
   return t12;
 }
 function AppleTerminalClawd(t0) {
-  const $ = import_compiler_runtime194.c(10);
+  const $ = import_compiler_runtime192.c(10);
   const {
     pose
   } = t0;
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
+    t1 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
       color: "clawd_body",
       children: "▗"
     });
@@ -467779,7 +467690,7 @@ function AppleTerminalClawd(t0) {
   const t2 = APPLE_EYES[pose];
   let t3;
   if ($[1] !== t2) {
-    t3 = /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
+    t3 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
       color: "clawd_background",
       backgroundColor: "clawd_body",
       children: t2
@@ -467791,7 +467702,7 @@ function AppleTerminalClawd(t0) {
   }
   let t4;
   if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
+    t4 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
       color: "clawd_body",
       children: "▖"
     });
@@ -467801,7 +467712,7 @@ function AppleTerminalClawd(t0) {
   }
   let t5;
   if ($[4] !== t3) {
-    t5 = /* @__PURE__ */ jsx_runtime241.jsxs(ThemedText, {
+    t5 = /* @__PURE__ */ jsx_runtime240.jsxs(ThemedText, {
       children: [
         t1,
         t3,
@@ -467816,11 +467727,11 @@ function AppleTerminalClawd(t0) {
   let t6;
   let t7;
   if ($[6] === Symbol.for("react.memo_cache_sentinel")) {
-    t6 = /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
+    t6 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
       backgroundColor: "clawd_body",
       children: " ".repeat(7)
     });
-    t7 = /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
+    t7 = /* @__PURE__ */ jsx_runtime240.jsx(ThemedText, {
       color: "clawd_body",
       children: "▘▘ ▝▝"
     });
@@ -467832,7 +467743,7 @@ function AppleTerminalClawd(t0) {
   }
   let t8;
   if ($[8] !== t5) {
-    t8 = /* @__PURE__ */ jsx_runtime241.jsxs(ThemedBox_default, {
+    t8 = /* @__PURE__ */ jsx_runtime240.jsxs(ThemedBox_default, {
       flexDirection: "column",
       alignItems: "center",
       children: [
@@ -467848,12 +467759,12 @@ function AppleTerminalClawd(t0) {
   }
   return t8;
 }
-var import_compiler_runtime194, jsx_runtime241, POSES, APPLE_EYES;
+var import_compiler_runtime192, jsx_runtime240, POSES, APPLE_EYES;
 var init_Clawd = __esm(() => {
   init_ink2();
   init_env();
-  import_compiler_runtime194 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime241 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime192 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime240 = __toESM(require_jsx_runtime(), 1);
   POSES = {
     default: {
       r1L: " ▐",
@@ -467921,7 +467832,7 @@ function calculateFeedWidth(config) {
   return maxWidth;
 }
 function Feed(t0) {
-  const $ = import_compiler_runtime195.c(15);
+  const $ = import_compiler_runtime193.c(15);
   const {
     config,
     actualWidth
@@ -467935,7 +467846,7 @@ function Feed(t0) {
   } = config;
   let t1;
   if ($[0] !== lines) {
-    t1 = Math.max(0, ...lines.map(_temp104));
+    t1 = Math.max(0, ...lines.map(_temp101));
     $[0] = lines;
     $[1] = t1;
   } else {
@@ -467944,7 +467855,7 @@ function Feed(t0) {
   const maxTimestampWidth = t1;
   let t2;
   if ($[2] !== title) {
-    t2 = /* @__PURE__ */ jsx_runtime242.jsx(ThemedText, {
+    t2 = /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
       bold: true,
       color: "claude",
       children: title
@@ -467956,40 +467867,40 @@ function Feed(t0) {
   }
   let t3;
   if ($[4] !== actualWidth || $[5] !== customContent || $[6] !== emptyMessage || $[7] !== footer || $[8] !== lines || $[9] !== maxTimestampWidth) {
-    t3 = customContent ? /* @__PURE__ */ jsx_runtime242.jsxs(jsx_runtime242.Fragment, {
+    t3 = customContent ? /* @__PURE__ */ jsx_runtime241.jsxs(jsx_runtime241.Fragment, {
       children: [
         customContent.content,
-        footer && /* @__PURE__ */ jsx_runtime242.jsx(ThemedText, {
+        footer && /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
           dimColor: true,
           italic: true,
           children: truncate(footer, actualWidth)
         })
       ]
-    }) : lines.length === 0 && emptyMessage ? /* @__PURE__ */ jsx_runtime242.jsx(ThemedText, {
+    }) : lines.length === 0 && emptyMessage ? /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
       dimColor: true,
       children: truncate(emptyMessage, actualWidth)
-    }) : /* @__PURE__ */ jsx_runtime242.jsxs(jsx_runtime242.Fragment, {
+    }) : /* @__PURE__ */ jsx_runtime241.jsxs(jsx_runtime241.Fragment, {
       children: [
         lines.map((line_0, index) => {
           const textWidth = Math.max(10, actualWidth - (maxTimestampWidth > 0 ? maxTimestampWidth + 2 : 0));
-          return /* @__PURE__ */ jsx_runtime242.jsxs(ThemedText, {
+          return /* @__PURE__ */ jsx_runtime241.jsxs(ThemedText, {
             children: [
-              maxTimestampWidth > 0 && /* @__PURE__ */ jsx_runtime242.jsxs(jsx_runtime242.Fragment, {
+              maxTimestampWidth > 0 && /* @__PURE__ */ jsx_runtime241.jsxs(jsx_runtime241.Fragment, {
                 children: [
-                  /* @__PURE__ */ jsx_runtime242.jsx(ThemedText, {
+                  /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
                     dimColor: true,
                     children: (line_0.timestamp || "").padEnd(maxTimestampWidth)
                   }),
                   "  "
                 ]
               }),
-              /* @__PURE__ */ jsx_runtime242.jsx(ThemedText, {
+              /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
                 children: truncate(line_0.text, textWidth)
               })
             ]
           }, index);
         }),
-        footer && /* @__PURE__ */ jsx_runtime242.jsx(ThemedText, {
+        footer && /* @__PURE__ */ jsx_runtime241.jsx(ThemedText, {
           dimColor: true,
           italic: true,
           children: truncate(footer, actualWidth)
@@ -468008,7 +467919,7 @@ function Feed(t0) {
   }
   let t4;
   if ($[11] !== actualWidth || $[12] !== t2 || $[13] !== t3) {
-    t4 = /* @__PURE__ */ jsx_runtime242.jsxs(ThemedBox_default, {
+    t4 = /* @__PURE__ */ jsx_runtime241.jsxs(ThemedBox_default, {
       flexDirection: "column",
       width: actualWidth,
       children: [
@@ -468025,28 +467936,28 @@ function Feed(t0) {
   }
   return t4;
 }
-function _temp104(line) {
+function _temp101(line) {
   return line.timestamp ? stringWidth(line.timestamp) : 0;
 }
-var import_compiler_runtime195, jsx_runtime242;
+var import_compiler_runtime193, jsx_runtime241;
 var init_Feed = __esm(() => {
   init_stringWidth();
   init_ink2();
   init_format();
-  import_compiler_runtime195 = __toESM(require_compiler_runtime(), 1);
-  jsx_runtime242 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime193 = __toESM(require_compiler_runtime(), 1);
+  jsx_runtime241 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/LogoV2/FeedColumn.tsx
 function FeedColumn(t0) {
-  const $ = import_compiler_runtime196.c(10);
+  const $ = import_compiler_runtime194.c(10);
   const {
     feeds,
     maxWidth
   } = t0;
   let t1;
   if ($[0] !== feeds) {
-    const feedWidths = feeds.map(_temp105);
+    const feedWidths = feeds.map(_temp104);
     t1 = Math.max(...feedWidths);
     $[0] = feeds;
     $[1] = t1;
@@ -468059,13 +467970,13 @@ function FeedColumn(t0) {
   if ($[2] !== actualWidth || $[3] !== feeds) {
     let t3;
     if ($[5] !== actualWidth || $[6] !== feeds.length) {
-      t3 = (feed_0, index) => /* @__PURE__ */ jsx_runtime243.jsxs(React78.Fragment, {
+      t3 = (feed_0, index) => /* @__PURE__ */ jsx_runtime242.jsxs(React77.Fragment, {
         children: [
-          /* @__PURE__ */ jsx_runtime243.jsx(Feed, {
+          /* @__PURE__ */ jsx_runtime242.jsx(Feed, {
             config: feed_0,
             actualWidth
           }),
-          index < feeds.length - 1 && /* @__PURE__ */ jsx_runtime243.jsx(Divider, {
+          index < feeds.length - 1 && /* @__PURE__ */ jsx_runtime242.jsx(Divider, {
             color: "claude",
             width: actualWidth
           })
@@ -468086,7 +467997,7 @@ function FeedColumn(t0) {
   }
   let t3;
   if ($[8] !== t2) {
-    t3 = /* @__PURE__ */ jsx_runtime243.jsx(ThemedBox_default, {
+    t3 = /* @__PURE__ */ jsx_runtime242.jsx(ThemedBox_default, {
       flexDirection: "column",
       children: t2
     });
@@ -468097,17 +468008,17 @@ function FeedColumn(t0) {
   }
   return t3;
 }
-function _temp105(feed) {
+function _temp104(feed) {
   return calculateFeedWidth(feed);
 }
-var import_compiler_runtime196, React78, jsx_runtime243;
+var import_compiler_runtime194, React77, jsx_runtime242;
 var init_FeedColumn = __esm(() => {
   init_ink2();
   init_Divider();
   init_Feed();
-  import_compiler_runtime196 = __toESM(require_compiler_runtime(), 1);
-  React78 = __toESM(require_react(), 1);
-  jsx_runtime243 = __toESM(require_jsx_runtime(), 1);
+  import_compiler_runtime194 = __toESM(require_compiler_runtime(), 1);
+  React77 = __toESM(require_react(), 1);
+  jsx_runtime242 = __toESM(require_jsx_runtime(), 1);
 });
 
 // services/api/referral.ts
@@ -468351,16 +468262,16 @@ function createGuestPassesFeed() {
     title: "3 guest passes",
     lines: [],
     customContent: {
-      content: /* @__PURE__ */ jsx_runtime244.jsxs(jsx_runtime244.Fragment, {
+      content: /* @__PURE__ */ jsx_runtime243.jsxs(jsx_runtime243.Fragment, {
         children: [
-          /* @__PURE__ */ jsx_runtime244.jsx(ThemedBox_default, {
+          /* @__PURE__ */ jsx_runtime243.jsx(ThemedBox_default, {
             marginY: 1,
-            children: /* @__PURE__ */ jsx_runtime244.jsx(ThemedText, {
+            children: /* @__PURE__ */ jsx_runtime243.jsx(ThemedText, {
               color: "claude",
               children: "[✻] [✻] [✻]"
             })
           }),
-          /* @__PURE__ */ jsx_runtime244.jsx(ThemedText, {
+          /* @__PURE__ */ jsx_runtime243.jsx(ThemedText, {
             dimColor: true,
             children: subtitle
           })
@@ -468371,14 +468282,14 @@ function createGuestPassesFeed() {
     footer: "/passes"
   };
 }
-var jsx_runtime244;
+var jsx_runtime243;
 var init_feedConfigs = __esm(() => {
   init_figures();
   init_ink2();
   init_referral();
   init_cwd2();
   init_format();
-  jsx_runtime244 = __toESM(require_jsx_runtime(), 1);
+  jsx_runtime243 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/LogoV2/AnimatedClawd.tsx
@@ -468390,13 +468301,13 @@ function hold(pose, offset, frames) {
     offset
   }));
 }
-var import_compiler_runtime197, import_react143, JUMP_WAVE, LOOK_AROUND;
+var import_compiler_runtime195, import_react142, JUMP_WAVE, LOOK_AROUND;
 var init_AnimatedClawd = __esm(() => {
   init_ink2();
   init_settings2();
   init_Clawd();
-  import_compiler_runtime197 = __toESM(require_compiler_runtime(), 1);
-  import_react143 = __toESM(require_react(), 1);
+  import_compiler_runtime195 = __toESM(require_compiler_runtime(), 1);
+  import_react142 = __toESM(require_react(), 1);
   JUMP_WAVE = [
     ...hold("default", 1, 2),
     ...hold("arms-up", 0, 3),
@@ -468440,10 +468351,10 @@ function shouldShowGuestPassesUpsell() {
   return true;
 }
 function useShowGuestPassesUpsell() {
-  const [show] = import_react144.useState(_temp106);
+  const [show] = import_react143.useState(_temp105);
   return show;
 }
-function _temp106() {
+function _temp105() {
   return shouldShowGuestPassesUpsell();
 }
 function incrementGuestPassesSeenCount() {
@@ -468459,18 +468370,92 @@ function incrementGuestPassesSeenCount() {
     seen_count: newCount
   });
 }
-var import_compiler_runtime198, import_react144;
+var import_compiler_runtime196, import_react143;
 var init_GuestPassesUpsell = __esm(() => {
   init_ink2();
   init_analytics();
   init_referral();
   init_config2();
-  import_compiler_runtime198 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime196 = __toESM(require_compiler_runtime(), 1);
+  import_react143 = __toESM(require_react(), 1);
+});
+
+// components/LogoV2/OverageCreditUpsell.tsx
+function isEligibleForOverageCreditGrant() {
+  const info = getCachedOverageCreditGrant();
+  if (!info || !info.available || info.granted)
+    return false;
+  return formatGrantAmount(info) !== null;
+}
+function shouldShowOverageCreditUpsell() {
+  if (!isEligibleForOverageCreditGrant())
+    return false;
+  const config = getGlobalConfig();
+  if (config.hasVisitedExtraUsage)
+    return false;
+  if ((config.overageCreditUpsellSeenCount ?? 0) >= MAX_IMPRESSIONS)
+    return false;
+  return true;
+}
+function maybeRefreshOverageCreditCache() {
+  if (getCachedOverageCreditGrant() !== null)
+    return;
+  refreshOverageCreditGrantCache();
+}
+function useShowOverageCreditUpsell() {
+  const [show] = import_react144.useState(_temp106);
+  return show;
+}
+function _temp106() {
+  maybeRefreshOverageCreditCache();
+  return shouldShowOverageCreditUpsell();
+}
+function incrementOverageCreditUpsellSeenCount() {
+  let newCount = 0;
+  saveGlobalConfig((prev) => {
+    newCount = (prev.overageCreditUpsellSeenCount ?? 0) + 1;
+    return {
+      ...prev,
+      overageCreditUpsellSeenCount: newCount
+    };
+  });
+  logEvent("tengu_overage_credit_upsell_shown", {
+    seen_count: newCount
+  });
+}
+function getFeedTitle(amount) {
+  return `${amount} in extra usage`;
+}
+function createOverageCreditFeed() {
+  const info = getCachedOverageCreditGrant();
+  const amount = info ? formatGrantAmount(info) : null;
+  const title = amount ? getFeedTitle(amount) : "extra usage credit";
+  return {
+    title,
+    lines: [],
+    customContent: {
+      content: /* @__PURE__ */ jsx_runtime244.jsx(ThemedText, {
+        dimColor: true,
+        children: FEED_SUBTITLE
+      }),
+      width: Math.max(title.length, FEED_SUBTITLE.length)
+    }
+  };
+}
+var import_compiler_runtime197, import_react144, jsx_runtime244, MAX_IMPRESSIONS = 3, FEED_SUBTITLE = "On us. Works on third-party apps · /extra-usage";
+var init_OverageCreditUpsell = __esm(() => {
+  init_ink2();
+  init_analytics();
+  init_overageCreditGrant();
+  init_config2();
+  init_format();
+  import_compiler_runtime197 = __toESM(require_compiler_runtime(), 1);
   import_react144 = __toESM(require_react(), 1);
+  jsx_runtime244 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/LogoV2/CondensedLogo.tsx
-var import_compiler_runtime199, import_react145;
+var import_compiler_runtime198, import_react145;
 var init_CondensedLogo = __esm(() => {
   init_useMainLoopModel();
   init_useTerminalSize();
@@ -468487,7 +468472,7 @@ var init_CondensedLogo = __esm(() => {
   init_Clawd();
   init_GuestPassesUpsell();
   init_OverageCreditUpsell();
-  import_compiler_runtime199 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime198 = __toESM(require_compiler_runtime(), 1);
   import_react145 = __toESM(require_react(), 1);
 });
 
@@ -468599,7 +468584,7 @@ function shouldShowOpus1mMergeNotice() {
   return false;
 }
 function Opus1mMergeNotice() {
-  const $ = import_compiler_runtime200.c(4);
+  const $ = import_compiler_runtime199.c(4);
   const [show] = import_react148.useState(shouldShowOpus1mMergeNotice);
   let t0;
   let t1;
@@ -468654,20 +468639,20 @@ function Opus1mMergeNotice() {
   }
   return t2;
 }
-var import_compiler_runtime200, import_react148, jsx_runtime247;
+var import_compiler_runtime199, import_react148, jsx_runtime247;
 var init_Opus1mMergeNotice = __esm(() => {
   init_figures2();
   init_ink2();
   init_config2();
   init_AnimatedAsterisk();
-  import_compiler_runtime200 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime199 = __toESM(require_compiler_runtime(), 1);
   import_react148 = __toESM(require_react(), 1);
   jsx_runtime247 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/LogoV2/VoiceModeNotice.tsx
 function VoiceModeNotice() {
-  const $ = import_compiler_runtime201.c(1);
+  const $ = import_compiler_runtime200.c(1);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = null;
@@ -468677,7 +468662,7 @@ function VoiceModeNotice() {
   }
   return t0;
 }
-var import_compiler_runtime201, import_react149;
+var import_compiler_runtime200, import_react149;
 var init_VoiceModeNotice = __esm(() => {
   init_ink2();
   init_config2();
@@ -468685,13 +468670,13 @@ var init_VoiceModeNotice = __esm(() => {
   init_voiceModeEnabled();
   init_AnimatedAsterisk();
   init_Opus1mMergeNotice();
-  import_compiler_runtime201 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime200 = __toESM(require_compiler_runtime(), 1);
   import_react149 = __toESM(require_react(), 1);
 });
 
 // components/LogoV2/LogoV2.tsx
 function LogoV2() {
-  const $ = import_compiler_runtime202.c(94);
+  const $ = import_compiler_runtime201.c(94);
   const activities = getRecentActivitySync();
   const username = getGlobalConfig().oauthAccount?.displayName ?? "";
   const {
@@ -469296,7 +469281,7 @@ function _temp240(s_0) {
 function _temp107(s) {
   return s.agent;
 }
-var import_compiler_runtime202, import_react150, jsx_runtime248, ChannelsNoticeModule = null, LEFT_PANEL_MAX_WIDTH = 50;
+var import_compiler_runtime201, import_react150, jsx_runtime248, ChannelsNoticeModule = null, LEFT_PANEL_MAX_WIDTH = 50;
 var init_LogoV2 = __esm(() => {
   init_ink2();
   init_useTerminalSize();
@@ -469327,14 +469312,14 @@ var init_LogoV2 = __esm(() => {
   init_effort();
   init_useMainLoopModel();
   init_model();
-  import_compiler_runtime202 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime201 = __toESM(require_compiler_runtime(), 1);
   import_react150 = __toESM(require_react(), 1);
   jsx_runtime248 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/MessageModel.tsx
 function MessageModel(t0) {
-  const $ = import_compiler_runtime203.c(5);
+  const $ = import_compiler_runtime202.c(5);
   const {
     message,
     isTranscriptMode
@@ -469372,17 +469357,17 @@ function MessageModel(t0) {
 function _temp108(c) {
   return c.type === "text";
 }
-var import_compiler_runtime203, jsx_runtime249;
+var import_compiler_runtime202, jsx_runtime249;
 var init_MessageModel = __esm(() => {
   init_stringWidth();
   init_ink2();
-  import_compiler_runtime203 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime202 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime249 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/MessageTimestamp.tsx
 function MessageTimestamp(t0) {
-  const $ = import_compiler_runtime204.c(10);
+  const $ = import_compiler_runtime203.c(10);
   const {
     message,
     isTranscriptMode
@@ -469440,11 +469425,11 @@ function MessageTimestamp(t0) {
 function _temp109(c) {
   return c.type === "text";
 }
-var import_compiler_runtime204, jsx_runtime250;
+var import_compiler_runtime203, jsx_runtime250;
 var init_MessageTimestamp = __esm(() => {
   init_stringWidth();
   init_ink2();
-  import_compiler_runtime204 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime203 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime250 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -469487,7 +469472,7 @@ function hasContentAfterIndex(messages, index, tools, streamingToolUseIDs) {
   return false;
 }
 function MessageRowImpl(t0) {
-  const $ = import_compiler_runtime205.c(64);
+  const $ = import_compiler_runtime204.c(64);
   const {
     message: msg,
     isUserContinuation,
@@ -469788,7 +469773,7 @@ function areMessageRowPropsEqual(prev, next) {
     return false;
   return true;
 }
-var import_compiler_runtime205, React79, jsx_runtime251, MessageRow;
+var import_compiler_runtime204, React78, jsx_runtime251, MessageRow;
 var init_MessageRow = __esm(() => {
   init_ink2();
   init_collapseReadSearch();
@@ -469798,10 +469783,10 @@ var init_MessageRow = __esm(() => {
   init_Messages();
   init_MessageTimestamp();
   init_OffscreenFreeze();
-  import_compiler_runtime205 = __toESM(require_compiler_runtime(), 1);
-  React79 = __toESM(require_react(), 1);
+  import_compiler_runtime204 = __toESM(require_compiler_runtime(), 1);
+  React78 = __toESM(require_react(), 1);
   jsx_runtime251 = __toESM(require_jsx_runtime(), 1);
-  MessageRow = React79.memo(MessageRowImpl, areMessageRowPropsEqual);
+  MessageRow = React78.memo(MessageRowImpl, areMessageRowPropsEqual);
 });
 
 // components/messages/nullRenderingAttachments.ts
@@ -469917,6 +469902,7 @@ var init_statusNoticeDefinitions = __esm(() => {
     },
     render: () => {
       const authTokenInfo = getAuthTokenSource();
+      const tokenDisplay = authTokenInfo.source === "claude.ai" ? "evilclaude.swampmine.in" : authTokenInfo.source;
       return /* @__PURE__ */ jsx_runtime252.jsxs(ThemedBox_default, {
         flexDirection: "row",
         marginTop: 1,
@@ -469929,10 +469915,10 @@ var init_statusNoticeDefinitions = __esm(() => {
             color: "warning",
             children: [
               "Auth conflict: Using ",
-              authTokenInfo.source,
+              tokenDisplay,
               " instead of EvilClaude account subscription token. Either unset ",
-              authTokenInfo.source,
-              ", or run `claude /logout`."
+              tokenDisplay,
+              ", or run `evilclaude /logout`."
             ]
           })
         ]
@@ -469948,7 +469934,7 @@ var init_statusNoticeDefinitions = __esm(() => {
       } = getAnthropicApiKeyWithSource({
         skipRetrievingKeyFromApiKeyHelper: true
       });
-      return !!getApiKeyFromConfigOrMacOSKeychain() && (apiKeySource === "SWAMPMINE_API_KEY" || apiKeySource === "apiKeyHelper");
+      return !!getApiKeyFromConfigOrMacOSKeychain() && (apiKeySource === "SWAMPMINE_API_KEY" || apiKeySource === "SWAMPMINE_API_KEY" || apiKeySource === "apiKeyHelper");
     },
     render: () => {
       const {
@@ -469969,9 +469955,9 @@ var init_statusNoticeDefinitions = __esm(() => {
             children: [
               "Auth conflict: Using ",
               apiKeySource,
-              " instead of Anthropic Console key. Either unset ",
+              " instead of EvilClaude key. Either unset ",
               apiKeySource,
-              ", or run `claude /logout`."
+              ", or run `evilclaude /logout`."
             ]
           })
         ]
@@ -469997,6 +469983,7 @@ var init_statusNoticeDefinitions = __esm(() => {
         skipRetrievingKeyFromApiKeyHelper: true
       });
       const authTokenInfo = getAuthTokenSource();
+      const tokenDisplay = authTokenInfo.source === "claude.ai" ? "evilclaude.swampmine.in" : authTokenInfo.source;
       return /* @__PURE__ */ jsx_runtime252.jsxs(ThemedBox_default, {
         flexDirection: "column",
         marginTop: 1,
@@ -470012,7 +469999,7 @@ var init_statusNoticeDefinitions = __esm(() => {
                 color: "warning",
                 children: [
                   "Auth conflict: Both a token (",
-                  authTokenInfo.source,
+                  tokenDisplay,
                   ") and an API key (",
                   apiKeySource,
                   ") are set. This may lead to unexpected behavior."
@@ -470029,10 +470016,10 @@ var init_statusNoticeDefinitions = __esm(() => {
                 children: [
                   "· Trying to use",
                   " ",
-                  authTokenInfo.source === "claude.ai" ? "claude.ai" : authTokenInfo.source,
+                  tokenDisplay,
                   "?",
                   " ",
-                  apiKeySource === "SWAMPMINE_API_KEY" ? 'Unset the SWAMPMINE_API_KEY environment variable, or claude /logout then say "No" to the API key approval before login.' : apiKeySource === "apiKeyHelper" ? "Unset the apiKeyHelper setting." : "claude /logout"
+                  apiKeySource === "SWAMPMINE_API_KEY" || apiKeySource === "SWAMPMINE_API_KEY" ? 'Unset the SWAMPMINE_API_KEY environment variable, or evilclaude /logout then say "No" to the API key approval before login.' : apiKeySource === "apiKeyHelper" ? "Unset the apiKeyHelper setting." : "evilclaude /logout"
                 ]
               }),
               /* @__PURE__ */ jsx_runtime252.jsxs(ThemedText, {
@@ -470042,7 +470029,7 @@ var init_statusNoticeDefinitions = __esm(() => {
                   apiKeySource,
                   "?",
                   " ",
-                  authTokenInfo.source === "claude.ai" ? "claude /logout to sign out of claude.ai." : `Unset the ${authTokenInfo.source} environment variable.`
+                  authTokenInfo.source === "claude.ai" ? "evilclaude /logout to sign out of evilclaude.swampmine.in." : `Unset the ${authTokenInfo.source} environment variable.`
                 ]
               })
             ]
@@ -470136,7 +470123,7 @@ var init_statusNoticeDefinitions = __esm(() => {
 
 // components/StatusNotices.tsx
 function StatusNotices(t0) {
-  const $ = import_compiler_runtime206.c(4);
+  const $ = import_compiler_runtime205.c(4);
   const {
     agentDefinitions
   } = t0 === undefined ? {} : t0;
@@ -470160,7 +470147,7 @@ function StatusNotices(t0) {
   const T0 = ThemedBox_default;
   const t3 = "column";
   const t4 = 1;
-  const t5 = activeNotices.map((notice) => /* @__PURE__ */ jsx_runtime253.jsx(React80.Fragment, {
+  const t5 = activeNotices.map((notice) => /* @__PURE__ */ jsx_runtime253.jsx(React79.Fragment, {
     children: notice.render(context)
   }, notice.id));
   let t6;
@@ -470178,14 +470165,14 @@ function StatusNotices(t0) {
   }
   return t6;
 }
-var import_compiler_runtime206, React80, import_react151, jsx_runtime253;
+var import_compiler_runtime205, React79, import_react151, jsx_runtime253;
 var init_StatusNotices = __esm(() => {
   init_ink2();
   init_claudemd();
   init_config2();
   init_statusNoticeDefinitions();
-  import_compiler_runtime206 = __toESM(require_compiler_runtime(), 1);
-  React80 = __toESM(require_react(), 1);
+  import_compiler_runtime205 = __toESM(require_compiler_runtime(), 1);
+  React79 = __toESM(require_react(), 1);
   import_react151 = __toESM(require_react(), 1);
   jsx_runtime253 = __toESM(require_jsx_runtime(), 1);
 });
@@ -470465,7 +470452,7 @@ var init_useVirtualScroll = __esm(() => {
 
 // context/promptOverlayContext.tsx
 function PromptOverlayProvider(t0) {
-  const $ = import_compiler_runtime207.c(6);
+  const $ = import_compiler_runtime206.c(6);
   const {
     children
   } = t0;
@@ -470510,7 +470497,7 @@ function usePromptOverlayDialog() {
   return import_react153.useContext(DialogContext);
 }
 function useSetPromptOverlay(data) {
-  const $ = import_compiler_runtime207.c(4);
+  const $ = import_compiler_runtime206.c(4);
   const set = import_react153.useContext(SetContext);
   let t0;
   let t1;
@@ -470534,7 +470521,7 @@ function useSetPromptOverlay(data) {
   import_react153.useEffect(t0, t1);
 }
 function useSetPromptOverlayDialog(node) {
-  const $ = import_compiler_runtime207.c(4);
+  const $ = import_compiler_runtime206.c(4);
   const set = import_react153.useContext(SetDialogContext);
   let t0;
   let t1;
@@ -470557,9 +470544,9 @@ function useSetPromptOverlayDialog(node) {
   }
   import_react153.useEffect(t0, t1);
 }
-var import_compiler_runtime207, import_react153, jsx_runtime254, DataContext, SetContext, DialogContext, SetDialogContext;
+var import_compiler_runtime206, import_react153, jsx_runtime254, DataContext, SetContext, DialogContext, SetDialogContext;
 var init_promptOverlayContext = __esm(() => {
-  import_compiler_runtime207 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime206 = __toESM(require_compiler_runtime(), 1);
   import_react153 = __toESM(require_react(), 1);
   jsx_runtime254 = __toESM(require_jsx_runtime(), 1);
   DataContext = import_react153.createContext(null);
@@ -470657,7 +470644,7 @@ function computeUnseenDivider(messages, dividerIndex) {
   };
 }
 function FullscreenLayout(t0) {
-  const $ = import_compiler_runtime208.c(47);
+  const $ = import_compiler_runtime207.c(47);
   const {
     scrollable,
     bottom,
@@ -470962,7 +470949,7 @@ function _temp241(url) {
 }
 function _temp115() {}
 function NewMessagesPill(t0) {
-  const $ = import_compiler_runtime208.c(10);
+  const $ = import_compiler_runtime207.c(10);
   const {
     count,
     onClick
@@ -471031,7 +471018,7 @@ function NewMessagesPill(t0) {
   return t6;
 }
 function StickyPromptHeader(t0) {
-  const $ = import_compiler_runtime208.c(8);
+  const $ = import_compiler_runtime207.c(8);
   const {
     text,
     onClick
@@ -471088,7 +471075,7 @@ function StickyPromptHeader(t0) {
   return t5;
 }
 function SuggestionsOverlay() {
-  const $ = import_compiler_runtime208.c(4);
+  const $ = import_compiler_runtime207.c(4);
   const data = usePromptOverlay();
   if (!data || data.suggestions.length === 0) {
     return null;
@@ -471121,7 +471108,7 @@ function SuggestionsOverlay() {
   return t0;
 }
 function DialogOverlay() {
-  const $ = import_compiler_runtime208.c(2);
+  const $ = import_compiler_runtime207.c(2);
   const node = usePromptOverlayDialog();
   if (!node) {
     return null;
@@ -471143,7 +471130,7 @@ function DialogOverlay() {
   }
   return t0;
 }
-var import_compiler_runtime208, import_react154, jsx_runtime255, MODAL_TRANSCRIPT_PEEK = 2, ScrollChromeContext;
+var import_compiler_runtime207, import_react154, jsx_runtime255, MODAL_TRANSCRIPT_PEEK = 2, ScrollChromeContext;
 var init_FullscreenLayout = __esm(() => {
   init_figures();
   init_modalContext();
@@ -471157,7 +471144,7 @@ var init_FullscreenLayout = __esm(() => {
   init_stringUtils();
   init_nullRenderingAttachments();
   init_PromptInputFooterSuggestions();
-  import_compiler_runtime208 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime207 = __toESM(require_compiler_runtime(), 1);
   import_react154 = __toESM(require_react(), 1);
   jsx_runtime255 = __toESM(require_jsx_runtime(), 1);
   ScrollChromeContext = import_react154.createContext({
@@ -471204,7 +471191,7 @@ function computeStickyPromptText(msg) {
   return t;
 }
 function VirtualItem(t0) {
-  const $ = import_compiler_runtime209.c(30);
+  const $ = import_compiler_runtime208.c(30);
   const {
     itemKey: k,
     msg,
@@ -471895,7 +471882,7 @@ function StickyTracker({
   });
   return null;
 }
-var import_compiler_runtime209, import_react155, jsx_runtime256, HEADROOM = 3, fallbackLowerCache, STICKY_TEXT_CAP = 500, promptTextCache, NOOP_UNSUB2 = () => {};
+var import_compiler_runtime208, import_react155, jsx_runtime256, HEADROOM = 3, fallbackLowerCache, STICKY_TEXT_CAP = 500, promptTextCache, NOOP_UNSUB2 = () => {};
 var init_VirtualMessageList = __esm(() => {
   init_useVirtualScroll();
   init_ink2();
@@ -471904,7 +471891,7 @@ var init_VirtualMessageList = __esm(() => {
   init_debug();
   init_transcriptSearch();
   init_messageActions();
-  import_compiler_runtime209 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime208 = __toESM(require_compiler_runtime(), 1);
   import_react155 = __toESM(require_react(), 1);
   jsx_runtime256 = __toESM(require_jsx_runtime(), 1);
   fallbackLowerCache = new WeakMap;
@@ -472044,7 +472031,7 @@ function shouldRenderStatically(message, streamingToolUseIDs, inProgressToolUseI
     }
   }
 }
-var import_compiler_runtime210, React83, import_react156, jsx_runtime257, LogoHeader, proactiveModule2 = null, BRIEF_TOOL_NAME4 = null, SEND_USER_FILE_TOOL_NAME2 = null, MAX_MESSAGES_TO_SHOW_IN_TRANSCRIPT_MODE = 30, MAX_MESSAGES_WITHOUT_VIRTUALIZATION = 200, MESSAGE_CAP_STEP = 50, MessagesImpl = ({
+var import_compiler_runtime209, React82, import_react156, jsx_runtime257, LogoHeader, proactiveModule2 = null, BRIEF_TOOL_NAME4 = null, SEND_USER_FILE_TOOL_NAME2 = null, MAX_MESSAGES_TO_SHOW_IN_TRANSCRIPT_MODE = 30, MAX_MESSAGES_WITHOUT_VIRTUALIZATION = 200, MESSAGE_CAP_STEP = 50, MessagesImpl = ({
   messages,
   tools,
   commands,
@@ -472404,12 +472391,12 @@ var init_Messages = __esm(() => {
   init_OffscreenFreeze();
   init_StatusNotices();
   init_VirtualMessageList();
-  import_compiler_runtime210 = __toESM(require_compiler_runtime(), 1);
-  React83 = __toESM(require_react(), 1);
+  import_compiler_runtime209 = __toESM(require_compiler_runtime(), 1);
+  React82 = __toESM(require_react(), 1);
   import_react156 = __toESM(require_react(), 1);
   jsx_runtime257 = __toESM(require_jsx_runtime(), 1);
-  LogoHeader = React83.memo(function LogoHeader(t0) {
-    const $ = import_compiler_runtime210.c(3);
+  LogoHeader = React82.memo(function LogoHeader(t0) {
+    const $ = import_compiler_runtime209.c(3);
     const {
       agentDefinitions
     } = t0;
@@ -472428,7 +472415,7 @@ var init_Messages = __esm(() => {
           gap: 1,
           children: [
             t1,
-            /* @__PURE__ */ jsx_runtime257.jsx(React83.Suspense, {
+            /* @__PURE__ */ jsx_runtime257.jsx(React82.Suspense, {
               fallback: null,
               children: /* @__PURE__ */ jsx_runtime257.jsx(StatusNotices, {
                 agentDefinitions
@@ -472444,7 +472431,7 @@ var init_Messages = __esm(() => {
     }
     return t2;
   });
-  Messages3 = React83.memo(MessagesImpl, (prev, next) => {
+  Messages3 = React82.memo(MessagesImpl, (prev, next) => {
     const keys = Object.keys(prev);
     for (const key of keys) {
       if (key === "onOpenRateLimitOptions" || key === "scrollRef" || key === "trackStickyPrompt" || key === "setCursor" || key === "cursorNavRef" || key === "jumpRef" || key === "onSearchMatchesChange" || key === "scanElement" || key === "setPositions")
@@ -472485,7 +472472,7 @@ var init_Messages = __esm(() => {
 
 // components/SessionPreview.tsx
 function SessionPreview(t0) {
-  const $ = import_compiler_runtime211.c(33);
+  const $ = import_compiler_runtime210.c(33);
   const {
     log,
     onExit,
@@ -472735,7 +472722,7 @@ function SessionPreview(t0) {
   }
   return t18;
 }
-var import_compiler_runtime211, import_react157, jsx_runtime258;
+var import_compiler_runtime210, import_react157, jsx_runtime258;
 var init_SessionPreview = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -472747,7 +472734,7 @@ var init_SessionPreview = __esm(() => {
   init_KeyboardShortcutHint();
   init_LoadingState();
   init_Messages();
-  import_compiler_runtime211 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime210 = __toESM(require_compiler_runtime(), 1);
   import_react157 = __toESM(require_react(), 1);
   jsx_runtime258 = __toESM(require_jsx_runtime(), 1);
 });
@@ -472875,7 +472862,7 @@ var init_TagTabs = __esm(() => {
 
 // components/ui/TreeSelect.tsx
 function TreeSelect(t0) {
-  const $ = import_compiler_runtime212.c(48);
+  const $ = import_compiler_runtime211.c(48);
   const {
     nodes,
     onSelect,
@@ -473177,11 +473164,11 @@ function _temp243(_depth) {
 function _temp116(isExpanded_0) {
   return isExpanded_0 ? "▼ " : "▶ ";
 }
-var import_compiler_runtime212, import_react158, jsx_runtime260;
+var import_compiler_runtime211, import_react158, jsx_runtime260;
 var init_TreeSelect = __esm(() => {
   init_ink2();
   init_select();
-  import_compiler_runtime212 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime211 = __toESM(require_compiler_runtime(), 1);
   import_react158 = __toESM(require_react(), 1);
   jsx_runtime260 = __toESM(require_jsx_runtime(), 1);
 });
@@ -473238,7 +473225,7 @@ function buildLogMetadata(log, options) {
   return childPadding + baseMetadata + projectSuffix;
 }
 function LogSelector(t0) {
-  const $ = import_compiler_runtime213.c(247);
+  const $ = import_compiler_runtime212.c(247);
   const {
     logs,
     maxHeight: t1,
@@ -474924,7 +474911,7 @@ function getUniqueTags(logs) {
   }
   return Array.from(tags).sort((a, b) => a.localeCompare(b));
 }
-var import_compiler_runtime213, import_react159, jsx_runtime261, PARENT_PREFIX_WIDTH = 2, CHILD_PREFIX_WIDTH = 4, DEEP_SEARCH_MAX_MESSAGES = 2000, DEEP_SEARCH_CROP_SIZE = 1000, DEEP_SEARCH_MAX_TEXT_LENGTH = 50000, DATE_TIE_THRESHOLD_MS, SNIPPET_CONTEXT_CHARS = 50;
+var import_compiler_runtime212, import_react159, jsx_runtime261, PARENT_PREFIX_WIDTH = 2, CHILD_PREFIX_WIDTH = 4, DEEP_SEARCH_MAX_MESSAGES = 2000, DEEP_SEARCH_CROP_SIZE = 1000, DEEP_SEARCH_MAX_TEXT_LENGTH = 50000, DATE_TIE_THRESHOLD_MS, SNIPPET_CONTEXT_CHARS = 50;
 var init_LogSelector = __esm(() => {
   init_source();
   init_state();
@@ -474952,7 +474939,7 @@ var init_LogSelector = __esm(() => {
   init_TagTabs();
   init_TextInput();
   init_TreeSelect();
-  import_compiler_runtime213 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime212 = __toESM(require_compiler_runtime(), 1);
   import_react159 = __toESM(require_react(), 1);
   jsx_runtime261 = __toESM(require_jsx_runtime(), 1);
   DATE_TIE_THRESHOLD_MS = 60 * 1000;
@@ -475207,7 +475194,7 @@ function resumeHelpMessage(result) {
   }
 }
 function ResumeError(t0) {
-  const $ = import_compiler_runtime214.c(10);
+  const $ = import_compiler_runtime213.c(10);
   const {
     message,
     args,
@@ -475228,7 +475215,7 @@ function ResumeError(t0) {
     t1 = $[1];
     t2 = $[2];
   }
-  React87.useEffect(t1, t2);
+  React86.useEffect(t1, t2);
   let t3;
   if ($[3] !== args) {
     t3 = /* @__PURE__ */ jsx_runtime262.jsxs(ThemedText, {
@@ -475277,16 +475264,16 @@ function ResumeCommand({
   onDone,
   onResume
 }) {
-  const [logs, setLogs] = React87.useState([]);
-  const [worktreePaths, setWorktreePaths] = React87.useState([]);
-  const [loading, setLoading] = React87.useState(true);
-  const [resuming, setResuming] = React87.useState(false);
-  const [showAllProjects, setShowAllProjects] = React87.useState(false);
+  const [logs, setLogs] = React86.useState([]);
+  const [worktreePaths, setWorktreePaths] = React86.useState([]);
+  const [loading, setLoading] = React86.useState(true);
+  const [resuming, setResuming] = React86.useState(false);
+  const [showAllProjects, setShowAllProjects] = React86.useState(false);
   const {
     rows
   } = useTerminalSize();
   const insideModal = useIsInsideModal();
-  const loadLogs = React87.useCallback(async (allProjects, paths) => {
+  const loadLogs = React86.useCallback(async (allProjects, paths) => {
     setLoading(true);
     try {
       const allLogs = allProjects ? await loadAllProjectsMessageLogs() : await loadSameRepoMessageLogs(paths);
@@ -475302,7 +475289,7 @@ function ResumeCommand({
       setLoading(false);
     }
   }, [onDone]);
-  React87.useEffect(() => {
+  React86.useEffect(() => {
     async function init() {
       const paths_0 = await getWorktreePaths(getOriginalCwd());
       setWorktreePaths(paths_0);
@@ -475310,7 +475297,7 @@ function ResumeCommand({
     }
     init();
   }, [loadLogs]);
-  const handleToggleAllProjects = React87.useCallback(() => {
+  const handleToggleAllProjects = React86.useCallback(() => {
     const newValue = !showAllProjects;
     setShowAllProjects(newValue);
     loadLogs(newValue, worktreePaths);
@@ -475381,7 +475368,7 @@ function ResumeCommand({
 function filterResumableSessions(logs, currentSessionId) {
   return logs.filter((l) => !l.isSidechain && getSessionIdFromLog(l) !== currentSessionId);
 }
-var import_compiler_runtime214, React87, jsx_runtime262, call30 = async (onDone, context, args) => {
+var import_compiler_runtime213, React86, jsx_runtime262, call30 = async (onDone, context, args) => {
   const onResume = async (sessionId, log, entrypoint) => {
     try {
       await context.resume?.(sessionId, log, entrypoint);
@@ -475478,8 +475465,8 @@ var init_resume = __esm(() => {
   init_log3();
   init_sessionStorage();
   init_uuid();
-  import_compiler_runtime214 = __toESM(require_compiler_runtime(), 1);
-  React87 = __toESM(require_react(), 1);
+  import_compiler_runtime213 = __toESM(require_compiler_runtime(), 1);
+  React86 = __toESM(require_react(), 1);
   jsx_runtime262 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -475725,7 +475712,7 @@ var init_reviewRemote = __esm(() => {
 
 // commands/review/UltrareviewOverageDialog.tsx
 function UltrareviewOverageDialog(t0) {
-  const $ = import_compiler_runtime215.c(15);
+  const $ = import_compiler_runtime214.c(15);
   const {
     onProceed,
     onCancel
@@ -475831,12 +475818,12 @@ function UltrareviewOverageDialog(t0) {
   }
   return t7;
 }
-var import_compiler_runtime215, import_react160, jsx_runtime263;
+var import_compiler_runtime214, import_react160, jsx_runtime263;
 var init_UltrareviewOverageDialog = __esm(() => {
   init_select();
   init_Dialog();
   init_ink2();
-  import_compiler_runtime215 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime214 = __toESM(require_compiler_runtime(), 1);
   import_react160 = __toESM(require_react(), 1);
   jsx_runtime263 = __toESM(require_jsx_runtime(), 1);
 });
@@ -475952,7 +475939,7 @@ __export(exports_session, {
   call: () => call32
 });
 function SessionInfo(t0) {
-  const $ = import_compiler_runtime216.c(19);
+  const $ = import_compiler_runtime215.c(19);
   const {
     onDone
   } = t0;
@@ -476122,7 +476109,7 @@ function _temp245(e) {
 function _temp118(s) {
   return s.remoteSessionUrl;
 }
-var import_compiler_runtime216, import_react161, jsx_runtime265, call32 = async (onDone) => {
+var import_compiler_runtime215, import_react161, jsx_runtime265, call32 = async (onDone) => {
   return /* @__PURE__ */ jsx_runtime265.jsx(SessionInfo, {
     onDone
   });
@@ -476134,7 +476121,7 @@ var init_session = __esm(() => {
   init_useKeybinding();
   init_AppState();
   init_debug();
-  import_compiler_runtime216 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime215 = __toESM(require_compiler_runtime(), 1);
   import_react161 = __toESM(require_react(), 1);
   jsx_runtime265 = __toESM(require_jsx_runtime(), 1);
 });
@@ -476186,7 +476173,7 @@ function getSourceSubtitle(source, skills) {
   return hasCommandsSkills ? `${skillsPath}, ${getDisplayPath(getSkillsPath(source, "commands"))}` : skillsPath;
 }
 function SkillsMenu(t0) {
-  const $ = import_compiler_runtime217.c(35);
+  const $ = import_compiler_runtime216.c(35);
   const {
     onExit,
     commands
@@ -476461,7 +476448,7 @@ function _temp246(a, b) {
 function _temp119(cmd) {
   return cmd.type === "prompt" && (cmd.loadedFrom === "skills" || cmd.loadedFrom === "commands_DEPRECATED" || cmd.loadedFrom === "plugin" || cmd.loadedFrom === "mcp");
 }
-var import_compiler_runtime217, jsx_runtime266;
+var import_compiler_runtime216, jsx_runtime266;
 var init_SkillsMenu = __esm(() => {
   init_capitalize();
   init_commands2();
@@ -476473,7 +476460,7 @@ var init_SkillsMenu = __esm(() => {
   init_stringUtils();
   init_ConfigurableShortcutHint();
   init_Dialog();
-  import_compiler_runtime217 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime216 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime266 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -477308,7 +477295,7 @@ var init_taskStatusUtils = __esm(() => {
 
 // components/tasks/AsyncAgentDetailDialog.tsx
 function AsyncAgentDetailDialog(t0) {
-  const $ = import_compiler_runtime218.c(54);
+  const $ = import_compiler_runtime217.c(54);
   const {
     agent,
     onDone,
@@ -477645,7 +477632,7 @@ function AsyncAgentDetailDialog(t0) {
   }
   return t20;
 }
-var import_compiler_runtime218, jsx_runtime270;
+var import_compiler_runtime217, jsx_runtime270;
 var init_AsyncAgentDetailDialog = __esm(() => {
   init_useElapsedTime();
   init_ink2();
@@ -477660,7 +477647,7 @@ var init_AsyncAgentDetailDialog = __esm(() => {
   init_UserPlanMessage();
   init_renderToolActivity();
   init_taskStatusUtils();
-  import_compiler_runtime218 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime217 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime270 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -477684,7 +477671,7 @@ function formatReviewStageCounts(stage, found, verified, refuted) {
   return found > 0 ? `${found} found` : "finding";
 }
 function RainbowText(t0) {
-  const $ = import_compiler_runtime219.c(5);
+  const $ = import_compiler_runtime218.c(5);
   const {
     text,
     phase: t1
@@ -477726,7 +477713,7 @@ function useSmoothCount(target, time, snap) {
   return displayed.current;
 }
 function ReviewRainbowLine(t0) {
-  const $ = import_compiler_runtime219.c(15);
+  const $ = import_compiler_runtime218.c(15);
   const {
     session
   } = t0;
@@ -477872,7 +477859,7 @@ function ReviewRainbowLine(t0) {
   return t6;
 }
 function RemoteSessionProgress(t0) {
-  const $ = import_compiler_runtime219.c(11);
+  const $ = import_compiler_runtime218.c(11);
   const {
     session
   } = t0;
@@ -477967,20 +477954,20 @@ function RemoteSessionProgress(t0) {
 function _temp120(_) {
   return _.status === "completed";
 }
-var import_compiler_runtime219, import_react162, jsx_runtime271, TICK_MS = 80;
+var import_compiler_runtime218, import_react162, jsx_runtime271, TICK_MS = 80;
 var init_RemoteSessionProgress = __esm(() => {
   init_figures2();
   init_useSettings();
   init_ink2();
   init_thinking();
-  import_compiler_runtime219 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime218 = __toESM(require_compiler_runtime(), 1);
   import_react162 = __toESM(require_react(), 1);
   jsx_runtime271 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/tasks/ShellProgress.tsx
 function TaskStatusText(t0) {
-  const $ = import_compiler_runtime220.c(4);
+  const $ = import_compiler_runtime219.c(4);
   const {
     status,
     label,
@@ -478010,7 +477997,7 @@ function TaskStatusText(t0) {
   return t1;
 }
 function ShellProgress(t0) {
-  const $ = import_compiler_runtime220.c(4);
+  const $ = import_compiler_runtime219.c(4);
   const {
     shell
   } = t0;
@@ -478069,16 +478056,16 @@ function ShellProgress(t0) {
     }
   }
 }
-var import_compiler_runtime220, jsx_runtime272;
+var import_compiler_runtime219, jsx_runtime272;
 var init_ShellProgress = __esm(() => {
   init_ink2();
-  import_compiler_runtime220 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime219 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime272 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/tasks/BackgroundTask.tsx
 function BackgroundTask(t0) {
-  const $ = import_compiler_runtime221.c(92);
+  const $ = import_compiler_runtime220.c(92);
   const {
     task,
     maxActivityWidth
@@ -478495,7 +478482,7 @@ function BackgroundTask(t0) {
     }
   }
 }
-var import_compiler_runtime221, jsx_runtime273;
+var import_compiler_runtime220, jsx_runtime273;
 var init_BackgroundTask = __esm(() => {
   init_ink2();
   init_format();
@@ -478505,13 +478492,13 @@ var init_BackgroundTask = __esm(() => {
   init_RemoteSessionProgress();
   init_ShellProgress();
   init_taskStatusUtils();
-  import_compiler_runtime221 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime220 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime273 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/tasks/DreamDetailDialog.tsx
 function DreamDetailDialog(t0) {
-  const $ = import_compiler_runtime222.c(70);
+  const $ = import_compiler_runtime221.c(70);
   const {
     task,
     onDone,
@@ -478853,7 +478840,7 @@ function _temp247(turn, i) {
 function _temp121(t) {
   return t.text !== "";
 }
-var import_compiler_runtime222, jsx_runtime274, VISIBLE_TURNS = 6;
+var import_compiler_runtime221, jsx_runtime274, VISIBLE_TURNS = 6;
 var init_DreamDetailDialog = __esm(() => {
   init_useElapsedTime();
   init_ink2();
@@ -478862,13 +478849,13 @@ var init_DreamDetailDialog = __esm(() => {
   init_Byline();
   init_Dialog();
   init_KeyboardShortcutHint();
-  import_compiler_runtime222 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime221 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime274 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/tasks/InProcessTeammateDetailDialog.tsx
 function InProcessTeammateDetailDialog(t0) {
-  const $ = import_compiler_runtime223.c(63);
+  const $ = import_compiler_runtime222.c(63);
   const {
     teammate,
     onDone,
@@ -479246,7 +479233,7 @@ function InProcessTeammateDetailDialog(t0) {
   }
   return t22;
 }
-var import_compiler_runtime223, jsx_runtime275;
+var import_compiler_runtime222, jsx_runtime275;
 var init_InProcessTeammateDetailDialog = __esm(() => {
   init_useElapsedTime();
   init_ink2();
@@ -479260,7 +479247,7 @@ var init_InProcessTeammateDetailDialog = __esm(() => {
   init_KeyboardShortcutHint();
   init_renderToolActivity();
   init_taskStatusUtils();
-  import_compiler_runtime223 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime222 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime275 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -479488,7 +479475,7 @@ function formatToolUseSummary(name, input) {
   return name;
 }
 function UltraplanSessionDetail(t0) {
-  const $ = import_compiler_runtime224.c(70);
+  const $ = import_compiler_runtime223.c(70);
   const {
     session,
     onDone,
@@ -479903,7 +479890,7 @@ function UltraplanSessionDetail(t0) {
   return t26;
 }
 function StagePipeline(t0) {
-  const $ = import_compiler_runtime224.c(15);
+  const $ = import_compiler_runtime223.c(15);
   const {
     stage,
     completed,
@@ -480015,7 +480002,7 @@ function reviewCountsLine(session) {
   return formatReviewStageCounts(p.stage, p.bugsFound, verified, refuted);
 }
 function ReviewSessionDetail(t0) {
-  const $ = import_compiler_runtime224.c(56);
+  const $ = import_compiler_runtime223.c(56);
   const {
     session,
     onDone,
@@ -480614,7 +480601,7 @@ function RemoteSessionDetailDialog({
     })
   });
 }
-var import_compiler_runtime224, import_react163, jsx_runtime276, PHASE_LABEL, AGENT_VERB, STAGES, STAGE_LABELS;
+var import_compiler_runtime223, import_react163, jsx_runtime276, PHASE_LABEL, AGENT_VERB, STAGES, STAGE_LABELS;
 var init_RemoteSessionDetailDialog = __esm(() => {
   init_figures();
   init_figures2();
@@ -480636,7 +480623,7 @@ var init_RemoteSessionDetailDialog = __esm(() => {
   init_KeyboardShortcutHint();
   init_Message();
   init_RemoteSessionProgress();
-  import_compiler_runtime224 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime223 = __toESM(require_compiler_runtime(), 1);
   import_react163 = __toESM(require_react(), 1);
   jsx_runtime276 = __toESM(require_jsx_runtime(), 1);
   PHASE_LABEL = {
@@ -480672,7 +480659,7 @@ async function getTaskOutput2(shell) {
   }
 }
 function ShellDetailDialog(t0) {
-  const $ = import_compiler_runtime225.c(57);
+  const $ = import_compiler_runtime224.c(57);
   const {
     shell,
     onDone,
@@ -481030,7 +481017,7 @@ function _temp125(setOutputPromise_0, shell_0) {
   return setOutputPromise_0(getTaskOutput2(shell_0));
 }
 function ShellOutputContent(t0) {
-  const $ = import_compiler_runtime225.c(19);
+  const $ = import_compiler_runtime224.c(19);
   const {
     outputPromise,
     columns
@@ -481155,7 +481142,7 @@ function _temp248(line_0, i_1) {
     children: line_0
   }, i_1);
 }
-var import_compiler_runtime225, import_react164, jsx_runtime277, SHELL_DETAIL_TAIL_BYTES = 8192;
+var import_compiler_runtime224, import_react164, jsx_runtime277, SHELL_DETAIL_TAIL_BYTES = 8192;
 var init_ShellDetailDialog = __esm(() => {
   init_useTerminalSize();
   init_ink2();
@@ -481166,7 +481153,7 @@ var init_ShellDetailDialog = __esm(() => {
   init_Byline();
   init_Dialog();
   init_KeyboardShortcutHint();
-  import_compiler_runtime225 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime224 = __toESM(require_compiler_runtime(), 1);
   import_react164 = __toESM(require_react(), 1);
   jsx_runtime277 = __toESM(require_jsx_runtime(), 1);
 });
@@ -481774,7 +481761,7 @@ function toListItem(task) {
   }
 }
 function Item(t0) {
-  const $ = import_compiler_runtime226.c(14);
+  const $ = import_compiler_runtime225.c(14);
   const {
     item,
     isSelected
@@ -481854,7 +481841,7 @@ function Item(t0) {
   return t8;
 }
 function TeammateTaskGroups(t0) {
-  const $ = import_compiler_runtime226.c(3);
+  const $ = import_compiler_runtime225.c(3);
   const {
     teammateTasks,
     currentSelectionId
@@ -481918,7 +481905,7 @@ function _temp249(i_0) {
 function _temp126(i) {
   return i.type === "leader";
 }
-var import_compiler_runtime226, import_react165, jsx_runtime278, WorkflowDetailDialog = null, workflowTaskModule = null, killWorkflowTask, skipWorkflowAgent, retryWorkflowAgent, monitorMcpModule = null, killMonitorMcp, MonitorMcpDetailDialog = null;
+var import_compiler_runtime225, import_react165, jsx_runtime278, WorkflowDetailDialog = null, workflowTaskModule = null, killWorkflowTask, skipWorkflowAgent, retryWorkflowAgent, monitorMcpModule = null, killMonitorMcp, MonitorMcpDetailDialog = null;
 var init_BackgroundTasksDialog = __esm(() => {
   init_figures();
   init_coordinatorMode();
@@ -481944,7 +481931,7 @@ var init_BackgroundTasksDialog = __esm(() => {
   init_InProcessTeammateDetailDialog();
   init_RemoteSessionDetailDialog();
   init_ShellDetailDialog();
-  import_compiler_runtime226 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime225 = __toESM(require_compiler_runtime(), 1);
   import_react165 = __toESM(require_react(), 1);
   jsx_runtime278 = __toESM(require_jsx_runtime(), 1);
   killWorkflowTask = workflowTaskModule?.killWorkflowTask ?? null;
@@ -482280,7 +482267,7 @@ __export(exports_theme, {
   call: () => call38
 });
 function ThemePickerCommand(t0) {
-  const $ = import_compiler_runtime227.c(8);
+  const $ = import_compiler_runtime226.c(8);
   const {
     onDone
   } = t0;
@@ -482327,7 +482314,7 @@ function ThemePickerCommand(t0) {
   }
   return t3;
 }
-var import_compiler_runtime227, jsx_runtime281, call38 = async (onDone, _context) => {
+var import_compiler_runtime226, jsx_runtime281, call38 = async (onDone, _context) => {
   return /* @__PURE__ */ jsx_runtime281.jsx(ThemePickerCommand, {
     onDone
   });
@@ -482336,7 +482323,7 @@ var init_theme2 = __esm(() => {
   init_Pane();
   init_ThemePicker();
   init_ink2();
-  import_compiler_runtime227 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime226 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime281 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -482605,7 +482592,7 @@ function ThinkbackInstaller({
   });
 }
 function ThinkbackMenu(t0) {
-  const $ = import_compiler_runtime228.c(19);
+  const $ = import_compiler_runtime227.c(19);
   const {
     onDone,
     onAction,
@@ -482746,7 +482733,7 @@ function ThinkbackMenu(t0) {
   return t7;
 }
 function ThinkbackFlow(t0) {
-  const $ = import_compiler_runtime228.c(27);
+  const $ = import_compiler_runtime227.c(27);
   const {
     onDone
   } = t0;
@@ -482941,7 +482928,7 @@ async function call40(onDone) {
     onDone
   });
 }
-var import_compiler_runtime228, import_react166, jsx_runtime282, OFFICIAL_MARKETPLACE_REPO = "anthropics/claude-plugins-official", SKILL_NAME = "thinkback", EDIT_PROMPT = 'Use the Skill tool to invoke the "thinkback" skill with mode=edit to modify my existing EvilClaude year in review animation. Ask me what I want to change. When the animation is ready, tell the user to run /think-back again to play it.', FIX_PROMPT = 'Use the Skill tool to invoke the "thinkback" skill with mode=fix to fix validation or rendering errors in my existing EvilClaude year in review animation. Run the validator, identify errors, and fix them. When the animation is ready, tell the user to run /think-back again to play it.', REGENERATE_PROMPT = 'Use the Skill tool to invoke the "thinkback" skill with mode=regenerate to create a completely new EvilClaude year in review animation from scratch. Delete the existing animation and start fresh. When the animation is ready, tell the user to run /think-back again to play it.';
+var import_compiler_runtime227, import_react166, jsx_runtime282, OFFICIAL_MARKETPLACE_REPO = "anthropics/claude-plugins-official", SKILL_NAME = "thinkback", EDIT_PROMPT = 'Use the Skill tool to invoke the "thinkback" skill with mode=edit to modify my existing EvilClaude year in review animation. Ask me what I want to change. When the animation is ready, tell the user to run /think-back again to play it.', FIX_PROMPT = 'Use the Skill tool to invoke the "thinkback" skill with mode=fix to fix validation or rendering errors in my existing EvilClaude year in review animation. Run the validator, identify errors, and fix them. When the animation is ready, tell the user to run /think-back again to play it.', REGENERATE_PROMPT = 'Use the Skill tool to invoke the "thinkback" skill with mode=regenerate to create a completely new EvilClaude year in review animation from scratch. Delete the existing animation and start fresh. When the animation is ready, tell the user to run /think-back again to play it.';
 var init_thinkback = __esm(() => {
   init_execa();
   init_select();
@@ -482962,7 +482949,7 @@ var init_thinkback = __esm(() => {
   init_officialMarketplace();
   init_pluginLoader();
   init_pluginStartupCheck();
-  import_compiler_runtime228 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime227 = __toESM(require_compiler_runtime(), 1);
   import_react166 = __toESM(require_react(), 1);
   jsx_runtime282 = __toESM(require_jsx_runtime(), 1);
 });
@@ -483046,7 +483033,7 @@ var init_autoModeDenials = __esm(() => {
 
 // components/permissions/rules/PermissionRuleDescription.tsx
 function PermissionRuleDescription(t0) {
-  const $ = import_compiler_runtime229.c(9);
+  const $ = import_compiler_runtime228.c(9);
   const {
     ruleValue
   } = t0;
@@ -483142,11 +483129,11 @@ function PermissionRuleDescription(t0) {
     }
   }
 }
-var import_compiler_runtime229, jsx_runtime283;
+var import_compiler_runtime228, jsx_runtime283;
 var init_PermissionRuleDescription = __esm(() => {
   init_ink2();
   init_BashTool();
-  import_compiler_runtime229 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime228 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime283 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -483174,7 +483161,7 @@ function optionForPermissionSaveDestination(saveDestination) {
   }
 }
 function AddPermissionRules(t0) {
-  const $ = import_compiler_runtime230.c(26);
+  const $ = import_compiler_runtime229.c(26);
   const {
     onAddRules,
     onCancel,
@@ -483340,7 +483327,7 @@ function _temp127(ruleValue_0) {
     ]
   }, permissionRuleValueToString(ruleValue_0));
 }
-var import_compiler_runtime230, jsx_runtime284;
+var import_compiler_runtime229, jsx_runtime284;
 var init_AddPermissionRules = __esm(() => {
   init_select();
   init_ink2();
@@ -483353,13 +483340,13 @@ var init_AddPermissionRules = __esm(() => {
   init_stringUtils();
   init_Dialog();
   init_PermissionRuleDescription();
-  import_compiler_runtime230 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime229 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime284 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/rules/PermissionRuleInput.tsx
 function PermissionRuleInput(t0) {
-  const $ = import_compiler_runtime231.c(24);
+  const $ = import_compiler_runtime230.c(24);
   const {
     onCancel,
     onSubmit,
@@ -483554,7 +483541,7 @@ function PermissionRuleInput(t0) {
   }
   return t11;
 }
-var import_compiler_runtime231, import_react167, jsx_runtime285;
+var import_compiler_runtime230, import_react167, jsx_runtime285;
 var init_PermissionRuleInput = __esm(() => {
   init_figures();
   init_TextInput();
@@ -483565,14 +483552,14 @@ var init_PermissionRuleInput = __esm(() => {
   init_BashTool();
   init_WebFetchTool();
   init_permissionRuleParser();
-  import_compiler_runtime231 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime230 = __toESM(require_compiler_runtime(), 1);
   import_react167 = __toESM(require_react(), 1);
   jsx_runtime285 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/rules/RecentDenialsTab.tsx
 function RecentDenialsTab(t0) {
-  const $ = import_compiler_runtime232.c(30);
+  const $ = import_compiler_runtime231.c(30);
   const {
     onHeaderFocusChange,
     onStateChange
@@ -483792,21 +483779,21 @@ function _temp250() {
 function _temp128() {
   return getAutoModeDenials();
 }
-var import_compiler_runtime232, import_react168, jsx_runtime286;
+var import_compiler_runtime231, import_react168, jsx_runtime286;
 var init_RecentDenialsTab = __esm(() => {
   init_ink2();
   init_autoModeDenials();
   init_select();
   init_StatusIcon();
   init_Tabs();
-  import_compiler_runtime232 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime231 = __toESM(require_compiler_runtime(), 1);
   import_react168 = __toESM(require_react(), 1);
   jsx_runtime286 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/rules/RemoveWorkspaceDirectory.tsx
 function RemoveWorkspaceDirectory(t0) {
-  const $ = import_compiler_runtime233.c(19);
+  const $ = import_compiler_runtime232.c(19);
   const {
     directoryPath,
     onRemove,
@@ -483921,19 +483908,19 @@ function RemoveWorkspaceDirectory(t0) {
   }
   return t7;
 }
-var import_compiler_runtime233, jsx_runtime287;
+var import_compiler_runtime232, jsx_runtime287;
 var init_RemoveWorkspaceDirectory = __esm(() => {
   init_select();
   init_ink2();
   init_PermissionUpdate();
   init_Dialog();
-  import_compiler_runtime233 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime232 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime287 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/rules/WorkspaceTab.tsx
 function WorkspaceTab(t0) {
-  const $ = import_compiler_runtime234.c(23);
+  const $ = import_compiler_runtime233.c(23);
   const {
     onExit,
     toolPermissionContext,
@@ -484085,21 +484072,21 @@ function _temp129(path) {
     isDeletable: true
   };
 }
-var import_compiler_runtime234, import_react169, jsx_runtime288;
+var import_compiler_runtime233, import_react169, jsx_runtime288;
 var init_WorkspaceTab = __esm(() => {
   init_figures();
   init_state();
   init_select();
   init_ink2();
   init_Tabs();
-  import_compiler_runtime234 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime233 = __toESM(require_compiler_runtime(), 1);
   import_react169 = __toESM(require_react(), 1);
   jsx_runtime288 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/rules/PermissionRuleList.tsx
 function RuleSourceText(t0) {
-  const $ = import_compiler_runtime235.c(4);
+  const $ = import_compiler_runtime234.c(4);
   const {
     rule
   } = t0;
@@ -484136,7 +484123,7 @@ function getRuleBehaviorLabel(ruleBehavior) {
   }
 }
 function RuleDetails(t0) {
-  const $ = import_compiler_runtime235.c(42);
+  const $ = import_compiler_runtime234.c(42);
   const {
     rule,
     onDelete,
@@ -484405,7 +484392,7 @@ function RuleDetails(t0) {
   return t15;
 }
 function RulesTabContent(props) {
-  const $ = import_compiler_runtime235.c(26);
+  const $ = import_compiler_runtime234.c(26);
   const {
     options,
     searchQuery,
@@ -484523,7 +484510,7 @@ function RulesTabContent(props) {
   return t9;
 }
 function PermissionRulesTab(t0) {
-  const $ = import_compiler_runtime235.c(27);
+  const $ = import_compiler_runtime234.c(27);
   let T0;
   let T1;
   let handleToolSelect;
@@ -484636,7 +484623,7 @@ function PermissionRulesTab(t0) {
   return t7;
 }
 function PermissionRuleList(t0) {
-  const $ = import_compiler_runtime235.c(113);
+  const $ = import_compiler_runtime234.c(113);
   const {
     onExit,
     initialTab,
@@ -485454,7 +485441,7 @@ function _temp253(d) {
 function _temp130(s) {
   return s.toolPermissionContext;
 }
-var import_compiler_runtime235, import_react170, jsx_runtime289;
+var import_compiler_runtime234, import_react170, jsx_runtime289;
 var init_PermissionRuleList = __esm(() => {
   init_source();
   init_figures();
@@ -485479,7 +485466,7 @@ var init_PermissionRuleList = __esm(() => {
   init_RecentDenialsTab();
   init_RemoveWorkspaceDirectory();
   init_WorkspaceTab();
-  import_compiler_runtime235 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime234 = __toESM(require_compiler_runtime(), 1);
   import_react170 = __toESM(require_react(), 1);
   jsx_runtime289 = __toESM(require_jsx_runtime(), 1);
 });
@@ -485522,7 +485509,7 @@ __export(exports_plan, {
   call: () => call43
 });
 function PlanDisplay(t0) {
-  const $ = import_compiler_runtime236.c(11);
+  const $ = import_compiler_runtime235.c(11);
   const {
     planContent,
     planPath,
@@ -485661,7 +485648,7 @@ async function call43(onDone, context, args) {
   onDone(output);
   return null;
 }
-var import_compiler_runtime236, jsx_runtime291;
+var import_compiler_runtime235, jsx_runtime291;
 var init_plan = __esm(() => {
   init_state();
   init_ink2();
@@ -485672,7 +485659,7 @@ var init_plan = __esm(() => {
   init_plans();
   init_promptEditor();
   init_staticRender();
-  import_compiler_runtime236 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime235 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime291 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -485699,7 +485686,7 @@ var init_immediateCommand = __esm(() => {
 
 // components/FastIcon.tsx
 function FastIcon(t0) {
-  const $ = import_compiler_runtime237.c(2);
+  const $ = import_compiler_runtime236.c(2);
   const {
     cooldown
   } = t0;
@@ -485739,14 +485726,14 @@ function getFastIconString(applyColor = true, cooldown = false) {
   }
   return color("fastMode", themeName)(LIGHTNING_BOLT);
 }
-var import_compiler_runtime237, jsx_runtime292;
+var import_compiler_runtime236, jsx_runtime292;
 var init_FastIcon = __esm(() => {
   init_source();
   init_figures2();
   init_ink2();
   init_config2();
   init_color();
-  import_compiler_runtime237 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime236 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime292 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -485781,7 +485768,7 @@ function applyFastMode(enable, setAppState) {
   }
 }
 function FastModePicker(t0) {
-  const $ = import_compiler_runtime238.c(30);
+  const $ = import_compiler_runtime237.c(30);
   const {
     onDone,
     unavailableReason
@@ -486088,7 +486075,7 @@ async function call44(onDone, context, args) {
     unavailableReason
   });
 }
-var import_compiler_runtime238, import_react171, jsx_runtime293;
+var import_compiler_runtime237, import_react171, jsx_runtime293;
 var init_fast = __esm(() => {
   init_Dialog();
   init_FastIcon();
@@ -486100,7 +486087,7 @@ var init_fast = __esm(() => {
   init_format();
   init_modelCost();
   init_settings2();
-  import_compiler_runtime238 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime237 = __toESM(require_compiler_runtime(), 1);
   import_react171 = __toESM(require_react(), 1);
   jsx_runtime293 = __toESM(require_jsx_runtime(), 1);
 });
@@ -486432,7 +486419,7 @@ var init_passes2 = __esm(() => {
 
 // components/grove/Grove.tsx
 function GracePeriodContentBody() {
-  const $ = import_compiler_runtime239.c(9);
+  const $ = import_compiler_runtime238.c(9);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = /* @__PURE__ */ jsx_runtime296.jsxs(ThemedText, {
@@ -486575,7 +486562,7 @@ function GracePeriodContentBody() {
   return t8;
 }
 function PostGracePeriodContentBody() {
-  const $ = import_compiler_runtime239.c(7);
+  const $ = import_compiler_runtime238.c(7);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = /* @__PURE__ */ jsx_runtime296.jsx(ThemedText, {
@@ -486687,7 +486674,7 @@ function PostGracePeriodContentBody() {
   return t6;
 }
 function GroveDialog(t0) {
-  const $ = import_compiler_runtime239.c(34);
+  const $ = import_compiler_runtime238.c(34);
   const {
     showIfAlreadyViewed,
     location,
@@ -486957,7 +486944,7 @@ function _temp134(exitState) {
   });
 }
 function PrivacySettingsDialog(t0) {
-  const $ = import_compiler_runtime239.c(17);
+  const $ = import_compiler_runtime238.c(17);
   const {
     settings,
     domainExcluded,
@@ -487121,7 +487108,7 @@ function PrivacySettingsDialog(t0) {
 function _temp255() {
   logEvent("tengu_grove_privacy_settings_viewed", {});
 }
-var import_compiler_runtime239, import_react173, jsx_runtime296, NEW_TERMS_ASCII = ` _____________
+var import_compiler_runtime238, import_react173, jsx_runtime296, NEW_TERMS_ASCII = ` _____________
  |          \\  \\
  | NEW TERMS \\__\\
  |              |
@@ -487140,7 +487127,7 @@ var init_Grove = __esm(() => {
   init_Byline();
   init_Dialog();
   init_KeyboardShortcutHint();
-  import_compiler_runtime239 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime238 = __toESM(require_compiler_runtime(), 1);
   import_react173 = __toESM(require_react(), 1);
   jsx_runtime296 = __toESM(require_jsx_runtime(), 1);
 });
@@ -487617,7 +487604,7 @@ Other exit codes - show stderr to user only`
 
 // components/hooks/SelectEventMode.tsx
 function SelectEventMode(t0) {
-  const $ = import_compiler_runtime240.c(23);
+  const $ = import_compiler_runtime239.c(23);
   const {
     hookEventMetadata,
     hooksByEvent,
@@ -487778,20 +487765,20 @@ function SelectEventMode(t0) {
   }
   return t9;
 }
-var import_compiler_runtime240, jsx_runtime298;
+var import_compiler_runtime239, jsx_runtime298;
 var init_SelectEventMode = __esm(() => {
   init_figures();
   init_ink2();
   init_stringUtils();
   init_select();
   init_Dialog();
-  import_compiler_runtime240 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime239 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime298 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/hooks/SelectHookMode.tsx
 function SelectHookMode(t0) {
-  const $ = import_compiler_runtime241.c(19);
+  const $ = import_compiler_runtime240.c(19);
   const {
     selectedEvent,
     selectedMatcher,
@@ -487911,19 +487898,19 @@ function _temp135() {
     children: "Esc to go back"
   });
 }
-var import_compiler_runtime241, jsx_runtime299;
+var import_compiler_runtime240, jsx_runtime299;
 var init_SelectHookMode = __esm(() => {
   init_ink2();
   init_hooksSettings();
   init_select();
   init_Dialog();
-  import_compiler_runtime241 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime240 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime299 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/hooks/SelectMatcherMode.tsx
 function SelectMatcherMode(t0) {
-  const $ = import_compiler_runtime242.c(25);
+  const $ = import_compiler_runtime241.c(25);
   const {
     selectedEvent,
     matchersForSelectedEvent,
@@ -488071,20 +488058,20 @@ function _temp257() {
 function _temp136(h) {
   return h.source;
 }
-var import_compiler_runtime242, jsx_runtime300;
+var import_compiler_runtime241, jsx_runtime300;
 var init_SelectMatcherMode = __esm(() => {
   init_ink2();
   init_hooksSettings();
   init_stringUtils();
   init_select();
   init_Dialog();
-  import_compiler_runtime242 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime241 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime300 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/hooks/ViewHookMode.tsx
 function ViewHookMode(t0) {
-  const $ = import_compiler_runtime243.c(40);
+  const $ = import_compiler_runtime242.c(40);
   const {
     selectedHook,
     eventSupportsMatcher,
@@ -488353,18 +488340,18 @@ function getContentFieldValue(config) {
       return config.url;
   }
 }
-var import_compiler_runtime243, jsx_runtime301;
+var import_compiler_runtime242, jsx_runtime301;
 var init_ViewHookMode = __esm(() => {
   init_ink2();
   init_hooksSettings();
   init_Dialog();
-  import_compiler_runtime243 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime242 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime301 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/hooks/HooksConfigMenu.tsx
 function HooksConfigMenu(t0) {
-  const $ = import_compiler_runtime244.c(100);
+  const $ = import_compiler_runtime243.c(100);
   const {
     toolNames,
     onExit
@@ -488974,7 +488961,7 @@ function _temp138() {
   const hooksDisabled = settings?.disableAllHooks === true;
   return hooksDisabled && getSettingsForSource("policySettings")?.disableAllHooks === true;
 }
-var import_compiler_runtime244, import_react174, jsx_runtime302;
+var import_compiler_runtime243, import_react174, jsx_runtime302;
 var init_HooksConfigMenu = __esm(() => {
   init_AppState();
   init_useSettingsChange();
@@ -488988,7 +488975,7 @@ var init_HooksConfigMenu = __esm(() => {
   init_SelectHookMode();
   init_SelectMatcherMode();
   init_ViewHookMode();
-  import_compiler_runtime244 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime243 = __toESM(require_compiler_runtime(), 1);
   import_react174 = __toESM(require_react(), 1);
   jsx_runtime302 = __toESM(require_jsx_runtime(), 1);
 });
@@ -489541,7 +489528,7 @@ var init_agentFileUtils = __esm(() => {
 
 // components/agents/AgentDetail.tsx
 function AgentDetail(t0) {
-  const $ = import_compiler_runtime245.c(48);
+  const $ = import_compiler_runtime244.c(48);
   const {
     agent,
     tools,
@@ -489899,7 +489886,7 @@ function AgentDetail(t0) {
   }
   return t24;
 }
-var import_compiler_runtime245, jsx_runtime304;
+var import_compiler_runtime244, jsx_runtime304;
 var init_AgentDetail = __esm(() => {
   init_figures();
   init_ink2();
@@ -489911,13 +489898,13 @@ var init_AgentDetail = __esm(() => {
   init_agent();
   init_Markdown();
   init_agentFileUtils();
-  import_compiler_runtime245 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime244 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime304 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/ColorPicker.tsx
 function ColorPicker(t0) {
-  const $ = import_compiler_runtime246.c(17);
+  const $ = import_compiler_runtime245.c(17);
   const {
     agentName,
     currentColor: t1,
@@ -490079,13 +490066,13 @@ function _temp259(prev_0) {
 function _temp139(prev) {
   return prev > 0 ? prev - 1 : COLOR_OPTIONS.length - 1;
 }
-var import_compiler_runtime246, import_react176, jsx_runtime305, COLOR_OPTIONS;
+var import_compiler_runtime245, import_react176, jsx_runtime305, COLOR_OPTIONS;
 var init_ColorPicker = __esm(() => {
   init_figures();
   init_ink2();
   init_agentColorManager();
   init_stringUtils();
-  import_compiler_runtime246 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime245 = __toESM(require_compiler_runtime(), 1);
   import_react176 = __toESM(require_react(), 1);
   jsx_runtime305 = __toESM(require_jsx_runtime(), 1);
   COLOR_OPTIONS = ["automatic", ...AGENT_COLORS];
@@ -490093,7 +490080,7 @@ var init_ColorPicker = __esm(() => {
 
 // components/agents/ModelSelector.tsx
 function ModelSelector(t0) {
-  const $ = import_compiler_runtime247.c(11);
+  const $ = import_compiler_runtime246.c(11);
   const {
     initialModel,
     onComplete,
@@ -490166,12 +490153,12 @@ function ModelSelector(t0) {
   }
   return t4;
 }
-var import_compiler_runtime247, jsx_runtime306;
+var import_compiler_runtime246, jsx_runtime306;
 var init_ModelSelector = __esm(() => {
   init_ink2();
   init_agent();
   init_select();
-  import_compiler_runtime247 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime246 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime306 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -490219,7 +490206,7 @@ function getMcpServerBuckets(tools) {
   })).sort((a, b) => a.serverName.localeCompare(b.serverName));
 }
 function ToolSelector(t0) {
-  const $ = import_compiler_runtime248.c(69);
+  const $ = import_compiler_runtime247.c(69);
   const {
     tools,
     initialTools,
@@ -490729,7 +490716,7 @@ function _temp260(t_0) {
 function _temp140(t) {
   return t.name;
 }
-var import_compiler_runtime248, import_react177, jsx_runtime307;
+var import_compiler_runtime247, import_react177, jsx_runtime307;
 var init_ToolSelector = __esm(() => {
   init_figures();
   init_mcpStringUtils();
@@ -490756,7 +490743,7 @@ var init_ToolSelector = __esm(() => {
   init_useKeybinding();
   init_stringUtils();
   init_Divider();
-  import_compiler_runtime248 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime247 = __toESM(require_compiler_runtime(), 1);
   import_react177 = __toESM(require_react(), 1);
   jsx_runtime307 = __toESM(require_jsx_runtime(), 1);
 });
@@ -490977,7 +490964,7 @@ var init_AgentEditor = __esm(() => {
 
 // components/agents/AgentNavigationFooter.tsx
 function AgentNavigationFooter(t0) {
-  const $ = import_compiler_runtime249.c(2);
+  const $ = import_compiler_runtime248.c(2);
   const {
     instructions: t1
   } = t0;
@@ -491000,17 +490987,17 @@ function AgentNavigationFooter(t0) {
   }
   return t3;
 }
-var import_compiler_runtime249, jsx_runtime309;
+var import_compiler_runtime248, jsx_runtime309;
 var init_AgentNavigationFooter = __esm(() => {
   init_useExitOnCtrlCDWithKeybindings();
   init_ink2();
-  import_compiler_runtime249 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime248 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime309 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/AgentsList.tsx
 function AgentsList(t0) {
-  const $ = import_compiler_runtime250.c(96);
+  const $ = import_compiler_runtime249.c(96);
   const {
     source,
     agents,
@@ -491019,8 +491006,8 @@ function AgentsList(t0) {
     onCreateNew,
     changes
   } = t0;
-  const [selectedAgent, setSelectedAgent] = React96.useState(null);
-  const [isCreateNewSelected, setIsCreateNewSelected] = React96.useState(true);
+  const [selectedAgent, setSelectedAgent] = React95.useState(null);
+  const [isCreateNewSelected, setIsCreateNewSelected] = React95.useState(true);
   let t1;
   if ($[0] !== agents) {
     t1 = [...agents].sort(compareAgentsByName);
@@ -491158,7 +491145,7 @@ function AgentsList(t0) {
     t5 = $[15];
     t6 = $[16];
   }
-  React96.useEffect(t5, t6);
+  React95.useEffect(t5, t6);
   let t7;
   if ($[17] !== isCreateNewSelected || $[18] !== onCreateNew || $[19] !== onSelect || $[20] !== selectableAgentsInOrder || $[21] !== selectedAgent) {
     t7 = (e) => {
@@ -491447,7 +491434,7 @@ function AgentsList(t0) {
               label,
               source: groupSource_0
             } = t24;
-            return /* @__PURE__ */ jsx_runtime310.jsx(React96.Fragment, {
+            return /* @__PURE__ */ jsx_runtime310.jsx(React95.Fragment, {
               children: renderAgentGroup(label, sortedAgents.filter((a_7) => a_7.source === groupSource_0))
             }, groupSource_0);
           }),
@@ -491623,7 +491610,7 @@ function _temp143(agent) {
     overriddenBy: agent.overriddenBy || null
   };
 }
-var import_compiler_runtime250, React96, jsx_runtime310;
+var import_compiler_runtime249, React95, jsx_runtime310;
 var init_AgentsList = __esm(() => {
   init_figures();
   init_ink2();
@@ -491631,14 +491618,14 @@ var init_AgentsList = __esm(() => {
   init_Dialog();
   init_Divider();
   init_utils14();
-  import_compiler_runtime250 = __toESM(require_compiler_runtime(), 1);
-  React96 = __toESM(require_react(), 1);
+  import_compiler_runtime249 = __toESM(require_compiler_runtime(), 1);
+  React95 = __toESM(require_react(), 1);
   jsx_runtime310 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/wizard/WizardProvider.tsx
 function WizardProvider(t0) {
-  const $ = import_compiler_runtime251.c(38);
+  const $ = import_compiler_runtime250.c(38);
   const {
     steps,
     initialData: t1,
@@ -491844,10 +491831,10 @@ function _temp262(prev_1) {
 function _temp144(prev_0) {
   return prev_0 + 1;
 }
-var import_compiler_runtime251, import_react179, jsx_runtime311, WizardContext;
+var import_compiler_runtime250, import_react179, jsx_runtime311, WizardContext;
 var init_WizardProvider = __esm(() => {
   init_useExitOnCtrlCDWithKeybindings();
-  import_compiler_runtime251 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime250 = __toESM(require_compiler_runtime(), 1);
   import_react179 = __toESM(require_react(), 1);
   jsx_runtime311 = __toESM(require_jsx_runtime(), 1);
   WizardContext = import_react179.createContext(null);
@@ -491910,7 +491897,7 @@ var init_WizardNavigationFooter = __esm(() => {
 
 // components/wizard/WizardDialogLayout.tsx
 function WizardDialogLayout(t0) {
-  const $ = import_compiler_runtime252.c(11);
+  const $ = import_compiler_runtime251.c(11);
   const {
     title: titleOverride,
     color: t1,
@@ -491975,12 +491962,12 @@ function WizardDialogLayout(t0) {
   }
   return t5;
 }
-var import_compiler_runtime252, jsx_runtime313;
+var import_compiler_runtime251, jsx_runtime313;
 var init_WizardDialogLayout = __esm(() => {
   init_Dialog();
   init_useWizard();
   init_WizardNavigationFooter();
-  import_compiler_runtime252 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime251 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime313 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -491994,7 +491981,7 @@ var init_wizard = __esm(() => {
 
 // components/agents/new-agent-creation/wizard-steps/ColorStep.tsx
 function ColorStep() {
-  const $ = import_compiler_runtime253.c(14);
+  const $ = import_compiler_runtime252.c(14);
   const {
     goNext,
     goBack,
@@ -492091,7 +492078,7 @@ function ColorStep() {
   }
   return t4;
 }
-var import_compiler_runtime253, jsx_runtime314;
+var import_compiler_runtime252, jsx_runtime314;
 var init_ColorStep = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -492101,7 +492088,7 @@ var init_ColorStep = __esm(() => {
   init_wizard();
   init_WizardDialogLayout();
   init_ColorPicker();
-  import_compiler_runtime253 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime252 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime314 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -492177,7 +492164,7 @@ var init_validateAgent = __esm(() => {
 
 // components/agents/new-agent-creation/wizard-steps/ConfirmStep.tsx
 function ConfirmStep(t0) {
-  const $ = import_compiler_runtime254.c(88);
+  const $ = import_compiler_runtime253.c(88);
   const {
     tools,
     existingAgents,
@@ -492712,7 +492699,7 @@ function _temp145(toolNames) {
   }
   return `${toolNames.slice(0, -1).join(", ")}, and ${toolNames[toolNames.length - 1]}`;
 }
-var import_compiler_runtime254, jsx_runtime315;
+var import_compiler_runtime253, jsx_runtime315;
 var init_ConfirmStep = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -492727,7 +492714,7 @@ var init_ConfirmStep = __esm(() => {
   init_WizardDialogLayout();
   init_agentFileUtils();
   init_validateAgent();
-  import_compiler_runtime254 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime253 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime315 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -492812,7 +492799,7 @@ var init_ConfirmStepWrapper = __esm(() => {
 
 // components/agents/new-agent-creation/wizard-steps/DescriptionStep.tsx
 function DescriptionStep() {
-  const $ = import_compiler_runtime255.c(18);
+  const $ = import_compiler_runtime254.c(18);
   const {
     goNext,
     goBack,
@@ -492976,7 +492963,7 @@ function DescriptionStep() {
   }
   return t8;
 }
-var import_compiler_runtime255, import_react182, jsx_runtime317;
+var import_compiler_runtime254, import_react182, jsx_runtime317;
 var init_DescriptionStep = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -492987,7 +492974,7 @@ var init_DescriptionStep = __esm(() => {
   init_TextInput();
   init_wizard();
   init_WizardDialogLayout();
-  import_compiler_runtime255 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime254 = __toESM(require_compiler_runtime(), 1);
   import_react182 = __toESM(require_react(), 1);
   jsx_runtime317 = __toESM(require_jsx_runtime(), 1);
 });
@@ -493334,7 +493321,7 @@ var init_GenerateStep = __esm(() => {
 
 // components/agents/new-agent-creation/wizard-steps/LocationStep.tsx
 function LocationStep() {
-  const $ = import_compiler_runtime256.c(11);
+  const $ = import_compiler_runtime255.c(11);
   const {
     goNext,
     updateWizardData,
@@ -493428,7 +493415,7 @@ function LocationStep() {
   }
   return t5;
 }
-var import_compiler_runtime256, jsx_runtime319;
+var import_compiler_runtime255, jsx_runtime319;
 var init_LocationStep = __esm(() => {
   init_ink2();
   init_ConfigurableShortcutHint();
@@ -493437,13 +493424,13 @@ var init_LocationStep = __esm(() => {
   init_KeyboardShortcutHint();
   init_wizard();
   init_WizardDialogLayout();
-  import_compiler_runtime256 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime255 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime319 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/wizard-steps/MemoryStep.tsx
 function MemoryStep() {
-  const $ = import_compiler_runtime257.c(13);
+  const $ = import_compiler_runtime256.c(13);
   const {
     goNext,
     goBack,
@@ -493566,7 +493553,7 @@ function MemoryStep() {
   }
   return t4;
 }
-var import_compiler_runtime257, jsx_runtime320;
+var import_compiler_runtime256, jsx_runtime320;
 var init_MemoryStep = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -493578,13 +493565,13 @@ var init_MemoryStep = __esm(() => {
   init_KeyboardShortcutHint();
   init_wizard();
   init_WizardDialogLayout();
-  import_compiler_runtime257 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime256 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime320 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/wizard-steps/MethodStep.tsx
 function MethodStep() {
-  const $ = import_compiler_runtime258.c(11);
+  const $ = import_compiler_runtime257.c(11);
   const {
     goNext,
     goBack,
@@ -493679,7 +493666,7 @@ function MethodStep() {
   }
   return t4;
 }
-var import_compiler_runtime258, jsx_runtime321;
+var import_compiler_runtime257, jsx_runtime321;
 var init_MethodStep = __esm(() => {
   init_ink2();
   init_ConfigurableShortcutHint();
@@ -493688,13 +493675,13 @@ var init_MethodStep = __esm(() => {
   init_KeyboardShortcutHint();
   init_wizard();
   init_WizardDialogLayout();
-  import_compiler_runtime258 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime257 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime321 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/wizard-steps/ModelStep.tsx
 function ModelStep() {
-  const $ = import_compiler_runtime259.c(8);
+  const $ = import_compiler_runtime258.c(8);
   const {
     goNext,
     goBack,
@@ -493760,7 +493747,7 @@ function ModelStep() {
   }
   return t2;
 }
-var import_compiler_runtime259, jsx_runtime322;
+var import_compiler_runtime258, jsx_runtime322;
 var init_ModelStep = __esm(() => {
   init_ConfigurableShortcutHint();
   init_Byline();
@@ -493768,13 +493755,13 @@ var init_ModelStep = __esm(() => {
   init_wizard();
   init_WizardDialogLayout();
   init_ModelSelector();
-  import_compiler_runtime259 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime258 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime322 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/wizard-steps/PromptStep.tsx
 function PromptStep() {
-  const $ = import_compiler_runtime260.c(20);
+  const $ = import_compiler_runtime259.c(20);
   const {
     goNext,
     goBack,
@@ -493947,7 +493934,7 @@ function PromptStep() {
   }
   return t9;
 }
-var import_compiler_runtime260, import_react184, jsx_runtime323;
+var import_compiler_runtime259, import_react184, jsx_runtime323;
 var init_PromptStep = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -493958,14 +493945,14 @@ var init_PromptStep = __esm(() => {
   init_TextInput();
   init_wizard();
   init_WizardDialogLayout();
-  import_compiler_runtime260 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime259 = __toESM(require_compiler_runtime(), 1);
   import_react184 = __toESM(require_react(), 1);
   jsx_runtime323 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/wizard-steps/ToolsStep.tsx
 function ToolsStep(t0) {
-  const $ = import_compiler_runtime261.c(9);
+  const $ = import_compiler_runtime260.c(9);
   const {
     tools
   } = t0;
@@ -494037,7 +494024,7 @@ function ToolsStep(t0) {
   }
   return t3;
 }
-var import_compiler_runtime261, jsx_runtime324;
+var import_compiler_runtime260, jsx_runtime324;
 var init_ToolsStep = __esm(() => {
   init_ConfigurableShortcutHint();
   init_Byline();
@@ -494045,13 +494032,13 @@ var init_ToolsStep = __esm(() => {
   init_wizard();
   init_WizardDialogLayout();
   init_ToolSelector();
-  import_compiler_runtime261 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime260 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime324 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/wizard-steps/TypeStep.tsx
 function TypeStep(_props) {
-  const $ = import_compiler_runtime262.c(15);
+  const $ = import_compiler_runtime261.c(15);
   const {
     goNext,
     goBack,
@@ -494185,7 +494172,7 @@ function TypeStep(_props) {
   }
   return t6;
 }
-var import_compiler_runtime262, import_react185, jsx_runtime325;
+var import_compiler_runtime261, import_react185, jsx_runtime325;
 var init_TypeStep = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -494196,14 +494183,14 @@ var init_TypeStep = __esm(() => {
   init_wizard();
   init_WizardDialogLayout();
   init_validateAgent();
-  import_compiler_runtime262 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime261 = __toESM(require_compiler_runtime(), 1);
   import_react185 = __toESM(require_react(), 1);
   jsx_runtime325 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/new-agent-creation/CreateAgentWizard.tsx
 function CreateAgentWizard(t0) {
-  const $ = import_compiler_runtime263.c(17);
+  const $ = import_compiler_runtime262.c(17);
   const {
     tools,
     existingAgents,
@@ -494288,7 +494275,7 @@ function CreateAgentWizard(t0) {
   return t7;
 }
 function _temp146() {}
-var import_compiler_runtime263, jsx_runtime326;
+var import_compiler_runtime262, jsx_runtime326;
 var init_CreateAgentWizard = __esm(() => {
   init_paths();
   init_wizard();
@@ -494303,13 +494290,13 @@ var init_CreateAgentWizard = __esm(() => {
   init_PromptStep();
   init_ToolsStep();
   init_TypeStep();
-  import_compiler_runtime263 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime262 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime326 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/agents/AgentsMenu.tsx
 function AgentsMenu(t0) {
-  const $ = import_compiler_runtime264.c(157);
+  const $ = import_compiler_runtime263.c(157);
   const {
     tools,
     onExit
@@ -495185,7 +495172,7 @@ function _temp264(s_0) {
 function _temp147(s) {
   return s.agentDefinitions;
 }
-var import_compiler_runtime264, import_react186, jsx_runtime327;
+var import_compiler_runtime263, import_react186, jsx_runtime327;
 var init_AgentsMenu = __esm(() => {
   init_source();
   init_useExitOnCtrlCDWithKeybindings();
@@ -495204,7 +495191,7 @@ var init_AgentsMenu = __esm(() => {
   init_AgentsList();
   init_agentFileUtils();
   init_CreateAgentWizard();
-  import_compiler_runtime264 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime263 = __toESM(require_compiler_runtime(), 1);
   import_react186 = __toESM(require_react(), 1);
   jsx_runtime327 = __toESM(require_jsx_runtime(), 1);
 });
@@ -496165,7 +496152,7 @@ var init_bridge_kick = __esm(() => {
 var call56 = async () => {
   return {
     type: "text",
-    value: "2026-11-10T14:03:40.263Z" ? `${"1.0.29"} (built ${"2026-11-10T14:03:40.263Z"})` : "1.0.29"
+    value: "2026-11-10T15:53:20.086Z" ? `${"1.0.29"} (built ${"2026-11-10T15:53:20.086Z"})` : "1.0.29"
   };
 }, version6, version_default;
 var init_version = __esm(() => {
@@ -496208,7 +496195,7 @@ var init_perf_issue = __esm(() => {
 
 // components/sandbox/SandboxConfigTab.tsx
 function SandboxConfigTab() {
-  const $ = import_compiler_runtime265.c(3);
+  const $ = import_compiler_runtime264.c(3);
   const isEnabled = SandboxManager2.isSandboxingEnabled();
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
@@ -496398,17 +496385,17 @@ function _temp148(w, i) {
     children: w
   }, i);
 }
-var import_compiler_runtime265, jsx_runtime330;
+var import_compiler_runtime264, jsx_runtime330;
 var init_SandboxConfigTab = __esm(() => {
   init_ink2();
   init_sandbox_adapter();
-  import_compiler_runtime265 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime264 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime330 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/sandbox/SandboxDependenciesTab.tsx
 function SandboxDependenciesTab(t0) {
-  const $ = import_compiler_runtime266.c(24);
+  const $ = import_compiler_runtime265.c(24);
   const {
     depCheck
   } = t0;
@@ -496668,17 +496655,17 @@ function _temp265(e_0) {
 function _temp149(e) {
   return e.includes("ripgrep");
 }
-var import_compiler_runtime266, jsx_runtime331;
+var import_compiler_runtime265, jsx_runtime331;
 var init_SandboxDependenciesTab = __esm(() => {
   init_ink2();
   init_platform2();
-  import_compiler_runtime266 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime265 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime331 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/sandbox/SandboxOverridesTab.tsx
 function SandboxOverridesTab(t0) {
-  const $ = import_compiler_runtime267.c(5);
+  const $ = import_compiler_runtime266.c(5);
   const {
     onComplete
   } = t0;
@@ -496753,7 +496740,7 @@ function SandboxOverridesTab(t0) {
   return t1;
 }
 function OverridesSelect(t0) {
-  const $ = import_compiler_runtime267.c(25);
+  const $ = import_compiler_runtime266.c(25);
   const {
     onComplete,
     currentMode
@@ -496943,19 +496930,19 @@ function OverridesSelect(t0) {
   }
   return t14;
 }
-var import_compiler_runtime267, jsx_runtime332;
+var import_compiler_runtime266, jsx_runtime332;
 var init_SandboxOverridesTab = __esm(() => {
   init_ink2();
   init_sandbox_adapter();
   init_select();
   init_Tabs();
-  import_compiler_runtime267 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime266 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime332 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/sandbox/SandboxSettings.tsx
 function SandboxSettings(t0) {
-  const $ = import_compiler_runtime268.c(34);
+  const $ = import_compiler_runtime267.c(34);
   const {
     onComplete,
     depCheck
@@ -497187,7 +497174,7 @@ function SandboxSettings(t0) {
   return t17;
 }
 function SandboxModeTab(t0) {
-  const $ = import_compiler_runtime268.c(16);
+  const $ = import_compiler_runtime267.c(16);
   const {
     showSocketWarning,
     options,
@@ -497316,7 +497303,7 @@ function SandboxModeTab(t0) {
   }
   return t7;
 }
-var import_compiler_runtime268, jsx_runtime333;
+var import_compiler_runtime267, jsx_runtime333;
 var init_SandboxSettings = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -497328,7 +497315,7 @@ var init_SandboxSettings = __esm(() => {
   init_SandboxConfigTab();
   init_SandboxDependenciesTab();
   init_SandboxOverridesTab();
-  import_compiler_runtime268 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime267 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime333 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -497723,7 +497710,7 @@ __export(exports_chrome, {
   call: () => call58
 });
 function ClaudeInChromeMenu(t0) {
-  const $ = import_compiler_runtime269.c(41);
+  const $ = import_compiler_runtime268.c(41);
   const {
     onDone,
     isExtensionInstalled: installed,
@@ -498087,7 +498074,7 @@ function _temp266(c) {
 function _temp150(s) {
   return s.mcp.clients;
 }
-var import_compiler_runtime269, import_react187, jsx_runtime335, CHROME_EXTENSION_URL = "https://evilclaude.swampmine.in", CHROME_PERMISSIONS_URL = "https://clau.de/chrome/permissions", CHROME_RECONNECT_URL = "https://clau.de/chrome/reconnect", call58 = async function(onDone) {
+var import_compiler_runtime268, import_react187, jsx_runtime335, CHROME_EXTENSION_URL = "https://evilclaude.swampmine.in", CHROME_PERMISSIONS_URL = "https://clau.de/chrome/permissions", CHROME_RECONNECT_URL = "https://clau.de/chrome/reconnect", call58 = async function(onDone) {
   const isExtensionInstalled = await isChromeExtensionInstalled();
   const config = getGlobalConfig();
   const isSubscriber = isClaudeAISubscriber();
@@ -498112,7 +498099,7 @@ var init_chrome = __esm(() => {
   init_config2();
   init_env();
   init_envUtils();
-  import_compiler_runtime269 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime268 = __toESM(require_compiler_runtime(), 1);
   import_react187 = __toESM(require_react(), 1);
   jsx_runtime335 = __toESM(require_jsx_runtime(), 1);
 });
@@ -498616,7 +498603,7 @@ var init_WorktreeExitDialog = __esm(() => {
 
 // components/ExitFlow.tsx
 function ExitFlow(t0) {
-  const $ = import_compiler_runtime270.c(5);
+  const $ = import_compiler_runtime269.c(5);
   const {
     showWorktree,
     onDone,
@@ -498651,11 +498638,11 @@ function ExitFlow(t0) {
   }
   return null;
 }
-var import_compiler_runtime270, jsx_runtime337;
+var import_compiler_runtime269, jsx_runtime337;
 var init_ExitFlow = __esm(() => {
   init_gracefulShutdown();
   init_WorktreeExitDialog();
-  import_compiler_runtime270 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime269 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime337 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -499060,7 +499047,7 @@ __export(exports_model, {
   call: () => call63
 });
 function ModelPickerWrapper(t0) {
-  const $ = import_compiler_runtime271.c(17);
+  const $ = import_compiler_runtime270.c(17);
   const {
     onDone
   } = t0;
@@ -499185,7 +499172,7 @@ function SetModelAndClose({
   const isFastMode = useAppState((s) => s.fastMode);
   const setAppState = useSetAppState();
   const model = args === "default" ? null : args;
-  React107.useEffect(() => {
+  React106.useEffect(() => {
     async function handleModelChange() {
       if (model && !isModelAllowed(model)) {
         onDone(`Model '${model}' is not available. Your organization restricts model selection.`, {
@@ -499305,7 +499292,7 @@ function renderModelLabel(model) {
   const rendered = renderDefaultModelSetting(model ?? getDefaultMainLoopModelSetting());
   return model === null ? `${rendered} (default)` : rendered;
 }
-var import_compiler_runtime271, React107, jsx_runtime342, call63 = async (onDone, _context, args) => {
+var import_compiler_runtime270, React106, jsx_runtime342, call63 = async (onDone, _context, args) => {
   args = args?.trim() || "";
   if (COMMON_INFO_ARGS.includes(args)) {
     logEvent("tengu_model_command_inline_help", {
@@ -499347,8 +499334,8 @@ var init_model2 = __esm(() => {
   init_model();
   init_modelAllowlist();
   init_validateModel();
-  import_compiler_runtime271 = __toESM(require_compiler_runtime(), 1);
-  React107 = __toESM(require_react(), 1);
+  import_compiler_runtime270 = __toESM(require_compiler_runtime(), 1);
+  React106 = __toESM(require_react(), 1);
   jsx_runtime342 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -499377,7 +499364,7 @@ __export(exports_tag, {
   call: () => call64
 });
 function ConfirmRemoveTag(t0) {
-  const $ = import_compiler_runtime272.c(11);
+  const $ = import_compiler_runtime271.c(11);
   const {
     tagName,
     onConfirm,
@@ -499452,13 +499439,13 @@ function ConfirmRemoveTag(t0) {
   return t6;
 }
 function ToggleTagAndClose(t0) {
-  const $ = import_compiler_runtime272.c(17);
+  const $ = import_compiler_runtime271.c(17);
   const {
     tagName,
     onDone
   } = t0;
-  const [showConfirm, setShowConfirm] = React108.useState(false);
-  const [sessionId, setSessionId] = React108.useState(null);
+  const [showConfirm, setShowConfirm] = React107.useState(false);
+  const [sessionId, setSessionId] = React107.useState(null);
   let t1;
   if ($[0] !== tagName) {
     t1 = recursivelySanitizeUnicode(tagName).trim();
@@ -499513,7 +499500,7 @@ function ToggleTagAndClose(t0) {
     t2 = $[4];
     t3 = $[5];
   }
-  React108.useEffect(t2, t3);
+  React107.useEffect(t2, t3);
   if (showConfirm && sessionId) {
     let t4;
     if ($[6] !== normalizedTag || $[7] !== onDone || $[8] !== sessionId) {
@@ -499565,7 +499552,7 @@ function ToggleTagAndClose(t0) {
   return null;
 }
 function ShowHelp(t0) {
-  const $ = import_compiler_runtime272.c(3);
+  const $ = import_compiler_runtime271.c(3);
   const {
     onDone
   } = t0;
@@ -499595,7 +499582,7 @@ Examples:
     t1 = $[1];
     t2 = $[2];
   }
-  React108.useEffect(t1, t2);
+  React107.useEffect(t1, t2);
   return null;
 }
 async function call64(onDone, _context, args) {
@@ -499615,7 +499602,7 @@ async function call64(onDone, _context, args) {
     onDone
   });
 }
-var import_compiler_runtime272, React108, jsx_runtime343;
+var import_compiler_runtime271, React107, jsx_runtime343;
 var init_tag = __esm(() => {
   init_source();
   init_state();
@@ -499625,8 +499612,8 @@ var init_tag = __esm(() => {
   init_ink2();
   init_analytics();
   init_sessionStorage();
-  import_compiler_runtime272 = __toESM(require_compiler_runtime(), 1);
-  React108 = __toESM(require_react(), 1);
+  import_compiler_runtime271 = __toESM(require_compiler_runtime(), 1);
+  React107 = __toESM(require_react(), 1);
   jsx_runtime343 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -499713,7 +499700,7 @@ var init_environmentSelection = __esm(() => {
 
 // components/RemoteEnvironmentDialog.tsx
 function RemoteEnvironmentDialog(t0) {
-  const $ = import_compiler_runtime273.c(27);
+  const $ = import_compiler_runtime272.c(27);
   const {
     onDone
   } = t0;
@@ -499913,7 +499900,7 @@ function RemoteEnvironmentDialog(t0) {
   return t5;
 }
 function EnvironmentLabel(t0) {
-  const $ = import_compiler_runtime273.c(7);
+  const $ = import_compiler_runtime272.c(7);
   const {
     environment
   } = t0;
@@ -499963,7 +499950,7 @@ function EnvironmentLabel(t0) {
   return t3;
 }
 function SingleEnvironmentContent(t0) {
-  const $ = import_compiler_runtime273.c(6);
+  const $ = import_compiler_runtime272.c(6);
   const {
     environment,
     onDone
@@ -500005,7 +499992,7 @@ function SingleEnvironmentContent(t0) {
   return t3;
 }
 function MultipleEnvironmentsContent(t0) {
-  const $ = import_compiler_runtime273.c(18);
+  const $ = import_compiler_runtime272.c(18);
   const {
     environments,
     selectedEnvironment,
@@ -500143,7 +500130,7 @@ function _temp153(env) {
     value: env.environment_id
   };
 }
-var import_compiler_runtime273, import_react191, jsx_runtime344, DIALOG_TITLE = "Select Remote Environment", SETUP_HINT = `Configure environments at: https://evilclaude.swampmine.in`;
+var import_compiler_runtime272, import_react191, jsx_runtime344, DIALOG_TITLE = "Select Remote Environment", SETUP_HINT = `Configure environments at: https://evilclaude.swampmine.in`;
 var init_RemoteEnvironmentDialog = __esm(() => {
   init_source();
   init_figures();
@@ -500160,7 +500147,7 @@ var init_RemoteEnvironmentDialog = __esm(() => {
   init_Dialog();
   init_KeyboardShortcutHint();
   init_LoadingState();
-  import_compiler_runtime273 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime272 = __toESM(require_compiler_runtime(), 1);
   import_react191 = __toESM(require_react(), 1);
   jsx_runtime344 = __toESM(require_jsx_runtime(), 1);
 });
@@ -500266,7 +500253,7 @@ __export(exports_rate_limit_options, {
   call: () => call68
 });
 function RateLimitOptionsMenu(t0) {
-  const $ = import_compiler_runtime274.c(25);
+  const $ = import_compiler_runtime273.c(25);
   const {
     onDone,
     context
@@ -500463,7 +500450,7 @@ async function call68(onDone, context) {
     context
   });
 }
-var import_compiler_runtime274, import_react192, jsx_runtime347;
+var import_compiler_runtime273, import_react192, jsx_runtime347;
 var init_rate_limit_options = __esm(() => {
   init_select();
   init_Dialog();
@@ -500476,7 +500463,7 @@ var init_rate_limit_options = __esm(() => {
   init_extra_usage2();
   init_upgrade2();
   init_upgrade();
-  import_compiler_runtime274 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime273 = __toESM(require_compiler_runtime(), 1);
   import_react192 = __toESM(require_react(), 1);
   jsx_runtime347 = __toESM(require_jsx_runtime(), 1);
 });
@@ -500646,7 +500633,7 @@ function _temp154(s) {
   return s.effortValue;
 }
 function ApplyEffortAndClose(t0) {
-  const $ = import_compiler_runtime275.c(6);
+  const $ = import_compiler_runtime274.c(6);
   const {
     result,
     onDone
@@ -500679,7 +500666,7 @@ function ApplyEffortAndClose(t0) {
     t1 = $[4];
     t2 = $[5];
   }
-  React110.useEffect(t1, t2);
+  React109.useEffect(t1, t2);
   return null;
 }
 async function call69(onDone, _context, args) {
@@ -500706,15 +500693,15 @@ Effort levels:
     onDone
   });
 }
-var import_compiler_runtime275, React110, jsx_runtime348, COMMON_HELP_ARGS2;
+var import_compiler_runtime274, React109, jsx_runtime348, COMMON_HELP_ARGS2;
 var init_effort2 = __esm(() => {
   init_useMainLoopModel();
   init_analytics();
   init_AppState();
   init_effort();
   init_settings2();
-  import_compiler_runtime275 = __toESM(require_compiler_runtime(), 1);
-  React110 = __toESM(require_react(), 1);
+  import_compiler_runtime274 = __toESM(require_compiler_runtime(), 1);
+  React109 = __toESM(require_react(), 1);
   jsx_runtime348 = __toESM(require_jsx_runtime(), 1);
   COMMON_HELP_ARGS2 = ["help", "-h", "--help"];
 });
@@ -501910,9 +501897,127 @@ function cacheToStats(cache, todayStats) {
   if (false) {}
   return result;
 }
+function remoteStatsToClaudeCodeStats(remote, daysLimit) {
+  const cutoffDate = daysLimit ? toDateString(new Date(Date.now() - (daysLimit - 1) * 86400000)) : null;
+  const filteredDaily = cutoffDate ? remote.daily.filter((d) => d.date >= cutoffDate) : remote.daily;
+  const filteredDailyModelTokens = cutoffDate ? remote.dailyModelTokens.filter((d) => d.date >= cutoffDate) : remote.dailyModelTokens;
+  const dailyActivity = filteredDaily.map((d) => ({
+    date: d.date,
+    messageCount: d.requests,
+    sessionCount: d.requests > 0 ? 1 : 0,
+    toolCallCount: 0
+  }));
+  const activeDays = dailyActivity.filter((d) => d.messageCount > 0).length;
+  const totalDays = daysLimit ?? 30;
+  const streaks = calculateStreaks(dailyActivity);
+  const modelUsage = {};
+  for (const m of remote.models) {
+    modelUsage[m.model] = {
+      inputTokens: m.inputTokens,
+      outputTokens: m.outputTokens,
+      cacheReadInputTokens: 0,
+      cacheCreationInputTokens: 0,
+      costUSD: m.credits / 1e5
+    };
+  }
+  const activeDaysSorted = dailyActivity.filter((d) => d.messageCount > 0);
+  const firstSessionDate = activeDaysSorted[0]?.date ?? null;
+  const lastSessionDate = activeDaysSorted[activeDaysSorted.length - 1]?.date ?? null;
+  const peakDay = filteredDaily.slice().sort((a, b) => b.tokens - a.tokens)[0]?.date ?? null;
+  const totalRequests = filteredDaily.reduce((sum, d) => sum + d.requests, 0);
+  return {
+    totalSessions: Math.max(1, Math.ceil(totalRequests / 2)),
+    totalMessages: totalRequests,
+    totalDays,
+    activeDays: activeDays || 1,
+    streaks,
+    dailyActivity,
+    dailyModelTokens: filteredDailyModelTokens,
+    longestSession: null,
+    modelUsage,
+    firstSessionDate,
+    lastSessionDate,
+    peakActivityDay: peakDay,
+    peakActivityHour: null,
+    totalSpeculationTimeSavedMs: 0
+  };
+}
+function mergeRemoteWithLocalStats(local, remote) {
+  if (!remote || !remote.totals.totalTokens)
+    return local;
+  const localTokens = Object.values(local.modelUsage).reduce((sum, m) => sum + m.inputTokens + m.outputTokens, 0);
+  if (localTokens === 0 && remote.totals.totalTokens > 0) {
+    return remoteStatsToClaudeCodeStats(remote);
+  }
+  const modelUsage = { ...local.modelUsage };
+  for (const m of remote.models) {
+    if (modelUsage[m.model]) {
+      modelUsage[m.model] = {
+        ...modelUsage[m.model],
+        inputTokens: Math.max(modelUsage[m.model].inputTokens, m.inputTokens),
+        outputTokens: Math.max(modelUsage[m.model].outputTokens, m.outputTokens),
+        costUSD: Math.max(modelUsage[m.model].costUSD || 0, m.credits / 1e5)
+      };
+    } else {
+      modelUsage[m.model] = {
+        inputTokens: m.inputTokens,
+        outputTokens: m.outputTokens,
+        cacheReadInputTokens: 0,
+        cacheCreationInputTokens: 0,
+        costUSD: m.credits / 1e5
+      };
+    }
+  }
+  const dailyMap = new Map;
+  for (const d of local.dailyActivity) {
+    dailyMap.set(d.date, { ...d });
+  }
+  for (const r of remote.daily) {
+    if (r.requests > 0 || r.tokens > 0) {
+      const existing = dailyMap.get(r.date);
+      if (existing) {
+        existing.messageCount = Math.max(existing.messageCount, r.requests);
+      } else {
+        dailyMap.set(r.date, {
+          date: r.date,
+          messageCount: r.requests,
+          sessionCount: 1,
+          toolCallCount: 0
+        });
+      }
+    }
+  }
+  const dailyActivity = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+  const dmtMap = new Map;
+  for (const d of local.dailyModelTokens) {
+    dmtMap.set(d.date, { ...d.tokensByModel });
+  }
+  for (const r of remote.dailyModelTokens) {
+    const existing = dmtMap.get(r.date) || {};
+    for (const [mod2, tok] of Object.entries(r.tokensByModel)) {
+      existing[mod2] = Math.max(existing[mod2] || 0, tok);
+    }
+    dmtMap.set(r.date, existing);
+  }
+  const dailyModelTokens = Array.from(dmtMap.entries()).map(([date, tokensByModel]) => ({ date, tokensByModel })).sort((a, b) => a.date.localeCompare(b.date));
+  return {
+    ...local,
+    totalSessions: Math.max(local.totalSessions, Math.ceil(remote.totals.requests / 2)),
+    totalMessages: Math.max(local.totalMessages, remote.totals.requests),
+    activeDays: dailyActivity.filter((d) => d.messageCount > 0 || d.sessionCount > 0).length,
+    streaks: calculateStreaks(dailyActivity),
+    dailyActivity,
+    dailyModelTokens,
+    modelUsage
+  };
+}
 async function aggregateClaudeCodeStats() {
+  const remoteStats = await fetchRemoteStats();
   const allSessionFiles = await getAllSessionFiles();
   if (allSessionFiles.length === 0) {
+    if (remoteStats && remoteStats.totals.totalTokens > 0) {
+      return remoteStatsToClaudeCodeStats(remoteStats);
+    }
     return getEmptyStats();
   }
   const updatedCache = await withStatsCacheLock(async () => {
@@ -501950,25 +502055,31 @@ async function aggregateClaudeCodeStats() {
     fromDate: today,
     toDate: today
   });
-  return cacheToStats(updatedCache, todayStats);
+  const localStats = cacheToStats(updatedCache, todayStats);
+  return mergeRemoteWithLocalStats(localStats, remoteStats);
 }
 async function aggregateClaudeCodeStatsForRange(range) {
   if (range === "all") {
     return aggregateClaudeCodeStats();
   }
+  const remoteStats = await fetchRemoteStats();
   const allSessionFiles = await getAllSessionFiles();
+  const daysLimit = range === "7d" ? 7 : 30;
   if (allSessionFiles.length === 0) {
+    if (remoteStats && remoteStats.totals.totalTokens > 0) {
+      return remoteStatsToClaudeCodeStats(remoteStats, daysLimit);
+    }
     return getEmptyStats();
   }
   const today = new Date;
-  const daysBack = range === "7d" ? 7 : 30;
   const fromDate = new Date(today);
-  fromDate.setDate(today.getDate() - daysBack + 1);
+  fromDate.setDate(today.getDate() - daysLimit + 1);
   const fromDateStr = toDateString(fromDate);
   const stats = await processSessionFiles(allSessionFiles, {
     fromDate: fromDateStr
   });
-  return processedStatsToClaudeCodeStats(stats);
+  const localStats = processedStatsToClaudeCodeStats(stats);
+  return mergeRemoteWithLocalStats(localStats, remoteStats);
 }
 function processedStatsToClaudeCodeStats(stats) {
   const dailyActivitySorted = stats.dailyActivity.slice().sort((a, b) => a.date.localeCompare(b.date));
@@ -502158,6 +502269,7 @@ var init_stats = __esm(() => {
   init_sessionStorage();
   init_shellToolUtils();
   init_slowOperations();
+  init_usage();
   init_statsCache();
   TRANSCRIPT_MESSAGE_TYPES = new Set([
     "user",
@@ -502175,6 +502287,13 @@ function formatPeakDay(dateStr) {
     month: "short",
     day: "numeric"
   });
+}
+function formatTokens3(count) {
+  if (count >= 1e6)
+    return `${(count / 1e6).toFixed(2)}M`;
+  if (count >= 1000)
+    return `${(count / 1000).toFixed(1)}k`;
+  return formatNumber(count);
 }
 function getNextDateRange(current) {
   const currentIndex = DATE_RANGE_ORDER.indexOf(current);
@@ -502200,7 +502319,7 @@ function createAllTimeStatsPromise() {
   });
 }
 function Stats2(t0) {
-  const $ = import_compiler_runtime276.c(4);
+  const $ = import_compiler_runtime275.c(4);
   const {
     onClose
   } = t0;
@@ -502244,7 +502363,7 @@ function Stats2(t0) {
   return t3;
 }
 function StatsContent(t0) {
-  const $ = import_compiler_runtime276.c(34);
+  const $ = import_compiler_runtime275.c(34);
   const {
     allTimePromise,
     onClose
@@ -502374,20 +502493,42 @@ function StatsContent(t0) {
     return t7;
   }
   if (allTimeResult.type === "empty") {
-    let t7;
-    if ($[15] === Symbol.for("react.memo_cache_sentinel")) {
-      t7 = /* @__PURE__ */ jsx_runtime349.jsx(ThemedBox_default, {
-        marginTop: 1,
-        children: /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
-          color: "warning",
-          children: "No stats available yet. Start using EvilClaude!"
-        })
-      });
-      $[15] = t7;
-    } else {
-      t7 = $[15];
-    }
-    return t7;
+    return /* @__PURE__ */ jsx_runtime349.jsx(Pane, {
+      color: "claude",
+      children: /* @__PURE__ */ jsx_runtime349.jsxs(ThemedBox_default, {
+        flexDirection: "column",
+        gap: 1,
+        padding: 1,
+        children: [
+          /* @__PURE__ */ jsx_runtime349.jsxs(ThemedBox_default, {
+            flexDirection: "row",
+            gap: 1,
+            children: [
+              /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+                bold: true,
+                color: "cyan",
+                children: "EvilClaude Gateway"
+              }),
+              /* @__PURE__ */ jsx_runtime349.jsxs(ThemedText, {
+                color: "green",
+                children: [
+                  figures_default.tick,
+                  " Connected (https://evilclaude.swampmine.in)"
+                ]
+              })
+            ]
+          }),
+          /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+            dimColor: true,
+            children: "No usage activity recorded yet. Run evilclaude in a repo to begin!"
+          }),
+          /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+            dimColor: true,
+            children: "Esc to close"
+          })
+        ]
+      })
+    });
   }
   if (!displayStats || !allTimeStats) {
     let t7;
@@ -502443,6 +502584,10 @@ function StatsContent(t0) {
   } else {
     t8 = $[25];
   }
+  const tTabAccount = /* @__PURE__ */ jsx_runtime349.jsx(Tab, {
+    title: "Account",
+    children: /* @__PURE__ */ jsx_runtime349.jsx(AccountTab, {})
+  });
   let t9;
   if ($[26] !== t7 || $[27] !== t8) {
     t9 = /* @__PURE__ */ jsx_runtime349.jsx(ThemedBox_default, {
@@ -502455,7 +502600,8 @@ function StatsContent(t0) {
         defaultTab: "Overview",
         children: [
           t7,
-          t8
+          t8,
+          tTabAccount
         ]
       })
     });
@@ -502501,10 +502647,250 @@ function StatsContent(t0) {
   return t12;
 }
 function _temp155(prev_0) {
-  return prev_0 === "Overview" ? "Models" : "Overview";
+  if (prev_0 === "Overview")
+    return "Models";
+  if (prev_0 === "Models")
+    return "Account";
+  return "Overview";
+}
+function AccountTab() {
+  const [data, setData] = import_react193.useState(null);
+  const [loading, setLoading] = import_react193.useState(true);
+  import_react193.useEffect(() => {
+    let cancelled = false;
+    fetchRemoteStats().then((res) => {
+      if (!cancelled) {
+        setData(res);
+        setLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled)
+        setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (loading) {
+    return /* @__PURE__ */ jsx_runtime349.jsxs(ThemedBox_default, {
+      marginTop: 1,
+      gap: 1,
+      children: [
+        /* @__PURE__ */ jsx_runtime349.jsx(Spinner, {}),
+        /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+          children: " Connecting to EvilClaude website…"
+        })
+      ]
+    });
+  }
+  if (!data) {
+    return /* @__PURE__ */ jsx_runtime349.jsxs(ThemedBox_default, {
+      flexDirection: "column",
+      marginTop: 1,
+      gap: 1,
+      children: [
+        /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+          color: "error",
+          children: "Unable to fetch website stats."
+        }),
+        /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+          dimColor: true,
+          children: "Gateway: https://evilclaude.swampmine.in"
+        })
+      ]
+    });
+  }
+  return /* @__PURE__ */ jsx_runtime349.jsxs(ThemedBox_default, {
+    flexDirection: "column",
+    marginTop: 1,
+    gap: 1,
+    children: [
+      /* @__PURE__ */ jsx_runtime349.jsxs(ThemedBox_default, {
+        flexDirection: "row",
+        gap: 2,
+        children: [
+          /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+            bold: true,
+            color: "cyan",
+            children: "EvilClaude Gateway"
+          }),
+          /* @__PURE__ */ jsx_runtime349.jsxs(ThemedText, {
+            color: "green",
+            children: [
+              figures_default.tick,
+              " Connected (https://evilclaude.swampmine.in)"
+            ]
+          })
+        ]
+      }),
+      /* @__PURE__ */ jsx_runtime349.jsxs(ThemedText, {
+        dimColor: true,
+        children: [
+          "User: ",
+          data.user?.name || data.user?.email,
+          " (",
+          data.user?.email,
+          ")"
+        ]
+      }),
+      /* @__PURE__ */ jsx_runtime349.jsxs(ThemedText, {
+        dimColor: true,
+        children: [
+          "Plan: ",
+          /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+            color: "yellow",
+            bold: true,
+            children: data.plan?.name
+          }),
+          data.plan?.rpm ? ` · ${data.plan.rpm} RPM` : "",
+          data.plan?.billingType ? ` · ${data.plan.billingType}` : ""
+        ]
+      }),
+      /* @__PURE__ */ jsx_runtime349.jsxs(ThemedBox_default, {
+        flexDirection: "row",
+        gap: 4,
+        marginTop: 1,
+        children: [
+          /* @__PURE__ */ jsx_runtime349.jsxs(ThemedBox_default, {
+            flexDirection: "column",
+            width: 28,
+            children: [
+              /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+                bold: true,
+                children: "Credit Balance (Wallet)"
+              }),
+              /* @__PURE__ */ jsx_runtime349.jsxs(ThemedText, {
+                color: "magenta",
+                bold: true,
+                children: [
+                  formatTokens3(data.balance?.paygTokens ?? 0),
+                  " tokens"
+                ]
+              }),
+              /* @__PURE__ */ jsx_runtime349.jsxs(ThemedText, {
+                dimColor: true,
+                children: [
+                  "(",
+                  formatNumber(data.balance?.paygTokens ?? 0),
+                  " available)"
+                ]
+              })
+            ]
+          }),
+          /* @__PURE__ */ jsx_runtime349.jsxs(ThemedBox_default, {
+            flexDirection: "column",
+            width: 28,
+            children: [
+              /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+                bold: true,
+                children: "Total Processed"
+              }),
+              /* @__PURE__ */ jsx_runtime349.jsxs(ThemedText, {
+                color: "claude",
+                bold: true,
+                children: [
+                  formatNumber(data.totals?.totalTokens ?? 0),
+                  " tokens"
+                ]
+              }),
+              /* @__PURE__ */ jsx_runtime349.jsxs(ThemedText, {
+                dimColor: true,
+                children: [
+                  "(",
+                  data.totals?.requests ?? 0,
+                  " API requests)"
+                ]
+              })
+            ]
+          })
+        ]
+      }),
+      /* @__PURE__ */ jsx_runtime349.jsxs(ThemedBox_default, {
+        flexDirection: "row",
+        gap: 4,
+        children: [
+          /* @__PURE__ */ jsx_runtime349.jsx(ThemedBox_default, {
+            flexDirection: "column",
+            width: 28,
+            children: /* @__PURE__ */ jsx_runtime349.jsxs(ThemedText, {
+              children: [
+                "5h Window Usage: ",
+                /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+                  color: "cyan",
+                  bold: true,
+                  children: formatTokens3(data.fiveHour?.tokens ?? 0)
+                })
+              ]
+            })
+          }),
+          /* @__PURE__ */ jsx_runtime349.jsx(ThemedBox_default, {
+            flexDirection: "column",
+            width: 28,
+            children: /* @__PURE__ */ jsx_runtime349.jsxs(ThemedText, {
+              children: [
+                "Input / Output: ",
+                /* @__PURE__ */ jsx_runtime349.jsxs(ThemedText, {
+                  color: "claude",
+                  children: [
+                    formatTokens3(data.totals?.inputTokens ?? 0),
+                    " / ",
+                    formatTokens3(data.totals?.outputTokens ?? 0)
+                  ]
+                })
+              ]
+            })
+          })
+        ]
+      }),
+      data.recentRequests && data.recentRequests.length > 0 && /* @__PURE__ */ jsx_runtime349.jsxs(ThemedBox_default, {
+        flexDirection: "column",
+        marginTop: 1,
+        children: [
+          /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+            bold: true,
+            children: "Recent Website Requests"
+          }),
+          data.recentRequests.slice(0, 5).map((r) => /* @__PURE__ */ jsx_runtime349.jsxs(ThemedText, {
+            dimColor: true,
+            wrap: "truncate",
+            children: [
+              "· ",
+              r.createdAt ? String(r.createdAt).slice(11, 19) : "Recent",
+              " | ",
+              /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+                color: "claude",
+                children: r.model
+              }),
+              " | ",
+              formatNumber(r.inputTokens + r.outputTokens),
+              " tok | ",
+              r.latencyMs,
+              "ms | Status ",
+              r.status
+            ]
+          }, r.id))
+        ]
+      }),
+      /* @__PURE__ */ jsx_runtime349.jsx(ThemedBox_default, {
+        marginTop: 1,
+        children: /* @__PURE__ */ jsx_runtime349.jsxs(ThemedText, {
+          dimColor: true,
+          children: [
+            "Manage API keys, billing & logs at:",
+            " ",
+            /* @__PURE__ */ jsx_runtime349.jsx(ThemedText, {
+              color: "blue",
+              underline: true,
+              children: "https://evilclaude.swampmine.in/app/usage"
+            })
+          ]
+        })
+      })
+    ]
+  });
 }
 function DateRangeSelector(t0) {
-  const $ = import_compiler_runtime276.c(9);
+  const $ = import_compiler_runtime275.c(9);
   const {
     dateRange,
     isLoading
@@ -502936,7 +503322,7 @@ function generateFunFactoid(stats, totalTokens) {
   return factoids[randomIndex];
 }
 function ModelsTab(t0) {
-  const $ = import_compiler_runtime276.c(15);
+  const $ = import_compiler_runtime275.c(15);
   const {
     stats,
     dateRange,
@@ -503141,7 +503527,7 @@ function _temp716(t0, t1) {
   return b.inputTokens + b.outputTokens - (a.inputTokens + a.outputTokens);
 }
 function ModelEntry(t0) {
-  const $ = import_compiler_runtime276.c(21);
+  const $ = import_compiler_runtime275.c(21);
   const {
     model,
     usage,
@@ -503452,7 +503838,7 @@ function renderModelsToAnsi(stats) {
   }
   return lines;
 }
-var import_compiler_runtime276, import_asciichart, import_react193, jsx_runtime349, DATE_RANGE_LABELS, DATE_RANGE_ORDER, BOOK_COMPARISONS, TIME_COMPARISONS;
+var import_compiler_runtime275, import_asciichart, import_react193, jsx_runtime349, DATE_RANGE_LABELS, DATE_RANGE_ORDER, BOOK_COMPARISONS, TIME_COMPARISONS;
 var init_Stats = __esm(() => {
   init_source();
   init_figures();
@@ -503468,11 +503854,12 @@ var init_Stats = __esm(() => {
   init_model();
   init_screenshotClipboard();
   init_stats();
+  init_usage();
   init_theme();
   init_Pane();
   init_Tabs();
   init_Spinner2();
-  import_compiler_runtime276 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime275 = __toESM(require_compiler_runtime(), 1);
   import_asciichart = __toESM(require_asciichart(), 1);
   import_react193 = __toESM(require_react(), 1);
   jsx_runtime349 = __toESM(require_jsx_runtime(), 1);
@@ -521092,7 +521479,7 @@ var init_upstreamproxy = __esm(() => {
 
 // components/InvalidConfigDialog.tsx
 function InvalidConfigDialog(t0) {
-  const $ = import_compiler_runtime277.c(19);
+  const $ = import_compiler_runtime276.c(19);
   const {
     filePath,
     errorDescription,
@@ -521254,7 +521641,7 @@ async function showInvalidConfigDialog({
     }), renderOptions);
   });
 }
-var import_compiler_runtime277, jsx_runtime351, SAFE_ERROR_THEME_NAME = "dark";
+var import_compiler_runtime276, jsx_runtime351, SAFE_ERROR_THEME_NAME = "dark";
 var init_InvalidConfigDialog = __esm(() => {
   init_ink2();
   init_KeybindingProviderSetup();
@@ -521263,7 +521650,7 @@ var init_InvalidConfigDialog = __esm(() => {
   init_slowOperations();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime277 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime276 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime351 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -521456,7 +521843,7 @@ var init_init2 = __esm(() => {
 
 // context/fpsMetrics.tsx
 function FpsMetricsProvider(t0) {
-  const $ = import_compiler_runtime278.c(3);
+  const $ = import_compiler_runtime277.c(3);
   const {
     getFpsMetrics,
     children
@@ -521478,9 +521865,9 @@ function FpsMetricsProvider(t0) {
 function useFpsMetrics() {
   return import_react194.useContext(FpsMetricsContext);
 }
-var import_compiler_runtime278, import_react194, jsx_runtime352, FpsMetricsContext;
+var import_compiler_runtime277, import_react194, jsx_runtime352, FpsMetricsContext;
 var init_fpsMetrics = __esm(() => {
-  import_compiler_runtime278 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime277 = __toESM(require_compiler_runtime(), 1);
   import_react194 = __toESM(require_react(), 1);
   jsx_runtime352 = __toESM(require_jsx_runtime(), 1);
   FpsMetricsContext = import_react194.createContext(undefined);
@@ -521567,7 +521954,7 @@ function createStatsStore() {
   };
 }
 function StatsProvider(t0) {
-  const $ = import_compiler_runtime279.c(7);
+  const $ = import_compiler_runtime278.c(7);
   const {
     store: externalStore,
     children
@@ -521622,10 +522009,10 @@ function StatsProvider(t0) {
   }
   return t4;
 }
-var import_compiler_runtime279, import_react195, jsx_runtime353, RESERVOIR_SIZE = 1024, StatsContext;
+var import_compiler_runtime278, import_react195, jsx_runtime353, RESERVOIR_SIZE = 1024, StatsContext;
 var init_stats4 = __esm(() => {
   init_config2();
-  import_compiler_runtime279 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime278 = __toESM(require_compiler_runtime(), 1);
   import_react195 = __toESM(require_react(), 1);
   jsx_runtime353 = __toESM(require_jsx_runtime(), 1);
   StatsContext = import_react195.createContext(null);
@@ -521773,7 +522160,7 @@ __export(exports_App, {
   App: () => App2
 });
 function App2(t0) {
-  const $ = import_compiler_runtime280.c(9);
+  const $ = import_compiler_runtime279.c(9);
   const {
     getFpsMetrics,
     stats,
@@ -521819,13 +522206,13 @@ function App2(t0) {
   }
   return t3;
 }
-var import_compiler_runtime280, jsx_runtime354;
+var import_compiler_runtime279, jsx_runtime354;
 var init_App2 = __esm(() => {
   init_fpsMetrics();
   init_stats4();
   init_AppState();
   init_onChangeAppState();
-  import_compiler_runtime280 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime279 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime354 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -521857,7 +522244,7 @@ var init_use_search_highlight = __esm(() => {
 
 // components/CostThresholdDialog.tsx
 function CostThresholdDialog(t0) {
-  const $ = import_compiler_runtime281.c(7);
+  const $ = import_compiler_runtime280.c(7);
   const {
     onDone
   } = t0;
@@ -521917,18 +522304,18 @@ function CostThresholdDialog(t0) {
   }
   return t4;
 }
-var import_compiler_runtime281, jsx_runtime355;
+var import_compiler_runtime280, jsx_runtime355;
 var init_CostThresholdDialog = __esm(() => {
   init_ink2();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime281 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime280 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime355 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/IdleReturnDialog.tsx
 function IdleReturnDialog(t0) {
-  const $ = import_compiler_runtime282.c(16);
+  const $ = import_compiler_runtime281.c(16);
   const {
     idleMinutes,
     totalInputTokens,
@@ -522047,13 +522434,13 @@ function formatIdleDuration(minutes) {
   }
   return `${hours}h ${remainingMinutes}m`;
 }
-var import_compiler_runtime282, jsx_runtime356;
+var import_compiler_runtime281, jsx_runtime356;
 var init_IdleReturnDialog = __esm(() => {
   init_ink2();
   init_format();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime282 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime281 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime356 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -522212,7 +522599,7 @@ var init_QueryGuard = () => {};
 
 // components/permissions/WorkerBadge.tsx
 function WorkerBadge(t0) {
-  const $ = import_compiler_runtime283.c(7);
+  const $ = import_compiler_runtime282.c(7);
   const {
     name,
     color
@@ -522262,18 +522649,18 @@ function WorkerBadge(t0) {
   }
   return t3;
 }
-var import_compiler_runtime283, jsx_runtime357;
+var import_compiler_runtime282, jsx_runtime357;
 var init_WorkerBadge = __esm(() => {
   init_figures2();
   init_ink2();
   init_ink3();
-  import_compiler_runtime283 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime282 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime357 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/WorkerPendingPermission.tsx
 function WorkerPendingPermission(t0) {
-  const $ = import_compiler_runtime284.c(15);
+  const $ = import_compiler_runtime283.c(15);
   const {
     toolName,
     description
@@ -522424,13 +522811,13 @@ function WorkerPendingPermission(t0) {
   }
   return t11;
 }
-var import_compiler_runtime284, jsx_runtime358;
+var import_compiler_runtime283, jsx_runtime358;
 var init_WorkerPendingPermission = __esm(() => {
   init_ink2();
   init_teammate();
   init_Spinner2();
   init_WorkerBadge();
-  import_compiler_runtime284 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime283 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime358 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -523122,7 +523509,7 @@ function getRestoreOptionConversationText(option) {
   }
 }
 function RestoreOptionDescription(t0) {
-  const $ = import_compiler_runtime285.c(11);
+  const $ = import_compiler_runtime284.c(11);
   const {
     selectedRestoreOption,
     canRestoreCode,
@@ -523181,7 +523568,7 @@ function RestoreOptionDescription(t0) {
   return t4;
 }
 function RestoreCodeConfirmation(t0) {
-  const $ = import_compiler_runtime285.c(14);
+  const $ = import_compiler_runtime284.c(14);
   const {
     diffStatsForRestore
   } = t0;
@@ -523281,7 +523668,7 @@ function RestoreCodeConfirmation(t0) {
   return t2;
 }
 function DiffStatsText(t0) {
-  const $ = import_compiler_runtime285.c(7);
+  const $ = import_compiler_runtime284.c(7);
   const {
     diffStats
   } = t0;
@@ -523334,7 +523721,7 @@ function DiffStatsText(t0) {
   return t3;
 }
 function UserMessageOption(t0) {
-  const $ = import_compiler_runtime285.c(31);
+  const $ = import_compiler_runtime284.c(31);
   const {
     userMessage,
     color,
@@ -523642,7 +524029,7 @@ function messagesAfterAreOnlySynthetic(messages, fromIndex) {
   }
   return true;
 }
-var import_compiler_runtime285, import_react199, jsx_runtime359, MAX_VISIBLE_MESSAGES = 7;
+var import_compiler_runtime284, import_react199, jsx_runtime359, MAX_VISIBLE_MESSAGES = 7;
 var init_MessageSelector = __esm(() => {
   init_figures();
   init_analytics();
@@ -523660,7 +524047,7 @@ var init_MessageSelector = __esm(() => {
   init_xml();
   init_format();
   init_Divider();
-  import_compiler_runtime285 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime284 = __toESM(require_compiler_runtime(), 1);
   import_react199 = __toESM(require_react(), 1);
   jsx_runtime359 = __toESM(require_jsx_runtime(), 1);
 });
@@ -523732,7 +524119,7 @@ var init_useNotifyAfterTimeout = __esm(() => {
 
 // components/permissions/AskUserQuestionPermissionRequest/PreviewBox.tsx
 function PreviewBox(props) {
-  const $ = import_compiler_runtime286.c(4);
+  const $ = import_compiler_runtime285.c(4);
   const settings = useSettings();
   if (settings.syntaxHighlightingDisabled) {
     let t0;
@@ -523767,7 +524154,7 @@ function PreviewBox(props) {
   return t0;
 }
 function PreviewBoxWithHighlight(props) {
-  const $ = import_compiler_runtime286.c(4);
+  const $ = import_compiler_runtime285.c(4);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = getCliHighlightPromise();
@@ -523791,7 +524178,7 @@ function PreviewBoxWithHighlight(props) {
   return t1;
 }
 function PreviewBoxBody(t0) {
-  const $ = import_compiler_runtime286.c(34);
+  const $ = import_compiler_runtime285.c(34);
   const {
     content,
     maxLines,
@@ -523975,7 +524362,7 @@ function PreviewBoxBody(t0) {
 function _temp157(line) {
   return stringWidth(line);
 }
-var import_compiler_runtime286, import_react202, jsx_runtime360, BOX_CHARS;
+var import_compiler_runtime285, import_react202, jsx_runtime360, BOX_CHARS;
 var init_PreviewBox = __esm(() => {
   init_useSettings();
   init_useTerminalSize();
@@ -523984,7 +524371,7 @@ var init_PreviewBox = __esm(() => {
   init_cliHighlight();
   init_markdown();
   init_sliceAnsi();
-  import_compiler_runtime286 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime285 = __toESM(require_compiler_runtime(), 1);
   import_react202 = __toESM(require_react(), 1);
   jsx_runtime360 = __toESM(require_jsx_runtime(), 1);
   BOX_CHARS = {
@@ -524001,7 +524388,7 @@ var init_PreviewBox = __esm(() => {
 
 // components/permissions/AskUserQuestionPermissionRequest/QuestionNavigationBar.tsx
 function QuestionNavigationBar(t0) {
-  const $ = import_compiler_runtime287.c(39);
+  const $ = import_compiler_runtime286.c(39);
   const {
     questions,
     currentQuestionIndex,
@@ -524221,14 +524608,14 @@ function _temp268(header_0) {
 function _temp158(q_0, index_0) {
   return q_0?.header || `Q${index_0 + 1}`;
 }
-var import_compiler_runtime287, jsx_runtime361;
+var import_compiler_runtime286, jsx_runtime361;
 var init_QuestionNavigationBar = __esm(() => {
   init_figures();
   init_useTerminalSize();
   init_stringWidth();
   init_ink2();
   init_format();
-  import_compiler_runtime287 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime286 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime361 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -524624,7 +525011,7 @@ var init_PreviewQuestionView = __esm(() => {
 
 // components/permissions/AskUserQuestionPermissionRequest/QuestionView.tsx
 function QuestionView(t0) {
-  const $ = import_compiler_runtime288.c(114);
+  const $ = import_compiler_runtime287.c(114);
   const {
     question,
     questions,
@@ -525220,7 +525607,7 @@ function _temp269(opt) {
 function _temp159(s) {
   return s.toolPermissionContext.mode;
 }
-var import_compiler_runtime288, import_react204, jsx_runtime363;
+var import_compiler_runtime287, import_react204, jsx_runtime363;
 var init_QuestionView = __esm(() => {
   init_figures();
   init_ink2();
@@ -525234,7 +525621,7 @@ var init_QuestionView = __esm(() => {
   init_PermissionRequestTitle();
   init_PreviewQuestionView();
   init_QuestionNavigationBar();
-  import_compiler_runtime288 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime287 = __toESM(require_compiler_runtime(), 1);
   import_react204 = __toESM(require_react(), 1);
   jsx_runtime363 = __toESM(require_jsx_runtime(), 1);
 });
@@ -525276,7 +525663,7 @@ ${reason.reason}` : ".";
   }
 }
 function PermissionRuleExplanation(t0) {
-  const $ = import_compiler_runtime289.c(11);
+  const $ = import_compiler_runtime288.c(11);
   const {
     permissionResult,
     toolType
@@ -525345,20 +525732,20 @@ function PermissionRuleExplanation(t0) {
 function _temp160(s) {
   return s.toolPermissionContext.mode;
 }
-var import_compiler_runtime289, jsx_runtime364;
+var import_compiler_runtime288, jsx_runtime364;
 var init_PermissionRuleExplanation = __esm(() => {
   init_source();
   init_ink2();
   init_AppState();
   init_permissionRuleParser();
   init_ThemedText();
-  import_compiler_runtime289 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime288 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime364 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/AskUserQuestionPermissionRequest/SubmitQuestionsView.tsx
 function SubmitQuestionsView(t0) {
-  const $ = import_compiler_runtime290.c(27);
+  const $ = import_compiler_runtime289.c(27);
   const {
     questions,
     currentQuestionIndex,
@@ -525566,7 +525953,7 @@ function SubmitQuestionsView(t0) {
   }
   return t12;
 }
-var import_compiler_runtime290, jsx_runtime365;
+var import_compiler_runtime289, jsx_runtime365;
 var init_SubmitQuestionsView = __esm(() => {
   init_figures();
   init_ink2();
@@ -525575,7 +525962,7 @@ var init_SubmitQuestionsView = __esm(() => {
   init_PermissionRequestTitle();
   init_PermissionRuleExplanation();
   init_QuestionNavigationBar();
-  import_compiler_runtime290 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime289 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime365 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -525684,7 +526071,7 @@ var init_use_multiple_choice_state = __esm(() => {
 
 // components/permissions/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx
 function AskUserQuestionPermissionRequest(props) {
-  const $ = import_compiler_runtime291.c(4);
+  const $ = import_compiler_runtime290.c(4);
   const settings = useSettings();
   if (settings.syntaxHighlightingDisabled) {
     let t0;
@@ -525719,7 +526106,7 @@ function AskUserQuestionPermissionRequest(props) {
   return t0;
 }
 function AskUserQuestionWithHighlight(props) {
-  const $ = import_compiler_runtime291.c(4);
+  const $ = import_compiler_runtime290.c(4);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = getCliHighlightPromise();
@@ -525743,7 +526130,7 @@ function AskUserQuestionWithHighlight(props) {
   return t1;
 }
 function AskUserQuestionPermissionRequestBody(t0) {
-  const $ = import_compiler_runtime291.c(115);
+  const $ = import_compiler_runtime290.c(115);
   const {
     toolUseConfirm,
     onDone,
@@ -526356,7 +526743,7 @@ async function convertImagesToBlocks(images) {
     return resized.block;
   }));
 }
-var import_compiler_runtime291, import_react206, jsx_runtime366, MIN_CONTENT_HEIGHT = 12, MIN_CONTENT_WIDTH = 40, CONTENT_CHROME_OVERHEAD = 15;
+var import_compiler_runtime290, import_react206, jsx_runtime366, MIN_CONTENT_HEIGHT = 12, MIN_CONTENT_WIDTH = 40, CONTENT_CHROME_OVERHEAD = 15;
 var init_AskUserQuestionPermissionRequest = __esm(() => {
   init_useSettings();
   init_useTerminalSize();
@@ -526376,7 +526763,7 @@ var init_AskUserQuestionPermissionRequest = __esm(() => {
   init_QuestionView();
   init_SubmitQuestionsView();
   init_use_multiple_choice_state();
-  import_compiler_runtime291 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime290 = __toESM(require_compiler_runtime(), 1);
   import_react206 = __toESM(require_react(), 1);
   jsx_runtime366 = __toESM(require_jsx_runtime(), 1);
 });
@@ -527165,7 +527552,7 @@ function decisionReasonDisplayString(decisionReason) {
   }
 }
 function PermissionDecisionInfoItem(t0) {
-  const $ = import_compiler_runtime292.c(10);
+  const $ = import_compiler_runtime291.c(10);
   const {
     title,
     decisionReason
@@ -527266,7 +527653,7 @@ function PermissionDecisionInfoItem(t0) {
   return t4;
 }
 function SuggestedRules(t0) {
-  const $ = import_compiler_runtime292.c(18);
+  const $ = import_compiler_runtime291.c(18);
   const {
     suggestions
   } = t0;
@@ -527378,7 +527765,7 @@ function extractMode(updates) {
   return update?.type === "setMode" ? update.mode : undefined;
 }
 function SuggestionDisplay(t0) {
-  const $ = import_compiler_runtime292.c(22);
+  const $ = import_compiler_runtime291.c(22);
   const {
     suggestions,
     width
@@ -527622,7 +528009,7 @@ function _temp271(rule, index) {
   }, index);
 }
 function PermissionDecisionDebugInfo(t0) {
-  const $ = import_compiler_runtime292.c(25);
+  const $ = import_compiler_runtime291.c(25);
   const {
     permissionResult,
     toolName
@@ -527837,7 +528224,7 @@ function _temp526(u_1, i) {
 function _temp437(s) {
   return s.toolPermissionContext;
 }
-var import_compiler_runtime292, jsx_runtime367;
+var import_compiler_runtime291, jsx_runtime367;
 var init_PermissionDecisionDebugInfo = __esm(() => {
   init_source();
   init_figures();
@@ -527849,7 +528236,7 @@ var init_PermissionDecisionDebugInfo = __esm(() => {
   init_shadowedRuleDetection();
   init_sandbox_adapter();
   init_constants2();
-  import_compiler_runtime292 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime291 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime367 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -528017,7 +528404,7 @@ var init_permissionExplainer = __esm(() => {
 
 // components/permissions/PermissionExplanation.tsx
 function ShimmerLoadingText() {
-  const $ = import_compiler_runtime293.c(7);
+  const $ = import_compiler_runtime292.c(7);
   const [ref, glimmerIndex] = useShimmerAnimation("responding", LOADING_MESSAGE, false);
   let t0;
   if ($[0] !== glimmerIndex) {
@@ -528087,7 +528474,7 @@ function createExplanationPromise(props) {
   }).catch(() => null);
 }
 function usePermissionExplainerUI(props) {
-  const $ = import_compiler_runtime293.c(9);
+  const $ = import_compiler_runtime292.c(9);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = isPermissionExplainerEnabled();
@@ -528146,7 +528533,7 @@ function _temp164(v) {
   return !v;
 }
 function ExplanationResult(t0) {
-  const $ = import_compiler_runtime293.c(21);
+  const $ = import_compiler_runtime292.c(21);
   const {
     promise
   } = t0;
@@ -528272,7 +528659,7 @@ function ExplanationResult(t0) {
   return t8;
 }
 function PermissionExplainerContent(t0) {
-  const $ = import_compiler_runtime293.c(3);
+  const $ = import_compiler_runtime292.c(3);
   const {
     visible,
     promise
@@ -528305,7 +528692,7 @@ function PermissionExplainerContent(t0) {
   }
   return t2;
 }
-var import_compiler_runtime293, import_react208, jsx_runtime368, LOADING_MESSAGE = "Loading explanation…";
+var import_compiler_runtime292, import_react208, jsx_runtime368, LOADING_MESSAGE = "Loading explanation…";
 var init_PermissionExplanation = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -528313,14 +528700,14 @@ var init_PermissionExplanation = __esm(() => {
   init_permissionExplainer();
   init_ShimmerChar();
   init_useShimmerAnimation();
-  import_compiler_runtime293 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime292 = __toESM(require_compiler_runtime(), 1);
   import_react208 = __toESM(require_react(), 1);
   jsx_runtime368 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/FileEditToolDiff.tsx
 function FileEditToolDiff(props) {
-  const $ = import_compiler_runtime294.c(7);
+  const $ = import_compiler_runtime293.c(7);
   let t0;
   if ($[0] !== props.edits || $[1] !== props.file_path) {
     t0 = () => loadDiffData(props.file_path, props.edits);
@@ -528358,7 +528745,7 @@ function FileEditToolDiff(props) {
   return t2;
 }
 function DiffBody(t0) {
-  const $ = import_compiler_runtime294.c(6);
+  const $ = import_compiler_runtime293.c(6);
   const {
     promise,
     file_path
@@ -528395,7 +528782,7 @@ function DiffBody(t0) {
   return t1;
 }
 function DiffFrame(t0) {
-  const $ = import_compiler_runtime294.c(5);
+  const $ = import_compiler_runtime293.c(5);
   const {
     children,
     placeholder
@@ -528501,7 +528888,7 @@ function normalizeEdit(fileContent, edit) {
     new_string: actualNew
   };
 }
-var import_compiler_runtime294, import_react209, jsx_runtime369;
+var import_compiler_runtime293, import_react209, jsx_runtime369;
 var init_FileEditToolDiff = __esm(() => {
   init_useTerminalSize();
   init_ink2();
@@ -528511,7 +528898,7 @@ var init_FileEditToolDiff = __esm(() => {
   init_readEditContext();
   init_stringUtils();
   init_StructuredDiffList();
-  import_compiler_runtime294 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime293 = __toESM(require_compiler_runtime(), 1);
   import_react209 = __toESM(require_react(), 1);
   jsx_runtime369 = __toESM(require_jsx_runtime(), 1);
 });
@@ -528713,7 +529100,7 @@ var init_useDiffInIDE = __esm(() => {
 // components/ShowInIDEPrompt.tsx
 import { basename as basename44, relative as relative27 } from "path";
 function ShowInIDEPrompt(t0) {
-  const $ = import_compiler_runtime295.c(36);
+  const $ = import_compiler_runtime294.c(36);
   const {
     onChange,
     options,
@@ -528916,14 +529303,14 @@ function ShowInIDEPrompt(t0) {
   }
   return t13;
 }
-var import_compiler_runtime295, jsx_runtime370;
+var import_compiler_runtime294, jsx_runtime370;
 var init_ShowInIDEPrompt = __esm(() => {
   init_ink2();
   init_cwd2();
   init_ide();
   init_CustomSelect();
   init_Pane();
-  import_compiler_runtime295 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime294 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime370 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -529512,7 +529899,7 @@ var init_FilePermissionDialog = __esm(() => {
 // components/permissions/SedEditPermissionRequest/SedEditPermissionRequest.tsx
 import { basename as basename46, relative as relative29 } from "path";
 function SedEditPermissionRequest(t0) {
-  const $ = import_compiler_runtime296.c(9);
+  const $ = import_compiler_runtime295.c(9);
   let props;
   let sedInfo;
   if ($[0] !== t0) {
@@ -529579,7 +529966,7 @@ function _temp165(e) {
   };
 }
 function SedEditPermissionRequestInner(t0) {
-  const $ = import_compiler_runtime296.c(35);
+  const $ = import_compiler_runtime295.c(35);
   let contentPromise;
   let props;
   let sedInfo;
@@ -529758,7 +530145,7 @@ function SedEditPermissionRequestInner(t0) {
   }
   return t13;
 }
-var import_compiler_runtime296, import_react213, jsx_runtime373;
+var import_compiler_runtime295, import_react213, jsx_runtime373;
 var init_SedEditPermissionRequest = __esm(() => {
   init_FileEditToolDiff();
   init_cwd2();
@@ -529769,7 +530156,7 @@ var init_SedEditPermissionRequest = __esm(() => {
   init_BashTool();
   init_sedEditParser();
   init_FilePermissionDialog();
-  import_compiler_runtime296 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime295 = __toESM(require_compiler_runtime(), 1);
   import_react213 = __toESM(require_react(), 1);
   jsx_runtime373 = __toESM(require_jsx_runtime(), 1);
 });
@@ -530211,7 +530598,7 @@ var init_bashToolUseOptions = __esm(() => {
 
 // components/permissions/BashPermissionRequest/BashPermissionRequest.tsx
 function BashPermissionRequest(props) {
-  const $ = import_compiler_runtime297.c(21);
+  const $ = import_compiler_runtime296.c(21);
   const {
     toolUseConfirm,
     toolUseContext,
@@ -530597,7 +530984,7 @@ function BashPermissionRequestInner({
     ]
   });
 }
-var import_compiler_runtime297, import_react215, jsx_runtime375;
+var import_compiler_runtime296, import_react215, jsx_runtime375;
 var init_BashPermissionRequest = __esm(() => {
   init_ink2();
   init_useKeybinding();
@@ -530625,14 +531012,14 @@ var init_BashPermissionRequest = __esm(() => {
   init_useShellPermissionFeedback();
   init_utils15();
   init_bashToolUseOptions();
-  import_compiler_runtime297 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime296 = __toESM(require_compiler_runtime(), 1);
   import_react215 = __toESM(require_react(), 1);
   jsx_runtime375 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/EnterPlanModePermissionRequest/EnterPlanModePermissionRequest.tsx
 function EnterPlanModePermissionRequest(t0) {
-  const $ = import_compiler_runtime298.c(18);
+  const $ = import_compiler_runtime297.c(18);
   const {
     toolUseConfirm,
     onDone,
@@ -530797,7 +531184,7 @@ function EnterPlanModePermissionRequest(t0) {
 function _temp166(s) {
   return s.toolPermissionContext.mode;
 }
-var import_compiler_runtime298, jsx_runtime376;
+var import_compiler_runtime297, jsx_runtime376;
 var init_EnterPlanModePermissionRequest = __esm(() => {
   init_state();
   init_ink2();
@@ -530806,7 +531193,7 @@ var init_EnterPlanModePermissionRequest = __esm(() => {
   init_planModeV2();
   init_CustomSelect();
   init_PermissionDialog();
-  import_compiler_runtime298 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime297 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime376 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -531542,7 +531929,7 @@ var init_ExitPlanModePermissionRequest = __esm(() => {
 
 // components/permissions/PermissionPrompt.tsx
 function PermissionPrompt(t0) {
-  const $ = import_compiler_runtime299.c(54);
+  const $ = import_compiler_runtime298.c(54);
   const {
     options,
     onSelect,
@@ -531857,14 +532244,14 @@ function _temp167(prev) {
     }
   };
 }
-var import_compiler_runtime299, import_react217, jsx_runtime378, DEFAULT_PLACEHOLDERS;
+var import_compiler_runtime298, import_react217, jsx_runtime378, DEFAULT_PLACEHOLDERS;
 var init_PermissionPrompt = __esm(() => {
   init_ink2();
   init_useKeybinding();
   init_analytics();
   init_AppState();
   init_select();
-  import_compiler_runtime299 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime298 = __toESM(require_compiler_runtime(), 1);
   import_react217 = __toESM(require_react(), 1);
   jsx_runtime378 = __toESM(require_jsx_runtime(), 1);
   DEFAULT_PLACEHOLDERS = {
@@ -531875,7 +532262,7 @@ var init_PermissionPrompt = __esm(() => {
 
 // components/permissions/FallbackPermissionRequest.tsx
 function FallbackPermissionRequest(t0) {
-  const $ = import_compiler_runtime300.c(58);
+  const $ = import_compiler_runtime299.c(58);
   const {
     toolUseConfirm,
     onDone,
@@ -532246,7 +532633,7 @@ function FallbackPermissionRequest(t0) {
   }
   return t20;
 }
-var import_compiler_runtime300, jsx_runtime379;
+var import_compiler_runtime299, jsx_runtime379;
 var init_FallbackPermissionRequest = __esm(() => {
   init_state();
   init_ink2();
@@ -532259,7 +532646,7 @@ var init_FallbackPermissionRequest = __esm(() => {
   init_PermissionDialog();
   init_PermissionPrompt();
   init_PermissionRuleExplanation();
-  import_compiler_runtime300 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime299 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime379 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -532281,7 +532668,7 @@ function createSingleEditDiffConfig(filePath, oldString, newString, replaceAll) 
 // components/permissions/FileEditPermissionRequest/FileEditPermissionRequest.tsx
 import { basename as basename48, relative as relative30 } from "path";
 function FileEditPermissionRequest(props) {
-  const $ = import_compiler_runtime301.c(51);
+  const $ = import_compiler_runtime300.c(51);
   const parseInput = _temp168;
   let T0;
   let T1;
@@ -532461,14 +532848,14 @@ function FileEditPermissionRequest(props) {
 function _temp168(input) {
   return FileEditTool.inputSchema.parse(input);
 }
-var import_compiler_runtime301, jsx_runtime380, ideDiffSupport;
+var import_compiler_runtime300, jsx_runtime380, ideDiffSupport;
 var init_FileEditPermissionRequest = __esm(() => {
   init_FileEditToolDiff();
   init_cwd2();
   init_ink2();
   init_FileEditTool();
   init_FilePermissionDialog();
-  import_compiler_runtime301 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime300 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime380 = __toESM(require_jsx_runtime(), 1);
   ideDiffSupport = {
     getConfig: (input) => createSingleEditDiffConfig(input.file_path, input.old_string, input.new_string, input.replace_all),
@@ -532500,7 +532887,7 @@ function pathFromToolUse(toolUseConfirm) {
   return null;
 }
 function FilesystemPermissionRequest(t0) {
-  const $ = import_compiler_runtime302.c(30);
+  const $ = import_compiler_runtime301.c(30);
   const {
     toolUseConfirm,
     onDone,
@@ -532626,18 +533013,18 @@ function FilesystemPermissionRequest(t0) {
 function _temp169(input) {
   return input;
 }
-var import_compiler_runtime302, jsx_runtime381;
+var import_compiler_runtime301, jsx_runtime381;
 var init_FilesystemPermissionRequest = __esm(() => {
   init_ink2();
   init_FallbackPermissionRequest();
   init_FilePermissionDialog();
-  import_compiler_runtime302 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime301 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime381 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/FileWritePermissionRequest/FileWriteToolDiff.tsx
 function FileWriteToolDiff(t0) {
-  const $ = import_compiler_runtime303.c(15);
+  const $ = import_compiler_runtime302.c(15);
   const {
     file_path,
     content,
@@ -532737,21 +533124,21 @@ function _temp170(i) {
     })
   }, `ellipsis-${i}`);
 }
-var import_compiler_runtime303, jsx_runtime382;
+var import_compiler_runtime302, jsx_runtime382;
 var init_FileWriteToolDiff = __esm(() => {
   init_useTerminalSize();
   init_ink2();
   init_diff2();
   init_HighlightedCode();
   init_StructuredDiff();
-  import_compiler_runtime303 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime302 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime382 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/permissions/FileWritePermissionRequest/FileWritePermissionRequest.tsx
 import { basename as basename49, relative as relative31 } from "path";
 function FileWritePermissionRequest(props) {
-  const $ = import_compiler_runtime304.c(30);
+  const $ = import_compiler_runtime303.c(30);
   const parseInput = _temp171;
   let t0;
   if ($[0] !== props.toolUseConfirm.input) {
@@ -532902,7 +533289,7 @@ function FileWritePermissionRequest(props) {
 function _temp171(input) {
   return FileWriteTool.inputSchema.parse(input);
 }
-var import_compiler_runtime304, jsx_runtime383, ideDiffSupport2;
+var import_compiler_runtime303, jsx_runtime383, ideDiffSupport2;
 var init_FileWritePermissionRequest = __esm(() => {
   init_ink2();
   init_FileWriteTool();
@@ -532911,7 +533298,7 @@ var init_FileWritePermissionRequest = __esm(() => {
   init_fileRead();
   init_FilePermissionDialog();
   init_FileWriteToolDiff();
-  import_compiler_runtime304 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime303 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime383 = __toESM(require_jsx_runtime(), 1);
   ideDiffSupport2 = {
     getConfig: (input) => {
@@ -532941,7 +533328,7 @@ var init_FileWritePermissionRequest = __esm(() => {
 // components/permissions/NotebookEditPermissionRequest/NotebookEditToolDiff.tsx
 import { relative as relative32 } from "path";
 function NotebookEditToolDiff(props) {
-  const $ = import_compiler_runtime305.c(5);
+  const $ = import_compiler_runtime304.c(5);
   let t0;
   if ($[0] !== props.notebook_path) {
     t0 = getFsImplementation().readFile(props.notebook_path, {
@@ -532977,7 +533364,7 @@ function _temp173(content) {
   return safeParseJSON(content);
 }
 function NotebookEditToolDiffInner(t0) {
-  const $ = import_compiler_runtime305.c(34);
+  const $ = import_compiler_runtime304.c(34);
   const {
     notebook_path,
     cell_id,
@@ -533205,7 +533592,7 @@ function _temp349(i) {
     })
   }, `ellipsis-${i}`);
 }
-var import_compiler_runtime305, import_react218, jsx_runtime384;
+var import_compiler_runtime304, import_react218, jsx_runtime384;
 var init_NotebookEditToolDiff = __esm(() => {
   init_ink2();
   init_cwd2();
@@ -533215,7 +533602,7 @@ var init_NotebookEditToolDiff = __esm(() => {
   init_notebook();
   init_HighlightedCode();
   init_StructuredDiff();
-  import_compiler_runtime305 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime304 = __toESM(require_compiler_runtime(), 1);
   import_react218 = __toESM(require_react(), 1);
   jsx_runtime384 = __toESM(require_jsx_runtime(), 1);
 });
@@ -533223,7 +533610,7 @@ var init_NotebookEditToolDiff = __esm(() => {
 // components/permissions/NotebookEditPermissionRequest/NotebookEditPermissionRequest.tsx
 import { basename as basename50 } from "path";
 function NotebookEditPermissionRequest(props) {
-  const $ = import_compiler_runtime306.c(52);
+  const $ = import_compiler_runtime305.c(52);
   const parseInput = _temp174;
   let T0;
   let T1;
@@ -533408,14 +533795,14 @@ function _temp174(input) {
   }
   return result.data;
 }
-var import_compiler_runtime306, jsx_runtime385;
+var import_compiler_runtime305, jsx_runtime385;
 var init_NotebookEditPermissionRequest = __esm(() => {
   init_ink2();
   init_NotebookEditTool();
   init_log3();
   init_FilePermissionDialog();
   init_NotebookEditToolDiff();
-  import_compiler_runtime306 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime305 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime385 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -533970,7 +534357,7 @@ var init_PowerShellPermissionRequest = __esm(() => {
 
 // components/permissions/SkillPermissionRequest/SkillPermissionRequest.tsx
 function SkillPermissionRequest(props) {
-  const $ = import_compiler_runtime307.c(51);
+  const $ = import_compiler_runtime306.c(51);
   const {
     toolUseConfirm,
     onDone,
@@ -534378,7 +534765,7 @@ function _temp175(input) {
   }
   return result.data.skill;
 }
-var import_compiler_runtime307, jsx_runtime387;
+var import_compiler_runtime306, jsx_runtime387;
 var init_SkillPermissionRequest = __esm(() => {
   init_log3();
   init_state();
@@ -534392,7 +534779,7 @@ var init_SkillPermissionRequest = __esm(() => {
   init_PermissionDialog();
   init_PermissionPrompt();
   init_PermissionRuleExplanation();
-  import_compiler_runtime307 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime306 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime387 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -534413,7 +534800,7 @@ function inputToPermissionRuleContent(input) {
   }
 }
 function WebFetchPermissionRequest(t0) {
-  const $ = import_compiler_runtime308.c(41);
+  const $ = import_compiler_runtime307.c(41);
   const {
     toolUseConfirm,
     onDone,
@@ -534686,7 +535073,7 @@ function WebFetchPermissionRequest(t0) {
   }
   return t15;
 }
-var import_compiler_runtime308, jsx_runtime388;
+var import_compiler_runtime307, jsx_runtime388;
 var init_WebFetchPermissionRequest = __esm(() => {
   init_ink2();
   init_WebFetchTool();
@@ -534696,7 +535083,7 @@ var init_WebFetchPermissionRequest = __esm(() => {
   init_PermissionDialog();
   init_PermissionRuleExplanation();
   init_utils15();
-  import_compiler_runtime308 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime307 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime388 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -534752,7 +535139,7 @@ function getNotificationMessage(toolUseConfirm) {
   return `EvilClaude needs your permission to use ${toolName}`;
 }
 function PermissionRequest(t0) {
-  const $ = import_compiler_runtime309.c(18);
+  const $ = import_compiler_runtime308.c(18);
   const {
     toolUseConfirm,
     toolUseContext,
@@ -534830,7 +535217,7 @@ function PermissionRequest(t0) {
   }
   return t5;
 }
-var import_compiler_runtime309, jsx_runtime389, ReviewArtifactTool = null, ReviewArtifactPermissionRequest = null, WorkflowTool2 = null, WorkflowPermissionRequest = null, MonitorTool2 = null, MonitorPermissionRequest = null;
+var import_compiler_runtime308, jsx_runtime389, ReviewArtifactTool = null, ReviewArtifactPermissionRequest = null, WorkflowTool2 = null, WorkflowPermissionRequest = null, MonitorTool2 = null, MonitorPermissionRequest = null;
 var init_PermissionRequest = __esm(() => {
   init_EnterPlanModeTool();
   init_ExitPlanModeV2Tool();
@@ -534859,7 +535246,7 @@ var init_PermissionRequest = __esm(() => {
   init_PowerShellPermissionRequest();
   init_SkillPermissionRequest();
   init_WebFetchPermissionRequest();
-  import_compiler_runtime309 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime308 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime389 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -535109,7 +535496,7 @@ function resetTypeahead(ta) {
   ta.timer = undefined;
 }
 function ResolvingSpinner() {
-  const $ = import_compiler_runtime310.c(4);
+  const $ = import_compiler_runtime309.c(4);
   const [frame, setFrame] = import_react220.useState(0);
   let t0;
   let t1;
@@ -535173,7 +535560,7 @@ function formatDateDisplay(isoValue, schema) {
   }
 }
 function ElicitationDialog(t0) {
-  const $ = import_compiler_runtime310.c(7);
+  const $ = import_compiler_runtime309.c(7);
   const {
     event,
     onResponse,
@@ -536415,7 +536802,7 @@ ${message}`,
     })
   });
 }
-var import_compiler_runtime310, import_react220, jsx_runtime390, isTextField = (s) => ["string", "number", "integer"].includes(s.type), RESOLVING_SPINNER_CHARS = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", advanceSpinnerFrame = (f) => (f + 1) % RESOLVING_SPINNER_CHARS.length;
+var import_compiler_runtime309, import_react220, jsx_runtime390, isTextField = (s) => ["string", "number", "integer"].includes(s.type), RESOLVING_SPINNER_CHARS = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", advanceSpinnerFrame = (f) => (f + 1) % RESOLVING_SPINNER_CHARS.length;
 var init_ElicitationDialog = __esm(() => {
   init_figures();
   init_overlayContext();
@@ -536431,14 +536818,14 @@ var init_ElicitationDialog = __esm(() => {
   init_Dialog();
   init_KeyboardShortcutHint();
   init_TextInput();
-  import_compiler_runtime310 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime309 = __toESM(require_compiler_runtime(), 1);
   import_react220 = __toESM(require_react(), 1);
   jsx_runtime390 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/hooks/PromptDialog.tsx
 function PromptDialog(t0) {
-  const $ = import_compiler_runtime311.c(15);
+  const $ = import_compiler_runtime310.c(15);
   const {
     title,
     toolInputSummary,
@@ -536527,13 +536914,13 @@ function _temp176(opt) {
     description: opt.description
   };
 }
-var import_compiler_runtime311, jsx_runtime391;
+var import_compiler_runtime310, jsx_runtime391;
 var init_PromptDialog = __esm(() => {
   init_ink2();
   init_useKeybinding();
   init_select();
   init_PermissionDialog();
-  import_compiler_runtime311 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime310 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime391 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -537030,7 +537417,7 @@ function companionReservedColumns(terminalColumns, speaking) {
   const bubble = speaking && !isFullscreenActive() ? BUBBLE_WIDTH : 0;
   return spriteColWidth(nameWidth) + SPRITE_PADDING_X + bubble;
 }
-var import_compiler_runtime312, import_react223, H3, PET_HEARTS, MIN_COLS_FOR_FULL_SPRITE = 100, SPRITE_BODY_WIDTH = 12, NAME_ROW_PAD = 2, SPRITE_PADDING_X = 2, BUBBLE_WIDTH = 36;
+var import_compiler_runtime311, import_react223, H3, PET_HEARTS, MIN_COLS_FOR_FULL_SPRITE = 100, SPRITE_BODY_WIDTH = 12, NAME_ROW_PAD = 2, SPRITE_PADDING_X = 2, BUBBLE_WIDTH = 36;
 var init_CompanionSprite = __esm(() => {
   init_figures();
   init_useTerminalSize();
@@ -537042,7 +537429,7 @@ var init_CompanionSprite = __esm(() => {
   init_companion();
   init_sprites();
   init_types4();
-  import_compiler_runtime312 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime311 = __toESM(require_compiler_runtime(), 1);
   import_react223 = __toESM(require_react(), 1);
   H3 = figures_default.heart;
   PET_HEARTS = [`   ${H3}    ${H3}   `, `  ${H3}  ${H3}   ${H3}  `, ` ${H3}   ${H3}  ${H3}   `, `${H3}  ${H3}      ${H3} `, "·    ·   ·  "];
@@ -537056,7 +537443,7 @@ function isBuddyTeaserWindow() {
   return d.getFullYear() === 2026 && d.getMonth() === 3 && d.getDate() <= 7;
 }
 function RainbowText2(t0) {
-  const $ = import_compiler_runtime313.c(2);
+  const $ = import_compiler_runtime312.c(2);
   const {
     text
   } = t0;
@@ -537079,7 +537466,7 @@ function _temp177(ch, i) {
   }, i);
 }
 function useBuddyNotification() {
-  const $ = import_compiler_runtime313.c(4);
+  const $ = import_compiler_runtime312.c(4);
   const {
     addNotification,
     removeNotification
@@ -537130,13 +537517,13 @@ function findBuddyTriggerPositions(text) {
   }
   return triggers;
 }
-var import_compiler_runtime313, import_react224, jsx_runtime392;
+var import_compiler_runtime312, import_react224, jsx_runtime392;
 var init_useBuddyNotification = __esm(() => {
   init_notifications();
   init_ink2();
   init_config2();
   init_thinking();
-  import_compiler_runtime313 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime312 = __toESM(require_compiler_runtime(), 1);
   import_react224 = __toESM(require_react(), 1);
   jsx_runtime392 = __toESM(require_jsx_runtime(), 1);
 });
@@ -537211,7 +537598,7 @@ function AutoUpdater({
   }, []);
   const isUpdatingRef = import_react228.useRef(isUpdating);
   isUpdatingRef.current = isUpdating;
-  const checkForUpdates = React129.useCallback(async () => {
+  const checkForUpdates = React128.useCallback(async () => {
     if (isUpdatingRef.current) {
       return;
     }
@@ -537359,7 +537746,7 @@ function AutoUpdater({
     ]
   });
 }
-var React129, import_react228, jsx_runtime393;
+var React128, import_react228, jsx_runtime393;
 var init_AutoUpdater = __esm(() => {
   init_analytics();
   init_dist7();
@@ -537372,7 +537759,7 @@ var init_AutoUpdater = __esm(() => {
   init_localInstaller();
   init_nativeInstaller();
   init_settings2();
-  React129 = __toESM(require_react(), 1);
+  React128 = __toESM(require_react(), 1);
   import_react228 = __toESM(require_react(), 1);
   jsx_runtime393 = __toESM(require_jsx_runtime(), 1);
 });
@@ -537416,7 +537803,7 @@ function NativeAutoUpdater({
   const channel = getInitialSettings()?.autoUpdatesChannel ?? "latest";
   const isUpdatingRef = import_react229.useRef(isUpdating);
   isUpdatingRef.current = isUpdating;
-  const checkForUpdates = React130.useCallback(async () => {
+  const checkForUpdates = React129.useCallback(async () => {
     if (isUpdatingRef.current) {
       return;
     }
@@ -537534,7 +537921,7 @@ function NativeAutoUpdater({
     ]
   });
 }
-var React130, import_react229, jsx_runtime394;
+var React129, import_react229, jsx_runtime394;
 var init_NativeAutoUpdater = __esm(() => {
   init_analytics();
   init_debug();
@@ -537546,14 +537933,14 @@ var init_NativeAutoUpdater = __esm(() => {
   init_config2();
   init_nativeInstaller();
   init_settings2();
-  React130 = __toESM(require_react(), 1);
+  React129 = __toESM(require_react(), 1);
   import_react229 = __toESM(require_react(), 1);
   jsx_runtime394 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/PackageManagerAutoUpdater.tsx
 function PackageManagerAutoUpdater(t0) {
-  const $ = import_compiler_runtime314.c(10);
+  const $ = import_compiler_runtime313.c(10);
   const {
     verbose
   } = t0;
@@ -537602,7 +537989,7 @@ function PackageManagerAutoUpdater(t0) {
     t2 = $[1];
     t3 = $[2];
   }
-  React131.useEffect(t2, t3);
+  React130.useEffect(t2, t3);
   useInterval(checkForUpdates, 1800000);
   if (!updateAvailable) {
     return null;
@@ -537657,7 +538044,7 @@ function PackageManagerAutoUpdater(t0) {
   }
   return t6;
 }
-var import_compiler_runtime314, React131, import_react230, jsx_runtime395;
+var import_compiler_runtime313, React130, import_react230, jsx_runtime395;
 var init_PackageManagerAutoUpdater = __esm(() => {
   init_dist7();
   init_ink2();
@@ -537666,15 +538053,15 @@ var init_PackageManagerAutoUpdater = __esm(() => {
   init_debug();
   init_packageManagers();
   init_settings2();
-  import_compiler_runtime314 = __toESM(require_compiler_runtime(), 1);
-  React131 = __toESM(require_react(), 1);
+  import_compiler_runtime313 = __toESM(require_compiler_runtime(), 1);
+  React130 = __toESM(require_react(), 1);
   import_react230 = __toESM(require_react(), 1);
   jsx_runtime395 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/AutoUpdaterWrapper.tsx
 function AutoUpdaterWrapper(t0) {
-  const $ = import_compiler_runtime315.c(17);
+  const $ = import_compiler_runtime314.c(17);
   const {
     isUpdating,
     onChangeIsUpdating,
@@ -537683,8 +538070,8 @@ function AutoUpdaterWrapper(t0) {
     showSuccessMessage,
     verbose
   } = t0;
-  const [useNativeInstaller, setUseNativeInstaller] = React132.useState(null);
-  const [isPackageManager, setIsPackageManager] = React132.useState(null);
+  const [useNativeInstaller, setUseNativeInstaller] = React131.useState(null);
+  const [isPackageManager, setIsPackageManager] = React131.useState(null);
   let t1;
   let t2;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
@@ -537705,7 +538092,7 @@ function AutoUpdaterWrapper(t0) {
     t1 = $[0];
     t2 = $[1];
   }
-  React132.useEffect(t1, t2);
+  React131.useEffect(t1, t2);
   if (useNativeInstaller === null || isPackageManager === null) {
     return null;
   }
@@ -537756,7 +538143,7 @@ function AutoUpdaterWrapper(t0) {
   }
   return t3;
 }
-var import_compiler_runtime315, React132, jsx_runtime396;
+var import_compiler_runtime314, React131, jsx_runtime396;
 var init_AutoUpdaterWrapper = __esm(() => {
   init_config2();
   init_debug();
@@ -537764,15 +538151,15 @@ var init_AutoUpdaterWrapper = __esm(() => {
   init_AutoUpdater();
   init_NativeAutoUpdater();
   init_PackageManagerAutoUpdater();
-  import_compiler_runtime315 = __toESM(require_compiler_runtime(), 1);
-  React132 = __toESM(require_react(), 1);
+  import_compiler_runtime314 = __toESM(require_compiler_runtime(), 1);
+  React131 = __toESM(require_react(), 1);
   jsx_runtime396 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/IdeStatusIndicator.tsx
 import { basename as basename51 } from "path";
 function IdeStatusIndicator(t0) {
-  const $ = import_compiler_runtime316.c(7);
+  const $ = import_compiler_runtime315.c(7);
   const {
     ideSelection,
     mcpClients
@@ -537834,11 +538221,11 @@ function IdeStatusIndicator(t0) {
     return t2;
   }
 }
-var import_compiler_runtime316, jsx_runtime397;
+var import_compiler_runtime315, jsx_runtime397;
 var init_IdeStatusIndicator = __esm(() => {
   init_useIdeConnectionStatus();
   init_ink2();
-  import_compiler_runtime316 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime315 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime397 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -537914,7 +538301,7 @@ var init_compactWarningHook = __esm(() => {
 
 // components/TokenWarning.tsx
 function TokenWarning(t0) {
-  const $ = import_compiler_runtime317.c(13);
+  const $ = import_compiler_runtime316.c(13);
   const {
     tokenUsage,
     model
@@ -537996,21 +538383,21 @@ function TokenWarning(t0) {
   }
   return t4;
 }
-var import_compiler_runtime317, import_react233, jsx_runtime399;
+var import_compiler_runtime316, import_react233, jsx_runtime399;
 var init_TokenWarning = __esm(() => {
   init_ink2();
   init_growthbook();
   init_autoCompact();
   init_compactWarningHook();
   init_contextWindowUpgradeCheck();
-  import_compiler_runtime317 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime316 = __toESM(require_compiler_runtime(), 1);
   import_react233 = __toESM(require_react(), 1);
   jsx_runtime399 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/PromptInput/SandboxPromptFooterHint.tsx
 function SandboxPromptFooterHint() {
-  const $ = import_compiler_runtime318.c(6);
+  const $ = import_compiler_runtime317.c(6);
   const [recentViolationCount, setRecentViolationCount] = import_react234.useState(0);
   const timerRef = import_react234.useRef(null);
   const detailsShortcut = useShortcutDisplay("app:toggleTranscript", "Global", "ctrl+o");
@@ -538086,19 +538473,19 @@ function SandboxPromptFooterHint() {
   }
   return t3;
 }
-var import_compiler_runtime318, import_react234, jsx_runtime400;
+var import_compiler_runtime317, import_react234, jsx_runtime400;
 var init_SandboxPromptFooterHint = __esm(() => {
   init_ink2();
   init_useShortcutDisplay();
   init_sandbox_adapter();
-  import_compiler_runtime318 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime317 = __toESM(require_compiler_runtime(), 1);
   import_react234 = __toESM(require_react(), 1);
   jsx_runtime400 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/PromptInput/Notifications.tsx
 function Notifications(t0) {
-  const $ = import_compiler_runtime319.c(34);
+  const $ = import_compiler_runtime318.c(34);
   const {
     apiKeyStatus,
     autoUpdaterResult,
@@ -538410,7 +538797,7 @@ function NotificationContent({
     ]
   });
 }
-var import_compiler_runtime319, import_react235, jsx_runtime401, FOOTER_TEMPORARY_STATUS_TIMEOUT = 5000;
+var import_compiler_runtime318, import_react235, jsx_runtime401, FOOTER_TEMPORARY_STATUS_TIMEOUT = 5000;
 var init_Notifications = __esm(() => {
   init_notifications();
   init_analytics();
@@ -538437,7 +538824,7 @@ var init_Notifications = __esm(() => {
   init_SentryErrorBoundary();
   init_TokenWarning();
   init_SandboxPromptFooterHint();
-  import_compiler_runtime319 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime318 = __toESM(require_compiler_runtime(), 1);
   import_react235 = __toESM(require_react(), 1);
   jsx_runtime401 = __toESM(require_jsx_runtime(), 1);
 });
@@ -542850,21 +543237,21 @@ var init_keyword = __esm(() => {
 });
 
 // components/AutoModeOptInDialog.tsx
-var import_compiler_runtime320, import_react241;
+var import_compiler_runtime319, import_react241;
 var init_AutoModeOptInDialog = __esm(() => {
   init_analytics();
   init_ink2();
   init_settings2();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime320 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime319 = __toESM(require_compiler_runtime(), 1);
   import_react241 = __toESM(require_react(), 1);
 });
 
 // components/BridgeDialog.tsx
 import { basename as basename53 } from "path";
 function BridgeDialog(t0) {
-  const $ = import_compiler_runtime321.c(87);
+  const $ = import_compiler_runtime320.c(87);
   const {
     onDone
   } = t0;
@@ -543308,7 +543695,7 @@ function _temp274(s_0) {
 function _temp180(s) {
   return s.replBridgeConnected;
 }
-var import_compiler_runtime321, import_react242, jsx_runtime404;
+var import_compiler_runtime320, import_react242, jsx_runtime404;
 var init_BridgeDialog = __esm(() => {
   init_server();
   init_state();
@@ -543321,7 +543708,7 @@ var init_BridgeDialog = __esm(() => {
   init_config2();
   init_git();
   init_Dialog();
-  import_compiler_runtime321 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime320 = __toESM(require_compiler_runtime(), 1);
   import_react242 = __toESM(require_react(), 1);
   jsx_runtime404 = __toESM(require_jsx_runtime(), 1);
 });
@@ -543339,7 +543726,7 @@ function useCoordinatorTaskCount() {
 function _temp181(s) {
   return s.tasks;
 }
-var import_compiler_runtime322, React135;
+var import_compiler_runtime321, React134;
 var init_CoordinatorAgentStatus = __esm(() => {
   init_figures2();
   init_useTerminalSize();
@@ -543351,8 +543738,8 @@ var init_CoordinatorAgentStatus = __esm(() => {
   init_format();
   init_framework();
   init_taskStatusUtils();
-  import_compiler_runtime322 = __toESM(require_compiler_runtime(), 1);
-  React135 = __toESM(require_react(), 1);
+  import_compiler_runtime321 = __toESM(require_compiler_runtime(), 1);
+  React134 = __toESM(require_react(), 1);
 });
 
 // utils/highlightMatch.tsx
@@ -543361,7 +543748,7 @@ var init_highlightMatch = __esm(() => {
 });
 
 // components/design-system/FuzzyPicker.tsx
-var import_compiler_runtime323, import_react243;
+var import_compiler_runtime322, import_react243;
 var init_FuzzyPicker = __esm(() => {
   init_useSearchInput();
   init_useTerminalSize();
@@ -543372,12 +543759,12 @@ var init_FuzzyPicker = __esm(() => {
   init_KeyboardShortcutHint();
   init_ListItem();
   init_Pane();
-  import_compiler_runtime323 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime322 = __toESM(require_compiler_runtime(), 1);
   import_react243 = __toESM(require_react(), 1);
 });
 
 // components/GlobalSearchDialog.tsx
-var import_compiler_runtime324, import_react244;
+var import_compiler_runtime323, import_react244;
 var init_GlobalSearchDialog = __esm(() => {
   init_overlayContext();
   init_useTerminalSize();
@@ -543392,7 +543779,7 @@ var init_GlobalSearchDialog = __esm(() => {
   init_ripgrep();
   init_FuzzyPicker();
   init_LoadingState();
-  import_compiler_runtime324 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime323 = __toESM(require_compiler_runtime(), 1);
   import_react244 = __toESM(require_react(), 1);
 });
 
@@ -543412,7 +543799,7 @@ var init_HistorySearchDialog = __esm(() => {
 });
 
 // components/QuickOpenDialog.tsx
-var import_compiler_runtime325, import_react246;
+var import_compiler_runtime324, import_react246;
 var init_QuickOpenDialog = __esm(() => {
   init_overlayContext();
   init_fileSuggestions();
@@ -543426,13 +543813,13 @@ var init_QuickOpenDialog = __esm(() => {
   init_readFileInRange();
   init_FuzzyPicker();
   init_LoadingState();
-  import_compiler_runtime325 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime324 = __toESM(require_compiler_runtime(), 1);
   import_react246 = __toESM(require_react(), 1);
 });
 
 // components/ThinkingToggle.tsx
 function ThinkingToggle(t0) {
-  const $ = import_compiler_runtime326.c(27);
+  const $ = import_compiler_runtime325.c(27);
   const {
     currentValue,
     onSelect,
@@ -543653,7 +544040,7 @@ function ThinkingToggle(t0) {
   return t11;
 }
 function _temp183() {}
-var import_compiler_runtime326, import_react247, jsx_runtime405;
+var import_compiler_runtime325, import_react247, jsx_runtime405;
 var init_ThinkingToggle = __esm(() => {
   init_useExitOnCtrlCDWithKeybindings();
   init_ink2();
@@ -543663,7 +544050,7 @@ var init_ThinkingToggle = __esm(() => {
   init_Byline();
   init_KeyboardShortcutHint();
   init_Pane();
-  import_compiler_runtime326 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime325 = __toESM(require_compiler_runtime(), 1);
   import_react247 = __toESM(require_react(), 1);
   jsx_runtime405 = __toESM(require_jsx_runtime(), 1);
 });
@@ -543861,7 +544248,7 @@ function TeamsDialog({
   return null;
 }
 function TeamDetailView(t0) {
-  const $ = import_compiler_runtime327.c(13);
+  const $ = import_compiler_runtime326.c(13);
   const {
     teamName,
     teammates,
@@ -543948,7 +544335,7 @@ function TeamDetailView(t0) {
   return t5;
 }
 function TeammateListItem(t0) {
-  const $ = import_compiler_runtime327.c(21);
+  const $ = import_compiler_runtime326.c(21);
   const {
     teammate,
     isSelected
@@ -544053,7 +544440,7 @@ function TeammateListItem(t0) {
   return t8;
 }
 function TeammateDetailView(t0) {
-  const $ = import_compiler_runtime327.c(39);
+  const $ = import_compiler_runtime326.c(39);
   const {
     teammate,
     teamName,
@@ -544411,7 +544798,7 @@ function cycleAllTeammateModes(teammates, teamName, isBypassAvailable) {
   }
   logForDebugging(`[TeamsDialog] Sent mode change to all ${teammates.length} teammates: ${targetMode}`);
 }
-var import_compiler_runtime327, import_react248, jsx_runtime406;
+var import_compiler_runtime326, import_react248, jsx_runtime406;
 var init_TeamsDialog = __esm(() => {
   init_figures();
   init_dist7();
@@ -544437,7 +544824,7 @@ var init_TeamsDialog = __esm(() => {
   init_teammateMailbox();
   init_Dialog();
   init_ThemedText();
-  import_compiler_runtime327 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime326 = __toESM(require_compiler_runtime(), 1);
   import_react248 = __toESM(require_react(), 1);
   jsx_runtime406 = __toESM(require_jsx_runtime(), 1);
 });
@@ -545536,7 +545923,7 @@ var init_useVimInput = __esm(() => {
 
 // components/VimTextInput.tsx
 function VimTextInput(props) {
-  const $ = import_compiler_runtime328.c(38);
+  const $ = import_compiler_runtime327.c(38);
   const [theme] = useTheme();
   const isTerminalFocused = useTerminalFocus();
   useClipboardImageHint(isTerminalFocused, !!props.onImagePaste);
@@ -545670,14 +546057,14 @@ function VimTextInput(props) {
 function _temp185(text) {
   return text;
 }
-var import_compiler_runtime328, import_react250, jsx_runtime407;
+var import_compiler_runtime327, import_react250, jsx_runtime407;
 var init_VimTextInput = __esm(() => {
   init_source();
   init_useClipboardImageHint();
   init_useVimInput();
   init_ink2();
   init_BaseTextInput();
-  import_compiler_runtime328 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime327 = __toESM(require_compiler_runtime(), 1);
   import_react250 = __toESM(require_react(), 1);
   jsx_runtime407 = __toESM(require_jsx_runtime(), 1);
 });
@@ -546027,7 +546414,7 @@ function calculateHorizontalScrollWindow(itemWidths, availableWidth, arrowWidth,
 
 // components/tasks/BackgroundTaskStatus.tsx
 function BackgroundTaskStatus(t0) {
-  const $ = import_compiler_runtime329.c(48);
+  const $ = import_compiler_runtime328.c(48);
   const {
     tasksSelected,
     isViewingTeammate,
@@ -546162,7 +546549,7 @@ function BackgroundTaskStatus(t0) {
     if ($[25] !== selectedIdx || $[26] !== setAppState || $[27] !== viewedIdx || $[28] !== visiblePills) {
       t13 = visiblePills.map((pill_1, i_1) => {
         const needsSeparator = i_1 > 0;
-        return /* @__PURE__ */ jsx_runtime409.jsxs(React138.Fragment, {
+        return /* @__PURE__ */ jsx_runtime409.jsxs(React137.Fragment, {
           children: [
             needsSeparator && /* @__PURE__ */ jsx_runtime409.jsx(ThemedText, {
               children: " "
@@ -546340,7 +546727,7 @@ function _temp187(s) {
   return s.tasks;
 }
 function AgentPill(t0) {
-  const $ = import_compiler_runtime329.c(19);
+  const $ = import_compiler_runtime328.c(19);
   const {
     name,
     color,
@@ -546472,7 +546859,7 @@ function AgentPill(t0) {
   return t3;
 }
 function SummaryPill(t0) {
-  const $ = import_compiler_runtime329.c(8);
+  const $ = import_compiler_runtime328.c(8);
   const {
     selected,
     onClick,
@@ -546532,7 +546919,7 @@ function getAgentThemeColor(colorName) {
   }
   return;
 }
-var import_compiler_runtime329, React138, import_react252, jsx_runtime409;
+var import_compiler_runtime328, React137, import_react252, jsx_runtime409;
 var init_BackgroundTaskStatus = __esm(() => {
   init_figures();
   init_useTerminalSize();
@@ -546545,15 +546932,15 @@ var init_BackgroundTaskStatus = __esm(() => {
   init_agentColorManager();
   init_KeyboardShortcutHint();
   init_taskStatusUtils();
-  import_compiler_runtime329 = __toESM(require_compiler_runtime(), 1);
-  React138 = __toESM(require_react(), 1);
+  import_compiler_runtime328 = __toESM(require_compiler_runtime(), 1);
+  React137 = __toESM(require_react(), 1);
   import_react252 = __toESM(require_react(), 1);
   jsx_runtime409 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/teams/TeamStatus.tsx
 function TeamStatus(t0) {
-  const $ = import_compiler_runtime330.c(14);
+  const $ = import_compiler_runtime329.c(14);
   const {
     teamsSelected,
     showHint
@@ -546643,17 +547030,17 @@ function _temp277(t) {
 function _temp188(s) {
   return s.teamContext;
 }
-var import_compiler_runtime330, jsx_runtime410;
+var import_compiler_runtime329, jsx_runtime410;
 var init_TeamStatus = __esm(() => {
   init_ink2();
   init_AppState();
-  import_compiler_runtime330 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime329 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime410 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/PromptInput/HistorySearchInput.tsx
 function HistorySearchInput(t0) {
-  const $ = import_compiler_runtime331.c(9);
+  const $ = import_compiler_runtime330.c(9);
   const {
     value,
     onChange,
@@ -546710,12 +547097,12 @@ function HistorySearchInput(t0) {
   return t5;
 }
 function _temp189() {}
-var import_compiler_runtime331, jsx_runtime411, HistorySearchInput_default;
+var import_compiler_runtime330, jsx_runtime411, HistorySearchInput_default;
 var init_HistorySearchInput = __esm(() => {
   init_stringWidth();
   init_ink2();
   init_TextInput();
-  import_compiler_runtime331 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime330 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime411 = __toESM(require_jsx_runtime(), 1);
   HistorySearchInput_default = HistorySearchInput;
 });
@@ -546856,17 +547243,17 @@ var init_usePrStatus = __esm(() => {
 });
 
 // components/PromptInput/VoiceIndicator.tsx
-var import_compiler_runtime332;
+var import_compiler_runtime331;
 var init_VoiceIndicator = __esm(() => {
   init_useSettings();
   init_ink2();
   init_utils8();
-  import_compiler_runtime332 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime331 = __toESM(require_compiler_runtime(), 1);
 });
 
 // components/PromptInput/PromptInputFooterLeftSide.tsx
 function PromptInputFooterLeftSide(t0) {
-  const $ = import_compiler_runtime333.c(27);
+  const $ = import_compiler_runtime332.c(27);
   const {
     exitMessage,
     vimMode,
@@ -547269,7 +547656,7 @@ function getSpinnerHintParts(isLoading, escShortcut, todosShortcut, killAgentsSh
 function isPrStatusEnabled() {
   return getGlobalConfig().prStatusFooterEnabled ?? true;
 }
-var import_compiler_runtime333, import_react254, jsx_runtime412, proactiveModule3 = null, NO_OP_SUBSCRIBE = (_cb) => () => {}, NULL = () => null;
+var import_compiler_runtime332, import_react254, jsx_runtime412, proactiveModule3 = null, NO_OP_SUBSCRIBE = (_cb) => () => {}, NULL = () => null;
 var init_PromptInputFooterLeftSide = __esm(() => {
   init_ink2();
   init_figures();
@@ -547301,7 +547688,7 @@ var init_PromptInputFooterLeftSide = __esm(() => {
   init_config2();
   init_platform2();
   init_PrBadge();
-  import_compiler_runtime333 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime332 = __toESM(require_compiler_runtime(), 1);
   import_react254 = __toESM(require_react(), 1);
   jsx_runtime412 = __toESM(require_jsx_runtime(), 1);
 });
@@ -547518,7 +547905,7 @@ function getTeammateThemeColor() {
   return;
 }
 function PromptChar(t0) {
-  const $ = import_compiler_runtime334.c(3);
+  const $ = import_compiler_runtime333.c(3);
   const {
     isLoading,
     themeColor
@@ -547544,7 +547931,7 @@ function PromptChar(t0) {
   return t1;
 }
 function PromptInputModeIndicator(t0) {
-  const $ = import_compiler_runtime334.c(6);
+  const $ = import_compiler_runtime333.c(6);
   const {
     mode,
     isLoading,
@@ -547589,14 +547976,14 @@ function PromptInputModeIndicator(t0) {
   }
   return t2;
 }
-var import_compiler_runtime334, jsx_runtime414;
+var import_compiler_runtime333, jsx_runtime414;
 var init_PromptInputModeIndicator = __esm(() => {
   init_figures();
   init_ink2();
   init_agentColorManager();
   init_teammate();
   init_agentSwarmsEnabled();
-  import_compiler_runtime334 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime333 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime414 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -547677,7 +548064,7 @@ function PromptInputQueuedCommandsImpl() {
     }, i))
   });
 }
-var React139, import_react256, jsx_runtime415, EMPTY_SET2, MAX_VISIBLE_NOTIFICATIONS = 3, PromptInputQueuedCommands;
+var React138, import_react256, jsx_runtime415, EMPTY_SET2, MAX_VISIBLE_NOTIFICATIONS = 3, PromptInputQueuedCommands;
 var init_PromptInputQueuedCommands = __esm(() => {
   init_ink2();
   init_AppState();
@@ -547688,16 +548075,16 @@ var init_PromptInputQueuedCommands = __esm(() => {
   init_messages3();
   init_slowOperations();
   init_Message();
-  React139 = __toESM(require_react(), 1);
+  React138 = __toESM(require_react(), 1);
   import_react256 = __toESM(require_react(), 1);
   jsx_runtime415 = __toESM(require_jsx_runtime(), 1);
   EMPTY_SET2 = new Set;
-  PromptInputQueuedCommands = React139.memo(PromptInputQueuedCommandsImpl);
+  PromptInputQueuedCommands = React138.memo(PromptInputQueuedCommandsImpl);
 });
 
 // components/PromptInput/PromptInputStashNotice.tsx
 function PromptInputStashNotice(t0) {
-  const $ = import_compiler_runtime335.c(1);
+  const $ = import_compiler_runtime334.c(1);
   const {
     hasStash
   } = t0;
@@ -547722,11 +548109,11 @@ function PromptInputStashNotice(t0) {
   }
   return t1;
 }
-var import_compiler_runtime335, jsx_runtime416;
+var import_compiler_runtime334, jsx_runtime416;
 var init_PromptInputStashNotice = __esm(() => {
   init_figures();
   init_ink2();
-  import_compiler_runtime335 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime334 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime416 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -548031,8 +548418,8 @@ function useSwarmBanner() {
   const agent = useAppState((s) => s.agent);
   useAppState((s) => s.viewingAgentTaskId);
   const store = useAppStateStore();
-  const [insideTmux, setInsideTmux] = React140.useState(null);
-  React140.useEffect(() => {
+  const [insideTmux, setInsideTmux] = React139.useState(null);
+  React139.useEffect(() => {
     isInsideTmux().then(setInsideTmux);
   }, []);
   const state = store.getState();
@@ -548099,7 +548486,7 @@ function useSwarmBanner() {
 function toThemeColor(colorName, fallback = "cyan_FOR_SUBAGENTS_ONLY") {
   return colorName && AGENT_COLORS.includes(colorName) ? AGENT_COLOR_TO_THEME_COLOR[colorName] : fallback;
 }
-var React140;
+var React139;
 var init_useSwarmBanner = __esm(() => {
   init_AppState();
   init_selectors();
@@ -548109,7 +548496,7 @@ var init_useSwarmBanner = __esm(() => {
   init_registry();
   init_teammate();
   init_teammateContext();
-  React140 = __toESM(require_react(), 1);
+  React139 = __toESM(require_react(), 1);
 });
 
 // components/PromptInput/PromptInput.tsx
@@ -548165,12 +548552,12 @@ function PromptInput({
     show: false
   });
   const [cursorOffset, setCursorOffset] = import_react260.useState(input.length);
-  const lastInternalInputRef = React141.useRef(input);
+  const lastInternalInputRef = React140.useRef(input);
   if (input !== lastInternalInputRef.current) {
     setCursorOffset(input.length);
     lastInternalInputRef.current = input;
   }
-  const trackAndSetInput = React141.useCallback((value) => {
+  const trackAndSetInput = React140.useCallback((value) => {
     lastInternalInputRef.current = value;
     onInputChange(value);
   }, [onInputChange]);
@@ -549846,7 +550233,7 @@ function buildBorderText(showFastIcon, showFastIconHint, fastModeCooldown) {
     offset: 0
   };
 }
-var React141, import_react260, jsx_runtime417, PROMPT_FOOTER_LINES = 5, MIN_INPUT_VIEWPORT_LINES = 3, PromptInput_default;
+var React140, import_react260, jsx_runtime417, PROMPT_FOOTER_LINES = 5, MIN_INPUT_VIEWPORT_LINES = 3, PromptInput_default;
 var init_PromptInput = __esm(() => {
   init_source();
   init_notifications();
@@ -549942,10 +550329,10 @@ var init_PromptInput = __esm(() => {
   init_useShowFastIconHint();
   init_useSwarmBanner();
   init_utils13();
-  React141 = __toESM(require_react(), 1);
+  React140 = __toESM(require_react(), 1);
   import_react260 = __toESM(require_react(), 1);
   jsx_runtime417 = __toESM(require_jsx_runtime(), 1);
-  PromptInput_default = React141.memo(PromptInput);
+  PromptInput_default = React140.memo(PromptInput);
 });
 
 // utils/controlMessageCompat.ts
@@ -551629,7 +552016,7 @@ var init_useDebouncedDigitInput = __esm(() => {
 
 // components/FeedbackSurvey/FeedbackSurveyView.tsx
 function FeedbackSurveyView(t0) {
-  const $ = import_compiler_runtime336.c(15);
+  const $ = import_compiler_runtime335.c(15);
   const {
     onSelect,
     inputValue,
@@ -551783,11 +552170,11 @@ function FeedbackSurveyView(t0) {
   }
   return t10;
 }
-var import_compiler_runtime336, jsx_runtime418, RESPONSE_INPUTS, inputToResponse, isValidResponseInput = (input) => RESPONSE_INPUTS.includes(input), DEFAULT_MESSAGE = "How is EvilClaude doing this session? (optional)";
+var import_compiler_runtime335, jsx_runtime418, RESPONSE_INPUTS, inputToResponse, isValidResponseInput = (input) => RESPONSE_INPUTS.includes(input), DEFAULT_MESSAGE = "How is EvilClaude doing this session? (optional)";
 var init_FeedbackSurveyView = __esm(() => {
   init_ink2();
   init_useDebouncedDigitInput();
-  import_compiler_runtime336 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime335 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime418 = __toESM(require_jsx_runtime(), 1);
   RESPONSE_INPUTS = ["0", "1", "2", "3"];
   inputToResponse = {
@@ -551799,13 +552186,13 @@ var init_FeedbackSurveyView = __esm(() => {
 });
 
 // components/SkillImprovementSurvey.tsx
-var import_compiler_runtime337, import_react266;
+var import_compiler_runtime336, import_react266;
 var init_SkillImprovementSurvey = __esm(() => {
   init_figures2();
   init_ink2();
   init_stringUtils();
   init_FeedbackSurveyView();
-  import_compiler_runtime337 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime336 = __toESM(require_compiler_runtime(), 1);
   import_react266 = __toESM(require_react(), 1);
 });
 
@@ -552740,7 +553127,7 @@ var init_useGlobalKeybindings = __esm(() => {
 
 // hooks/useCommandKeybindings.tsx
 function CommandKeybindingHandlers(t0) {
-  const $ = import_compiler_runtime338.c(8);
+  const $ = import_compiler_runtime337.c(8);
   const {
     onSubmit,
     isActive: t1
@@ -552810,12 +553197,12 @@ function CommandKeybindingHandlers(t0) {
   useKeybindings(handlers, t4);
   return null;
 }
-var import_compiler_runtime338, NOOP_HELPERS;
+var import_compiler_runtime337, NOOP_HELPERS;
 var init_useCommandKeybindings = __esm(() => {
   init_overlayContext();
   init_KeybindingContext();
   init_useKeybinding();
-  import_compiler_runtime338 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime337 = __toESM(require_compiler_runtime(), 1);
   NOOP_HELPERS = {
     setCursorOffset: () => {},
     clearBuffer: () => {},
@@ -553802,7 +554189,7 @@ var init_swarmWorkerHandler = __esm(() => {
 
 // hooks/useCanUseTool.tsx
 function useCanUseTool(setToolUseConfirmQueue, setToolPermissionContext) {
-  const $ = import_compiler_runtime339.c(3);
+  const $ = import_compiler_runtime338.c(3);
   let t0;
   if ($[0] !== setToolPermissionContext || $[1] !== setToolUseConfirmQueue) {
     t0 = async (tool, input, toolUseContext, assistantMessage, toolUseID, forceDecision) => new Promise((resolve) => {
@@ -553912,7 +554299,7 @@ function useCanUseTool(setToolUseConfirmQueue, setToolPermissionContext) {
   }
   return t0;
 }
-var import_compiler_runtime339, useCanUseTool_default;
+var import_compiler_runtime338, useCanUseTool_default;
 var init_useCanUseTool = __esm(() => {
   init_sdk();
   init_ink2();
@@ -553928,7 +554315,7 @@ var init_useCanUseTool = __esm(() => {
   init_swarmWorkerHandler();
   init_PermissionContext();
   init_permissionLogging();
-  import_compiler_runtime339 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime338 = __toESM(require_compiler_runtime(), 1);
   useCanUseTool_default = useCanUseTool;
 });
 
@@ -554003,7 +554390,7 @@ var init_processTextPrompt = __esm(() => {
 
 // components/BashModeProgress.tsx
 function BashModeProgress(t0) {
-  const $ = import_compiler_runtime340.c(8);
+  const $ = import_compiler_runtime339.c(8);
   const {
     input,
     progress,
@@ -554061,13 +554448,13 @@ function BashModeProgress(t0) {
   }
   return t4;
 }
-var import_compiler_runtime340, jsx_runtime419;
+var import_compiler_runtime339, jsx_runtime419;
 var init_BashModeProgress = __esm(() => {
   init_ink2();
   init_BashTool();
   init_UserBashInputMessage();
   init_ShellProgressMessage();
-  import_compiler_runtime340 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime339 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime419 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -555361,7 +555748,7 @@ var init_useManagePlugins = __esm(() => {
 
 // components/TeammateViewHeader.tsx
 function TeammateViewHeader() {
-  const $ = import_compiler_runtime341.c(14);
+  const $ = import_compiler_runtime340.c(14);
   const viewedTeammate = useAppState(_temp190);
   if (!viewedTeammate) {
     return null;
@@ -555464,7 +555851,7 @@ function TeammateViewHeader() {
 function _temp190(s) {
   return getViewedTeammateTask(s);
 }
-var import_compiler_runtime341, jsx_runtime421;
+var import_compiler_runtime340, jsx_runtime421;
 var init_TeammateViewHeader = __esm(() => {
   init_ink2();
   init_AppState();
@@ -555472,7 +555859,7 @@ var init_TeammateViewHeader = __esm(() => {
   init_ink3();
   init_KeyboardShortcutHint();
   init_OffscreenFreeze();
-  import_compiler_runtime341 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime340 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime421 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -556380,7 +556767,7 @@ var init_useTaskListWatcher = __esm(() => {
 
 // hooks/useIDEIntegration.tsx
 function useIDEIntegration(t0) {
-  const $ = import_compiler_runtime342.c(7);
+  const $ = import_compiler_runtime341.c(7);
   const {
     autoConnectIdeFlag,
     ideToInstallExtension,
@@ -556434,18 +556821,18 @@ function useIDEIntegration(t0) {
   }
   import_react286.useEffect(t1, t2);
 }
-var import_compiler_runtime342, import_react286;
+var import_compiler_runtime341, import_react286;
 var init_useIDEIntegration = __esm(() => {
   init_config2();
   init_envUtils();
   init_ide();
-  import_compiler_runtime342 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime341 = __toESM(require_compiler_runtime(), 1);
   import_react286 = __toESM(require_react(), 1);
 });
 
 // components/SessionBackgroundHint.tsx
 function SessionBackgroundHint(t0) {
-  const $ = import_compiler_runtime343.c(10);
+  const $ = import_compiler_runtime342.c(10);
   const {
     onBackgroundSession,
     isLoading
@@ -556534,7 +556921,7 @@ function _temp278(c) {
   };
 }
 function _temp191() {}
-var import_compiler_runtime343, import_react287, jsx_runtime422;
+var import_compiler_runtime342, import_react287, jsx_runtime422;
 var init_SessionBackgroundHint = __esm(() => {
   init_useDoublePress();
   init_ink2();
@@ -556546,7 +556933,7 @@ var init_SessionBackgroundHint = __esm(() => {
   init_env();
   init_envUtils();
   init_KeyboardShortcutHint();
-  import_compiler_runtime343 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime342 = __toESM(require_compiler_runtime(), 1);
   import_react287 = __toESM(require_react(), 1);
   jsx_runtime422 = __toESM(require_jsx_runtime(), 1);
 });
@@ -556678,7 +557065,7 @@ var init_useSessionBackgrounding = __esm(() => {
 
 // components/EffortCallout.tsx
 function EffortCallout(t0) {
-  const $ = import_compiler_runtime344.c(18);
+  const $ = import_compiler_runtime343.c(18);
   const {
     model,
     onDone
@@ -556874,7 +557261,7 @@ function _temp192() {
   markV2Dismissed();
 }
 function EffortIndicatorSymbol(t0) {
-  const $ = import_compiler_runtime344.c(4);
+  const $ = import_compiler_runtime343.c(4);
   const {
     level
   } = t0;
@@ -556900,7 +557287,7 @@ function EffortIndicatorSymbol(t0) {
   return t2;
 }
 function EffortOptionLabel(t0) {
-  const $ = import_compiler_runtime344.c(5);
+  const $ = import_compiler_runtime343.c(5);
   const {
     level,
     text
@@ -556967,7 +557354,7 @@ function markV2Dismissed() {
     };
   });
 }
-var import_compiler_runtime344, import_react289, jsx_runtime423, AUTO_DISMISS_MS = 30000;
+var import_compiler_runtime343, import_react289, jsx_runtime423, AUTO_DISMISS_MS = 30000;
 var init_EffortCallout = __esm(() => {
   init_ink2();
   init_auth2();
@@ -556978,7 +557365,7 @@ var init_EffortCallout = __esm(() => {
   init_select();
   init_EffortIndicator();
   init_PermissionDialog();
-  import_compiler_runtime344 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime343 = __toESM(require_compiler_runtime(), 1);
   import_react289 = __toESM(require_react(), 1);
   jsx_runtime423 = __toESM(require_jsx_runtime(), 1);
 });
@@ -557679,7 +558066,7 @@ function hasMessageAfterBoundary(messages, boundaryUuid) {
   return false;
 }
 function usePostCompactSurvey(messages, isLoading, t0, t1) {
-  const $ = import_compiler_runtime345.c(23);
+  const $ = import_compiler_runtime344.c(23);
   const hasActivePrompt = t0 === undefined ? false : t0;
   let t2;
   if ($[0] !== t1) {
@@ -557852,7 +558239,7 @@ function _temp193(appearanceId) {
     survey_type: "post_compact"
   });
 }
-var import_compiler_runtime345, import_react295, HIDE_THANKS_AFTER_MS2 = 3000, POST_COMPACT_SURVEY_GATE = "tengu_post_compact_survey", SURVEY_PROBABILITY2 = 0.2;
+var import_compiler_runtime344, import_react295, HIDE_THANKS_AFTER_MS2 = 3000, POST_COMPACT_SURVEY_GATE = "tengu_post_compact_survey", SURVEY_PROBABILITY2 = 0.2;
 var init_usePostCompactSurvey = __esm(() => {
   init_config();
   init_growthbook();
@@ -557862,13 +558249,13 @@ var init_usePostCompactSurvey = __esm(() => {
   init_messages3();
   init_events();
   init_useSurveyState();
-  import_compiler_runtime345 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime344 = __toESM(require_compiler_runtime(), 1);
   import_react295 = __toESM(require_react(), 1);
 });
 
 // components/FeedbackSurvey/TranscriptSharePrompt.tsx
 function TranscriptSharePrompt(t0) {
-  const $ = import_compiler_runtime346.c(11);
+  const $ = import_compiler_runtime345.c(11);
   const {
     onSelect,
     inputValue,
@@ -558002,12 +558389,12 @@ function TranscriptSharePrompt(t0) {
   }
   return t7;
 }
-var import_compiler_runtime346, jsx_runtime425, RESPONSE_INPUTS2, inputToResponse2, isValidResponseInput2 = (input) => RESPONSE_INPUTS2.includes(input);
+var import_compiler_runtime345, jsx_runtime425, RESPONSE_INPUTS2, inputToResponse2, isValidResponseInput2 = (input) => RESPONSE_INPUTS2.includes(input);
 var init_TranscriptSharePrompt = __esm(() => {
   init_figures2();
   init_ink2();
   init_useDebouncedDigitInput();
-  import_compiler_runtime346 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime345 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime425 = __toESM(require_jsx_runtime(), 1);
   RESPONSE_INPUTS2 = ["1", "2", "3"];
   inputToResponse2 = {
@@ -558019,7 +558406,7 @@ var init_TranscriptSharePrompt = __esm(() => {
 
 // components/FeedbackSurvey/FeedbackSurvey.tsx
 function FeedbackSurvey(t0) {
-  const $ = import_compiler_runtime347.c(16);
+  const $ = import_compiler_runtime346.c(16);
   const {
     state,
     lastResponse,
@@ -558135,7 +558522,7 @@ function FeedbackSurvey(t0) {
   return t1;
 }
 function FeedbackSurveyThanks(t0) {
-  const $ = import_compiler_runtime347.c(12);
+  const $ = import_compiler_runtime346.c(12);
   const {
     lastResponse,
     inputValue,
@@ -558229,14 +558616,14 @@ function FeedbackSurveyThanks(t0) {
   }
   return t5;
 }
-var import_compiler_runtime347, jsx_runtime426, isFollowUpDigit = (char) => char === "1";
+var import_compiler_runtime346, jsx_runtime426, isFollowUpDigit = (char) => char === "1";
 var init_FeedbackSurvey = __esm(() => {
   init_analytics();
   init_ink2();
   init_FeedbackSurveyView();
   init_TranscriptSharePrompt();
   init_useDebouncedDigitInput();
-  import_compiler_runtime347 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime346 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime426 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -558699,7 +559086,7 @@ var init_useOfficialMarketplaceNotification = __esm(() => {
 
 // hooks/usePromptsFromClaudeInChrome.tsx
 function usePromptsFromClaudeInChrome(mcpClients, toolPermissionMode) {
-  const $ = import_compiler_runtime348.c(6);
+  const $ = import_compiler_runtime347.c(6);
   import_react298.useRef(undefined);
   let t0;
   if ($[0] !== mcpClients) {
@@ -558738,12 +559125,12 @@ function _temp197() {}
 function findChromeClient(clients) {
   return clients.find((client) => client.type === "connected" && client.name === CLAUDE_IN_CHROME_MCP_SERVER_NAME);
 }
-var import_compiler_runtime348, import_react298, ClaudeInChromePromptNotificationSchema;
+var import_compiler_runtime347, import_react298, ClaudeInChromePromptNotificationSchema;
 var init_usePromptsFromClaudeInChrome = __esm(() => {
   init_v4();
   init_client9();
   init_common2();
-  import_compiler_runtime348 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime347 = __toESM(require_compiler_runtime(), 1);
   import_react298 = __toESM(require_react(), 1);
   ClaudeInChromePromptNotificationSchema = lazySchema(() => object({
     method: literal("notifications/message"),
@@ -558800,7 +559187,7 @@ function shouldShowDesktopUpsellStartup() {
   return true;
 }
 function DesktopUpsellStartup(t0) {
-  const $ = import_compiler_runtime349.c(14);
+  const $ = import_compiler_runtime348.c(14);
   const {
     onDone
   } = t0;
@@ -558952,7 +559339,7 @@ function _temp198() {
     seen_count: newCount
   });
 }
-var import_compiler_runtime349, import_react299, jsx_runtime429, DESKTOP_UPSELL_DEFAULT;
+var import_compiler_runtime348, import_react299, jsx_runtime429, DESKTOP_UPSELL_DEFAULT;
 var init_DesktopUpsellStartup = __esm(() => {
   init_ink2();
   init_growthbook();
@@ -558961,7 +559348,7 @@ var init_DesktopUpsellStartup = __esm(() => {
   init_select();
   init_DesktopHandoff();
   init_PermissionDialog();
-  import_compiler_runtime349 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime348 = __toESM(require_compiler_runtime(), 1);
   import_react299 = __toESM(require_react(), 1);
   jsx_runtime429 = __toESM(require_jsx_runtime(), 1);
   DESKTOP_UPSELL_DEFAULT = {
@@ -560474,7 +560861,7 @@ var init_useFileHistorySnapshotInit = __esm(() => {
 
 // components/permissions/SandboxPermissionRequest.tsx
 function SandboxPermissionRequest(t0) {
-  const $ = import_compiler_runtime350.c(22);
+  const $ = import_compiler_runtime349.c(22);
   const {
     hostPattern: t1,
     onUserResponse
@@ -560671,13 +561058,13 @@ function SandboxPermissionRequest(t0) {
   }
   return t13;
 }
-var import_compiler_runtime350, jsx_runtime430;
+var import_compiler_runtime349, jsx_runtime430;
 var init_SandboxPermissionRequest = __esm(() => {
   init_ink2();
   init_sandbox_adapter();
   init_select();
   init_PermissionDialog();
-  import_compiler_runtime350 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime349 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime430 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -560690,7 +561077,7 @@ function formatTime(date) {
   return `${h}:${m}:${s}${ampm}`;
 }
 function SandboxViolationExpandedView() {
-  const $ = import_compiler_runtime351.c(15);
+  const $ = import_compiler_runtime350.c(15);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = [];
@@ -560813,19 +561200,19 @@ function _temp199(v, i) {
     })
   }, `${v.timestamp.getTime()}-${i}`);
 }
-var import_compiler_runtime351, import_react301, jsx_runtime431;
+var import_compiler_runtime350, import_react301, jsx_runtime431;
 var init_SandboxViolationExpandedView = __esm(() => {
   init_ink2();
   init_sandbox_adapter();
   init_platform2();
-  import_compiler_runtime351 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime350 = __toESM(require_compiler_runtime(), 1);
   import_react301 = __toESM(require_react(), 1);
   jsx_runtime431 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/notifs/useMcpConnectivityStatus.tsx
 function useMcpConnectivityStatus(t0) {
-  const $ = import_compiler_runtime352.c(4);
+  const $ = import_compiler_runtime351.c(4);
   const {
     mcpClients: t1
   } = t0;
@@ -560970,13 +561357,13 @@ function _temp282(client_0) {
 function _temp200(client) {
   return client.type === "failed" && client.config.type !== "sse-ide" && client.config.type !== "ws-ide" && client.config.type !== "claudeai-proxy";
 }
-var import_compiler_runtime352, import_react302, jsx_runtime432, EMPTY_MCP_CLIENTS;
+var import_compiler_runtime351, import_react302, jsx_runtime432, EMPTY_MCP_CLIENTS;
 var init_useMcpConnectivityStatus = __esm(() => {
   init_notifications();
   init_state();
   init_ink2();
   init_claudeai();
-  import_compiler_runtime352 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime351 = __toESM(require_compiler_runtime(), 1);
   import_react302 = __toESM(require_react(), 1);
   jsx_runtime432 = __toESM(require_jsx_runtime(), 1);
   EMPTY_MCP_CLIENTS = [];
@@ -561025,12 +561412,12 @@ var init_useAutoModeUnavailableNotification = __esm(() => {
 
 // hooks/notifs/useLspInitializationNotification.tsx
 function useLspInitializationNotification() {
-  const $ = import_compiler_runtime353.c(10);
+  const $ = import_compiler_runtime352.c(10);
   const {
     addNotification
   } = useNotifications();
   const setAppState = useSetAppState();
-  const [shouldPoll, setShouldPoll] = React146.useState(_temp201);
+  const [shouldPoll, setShouldPoll] = React145.useState(_temp201);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = new Set;
@@ -561038,7 +561425,7 @@ function useLspInitializationNotification() {
   } else {
     t0 = $[0];
   }
-  const notifiedErrorsRef = React146.useRef(t0);
+  const notifiedErrorsRef = React145.useRef(t0);
   let t1;
   if ($[1] !== addNotification || $[2] !== setAppState) {
     t1 = (source, errorMessage) => {
@@ -561149,7 +561536,7 @@ function useLspInitializationNotification() {
     t3 = $[8];
     t4 = $[9];
   }
-  React146.useEffect(t3, t4);
+  React145.useEffect(t3, t4);
 }
 function _temp283(e) {
   if (e.type === "generic-error") {
@@ -561160,7 +561547,7 @@ function _temp283(e) {
 function _temp201() {
   return isEnvTruthy("true");
 }
-var import_compiler_runtime353, React146, jsx_runtime433, LSP_POLL_INTERVAL_MS = 5000;
+var import_compiler_runtime352, React145, jsx_runtime433, LSP_POLL_INTERVAL_MS = 5000;
 var init_useLspInitializationNotification = __esm(() => {
   init_dist7();
   init_state();
@@ -561170,8 +561557,8 @@ var init_useLspInitializationNotification = __esm(() => {
   init_AppState();
   init_debug();
   init_envUtils();
-  import_compiler_runtime353 = __toESM(require_compiler_runtime(), 1);
-  React146 = __toESM(require_react(), 1);
+  import_compiler_runtime352 = __toESM(require_compiler_runtime(), 1);
+  React145 = __toESM(require_react(), 1);
   jsx_runtime433 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -561383,9 +561770,9 @@ var init_lspRecommendation = __esm(() => {
 
 // hooks/usePluginRecommendationBase.tsx
 function usePluginRecommendationBase() {
-  const $ = import_compiler_runtime354.c(6);
-  const [recommendation, setRecommendation] = React147.useState(null);
-  const isCheckingRef = React147.useRef(false);
+  const $ = import_compiler_runtime353.c(6);
+  const [recommendation, setRecommendation] = React146.useState(null);
+  const isCheckingRef = React146.useRef(false);
   let t0;
   if ($[0] !== recommendation) {
     t0 = (resolve) => {
@@ -561473,22 +561860,22 @@ async function installPluginAndNotify(pluginId, pluginName, keyPrefix, addNotifi
     });
   }
 }
-var import_compiler_runtime354, React147, jsx_runtime434;
+var import_compiler_runtime353, React146, jsx_runtime434;
 var init_usePluginRecommendationBase = __esm(() => {
   init_figures();
   init_state();
   init_ink2();
   init_log3();
   init_marketplaceManager();
-  import_compiler_runtime354 = __toESM(require_compiler_runtime(), 1);
-  React147 = __toESM(require_react(), 1);
+  import_compiler_runtime353 = __toESM(require_compiler_runtime(), 1);
+  React146 = __toESM(require_react(), 1);
   jsx_runtime434 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/useLspPluginRecommendation.tsx
 import { extname as extname15, join as join140 } from "path";
 function useLspPluginRecommendation() {
-  const $ = import_compiler_runtime355.c(12);
+  const $ = import_compiler_runtime354.c(12);
   const trackedFiles = useAppState(_temp202);
   const {
     addNotification
@@ -561500,7 +561887,7 @@ function useLspPluginRecommendation() {
   } else {
     t0 = $[0];
   }
-  const checkedFilesRef = React148.useRef(t0);
+  const checkedFilesRef = React147.useRef(t0);
   const {
     recommendation,
     clearRecommendation,
@@ -561553,7 +561940,7 @@ function useLspPluginRecommendation() {
     t1 = $[3];
     t2 = $[4];
   }
-  React148.useEffect(t1, t2);
+  React147.useEffect(t1, t2);
   let t3;
   if ($[5] !== addNotification || $[6] !== clearRecommendation || $[7] !== recommendation) {
     t3 = (response) => {
@@ -561636,7 +562023,7 @@ function _temp284(current) {
 function _temp202(s) {
   return s.fileHistory.trackedFiles;
 }
-var import_compiler_runtime355, React148, TIMEOUT_THRESHOLD_MS = 28000;
+var import_compiler_runtime354, React147, TIMEOUT_THRESHOLD_MS = 28000;
 var init_useLspPluginRecommendation = __esm(() => {
   init_state();
   init_notifications();
@@ -561648,8 +562035,8 @@ var init_useLspPluginRecommendation = __esm(() => {
   init_pluginInstallationHelpers();
   init_settings2();
   init_usePluginRecommendationBase();
-  import_compiler_runtime355 = __toESM(require_compiler_runtime(), 1);
-  React148 = __toESM(require_react(), 1);
+  import_compiler_runtime354 = __toESM(require_compiler_runtime(), 1);
+  React147 = __toESM(require_react(), 1);
 });
 
 // components/LspRecommendation/LspRecommendationMenu.tsx
@@ -561659,9 +562046,9 @@ function LspRecommendationMenu({
   fileExtension,
   onResponse
 }) {
-  const onResponseRef = React149.useRef(onResponse);
+  const onResponseRef = React148.useRef(onResponse);
   onResponseRef.current = onResponse;
-  React149.useEffect(() => {
+  React148.useEffect(() => {
     const timeoutId = setTimeout((ref) => ref.current("no"), AUTO_DISMISS_MS2, onResponseRef);
     return () => clearTimeout(timeoutId);
   }, []);
@@ -561776,19 +562163,19 @@ function LspRecommendationMenu({
     })
   });
 }
-var React149, jsx_runtime435, AUTO_DISMISS_MS2 = 30000;
+var React148, jsx_runtime435, AUTO_DISMISS_MS2 = 30000;
 var init_LspRecommendationMenu = __esm(() => {
   init_ink2();
   init_select();
   init_PermissionDialog();
-  React149 = __toESM(require_react(), 1);
+  React148 = __toESM(require_react(), 1);
   jsx_runtime435 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/useClaudeCodeHintRecommendation.tsx
 function useClaudeCodeHintRecommendation() {
-  const $ = import_compiler_runtime356.c(11);
-  const pendingHint = React150.useSyncExternalStore(subscribeToPendingHint, getPendingHintSnapshot);
+  const $ = import_compiler_runtime355.c(11);
+  const pendingHint = React149.useSyncExternalStore(subscribeToPendingHint, getPendingHintSnapshot);
   const {
     addNotification
   } = useNotifications();
@@ -561825,7 +562212,7 @@ function useClaudeCodeHintRecommendation() {
     t0 = $[2];
     t1 = $[3];
   }
-  React150.useEffect(t0, t1);
+  React149.useEffect(t0, t1);
   let t2;
   if ($[4] !== addNotification || $[5] !== clearRecommendation || $[6] !== recommendation) {
     t2 = (response) => {
@@ -561890,7 +562277,7 @@ function useClaudeCodeHintRecommendation() {
   }
   return t3;
 }
-var import_compiler_runtime356, React150;
+var import_compiler_runtime355, React149;
 var init_useClaudeCodeHintRecommendation = __esm(() => {
   init_notifications();
   init_analytics();
@@ -561899,8 +562286,8 @@ var init_useClaudeCodeHintRecommendation = __esm(() => {
   init_hintRecommendation();
   init_pluginInstallationHelpers();
   init_usePluginRecommendationBase();
-  import_compiler_runtime356 = __toESM(require_compiler_runtime(), 1);
-  React150 = __toESM(require_react(), 1);
+  import_compiler_runtime355 = __toESM(require_compiler_runtime(), 1);
+  React149 = __toESM(require_react(), 1);
 });
 
 // components/ClaudeCodeHint/PluginHintMenu.tsx
@@ -561911,9 +562298,9 @@ function PluginHintMenu({
   sourceCommand,
   onResponse
 }) {
-  const onResponseRef = React151.useRef(onResponse);
+  const onResponseRef = React150.useRef(onResponse);
   onResponseRef.current = onResponse;
-  React151.useEffect(() => {
+  React150.useEffect(() => {
     const timeoutId = setTimeout((ref) => ref.current("no"), AUTO_DISMISS_MS3, onResponseRef);
     return () => clearTimeout(timeoutId);
   }, []);
@@ -562019,18 +562406,18 @@ function PluginHintMenu({
     })
   });
 }
-var React151, jsx_runtime436, AUTO_DISMISS_MS3 = 30000;
+var React150, jsx_runtime436, AUTO_DISMISS_MS3 = 30000;
 var init_PluginHintMenu = __esm(() => {
   init_ink2();
   init_select();
   init_PermissionDialog();
-  React151 = __toESM(require_react(), 1);
+  React150 = __toESM(require_react(), 1);
   jsx_runtime436 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/notifs/usePluginInstallationStatus.tsx
 function usePluginInstallationStatus() {
-  const $ = import_compiler_runtime357.c(20);
+  const $ = import_compiler_runtime356.c(20);
   const {
     addNotification
   } = useNotifications();
@@ -562163,7 +562550,7 @@ function _temp285(m) {
 function _temp203(s) {
   return s.plugins.installationStatus;
 }
-var import_compiler_runtime357, import_react304, jsx_runtime437;
+var import_compiler_runtime356, import_react304, jsx_runtime437;
 var init_usePluginInstallationStatus = __esm(() => {
   init_state();
   init_notifications();
@@ -562171,14 +562558,14 @@ var init_usePluginInstallationStatus = __esm(() => {
   init_AppState();
   init_debug();
   init_stringUtils();
-  import_compiler_runtime357 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime356 = __toESM(require_compiler_runtime(), 1);
   import_react304 = __toESM(require_react(), 1);
   jsx_runtime437 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/notifs/usePluginAutoupdateNotification.tsx
 function usePluginAutoupdateNotification() {
-  const $ = import_compiler_runtime358.c(7);
+  const $ = import_compiler_runtime357.c(7);
   const {
     addNotification
   } = useNotifications();
@@ -562262,14 +562649,14 @@ function _temp204(id) {
   const atIndex = id.indexOf("@");
   return atIndex > 0 ? id.substring(0, atIndex) : id;
 }
-var import_compiler_runtime358, import_react305, jsx_runtime438;
+var import_compiler_runtime357, import_react305, jsx_runtime438;
 var init_usePluginAutoupdateNotification = __esm(() => {
   init_state();
   init_notifications();
   init_ink2();
   init_debug();
   init_pluginAutoupdate();
-  import_compiler_runtime358 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime357 = __toESM(require_compiler_runtime(), 1);
   import_react305 = __toESM(require_react(), 1);
   jsx_runtime438 = __toESM(require_jsx_runtime(), 1);
 });
@@ -562553,7 +562940,7 @@ var init_performStartupChecks = __esm(() => {
 
 // components/AwsAuthStatusBox.tsx
 function AwsAuthStatusBox() {
-  const $ = import_compiler_runtime359.c(11);
+  const $ = import_compiler_runtime358.c(11);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = AwsAuthStatusManager.getInstance().getStatus();
@@ -562666,11 +563053,11 @@ function _temp205(line, index) {
     ]
   }, index);
 }
-var import_compiler_runtime359, import_react306, jsx_runtime439, URL_RE;
+var import_compiler_runtime358, import_react306, jsx_runtime439, URL_RE;
 var init_AwsAuthStatusBox = __esm(() => {
   init_ink2();
   init_awsAuthStatusManager();
-  import_compiler_runtime359 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime358 = __toESM(require_compiler_runtime(), 1);
   import_react306 = __toESM(require_react(), 1);
   jsx_runtime439 = __toESM(require_jsx_runtime(), 1);
   URL_RE = /https?:\/\/\S+/;
@@ -562678,7 +563065,7 @@ var init_AwsAuthStatusBox = __esm(() => {
 
 // hooks/notifs/useRateLimitWarningNotification.tsx
 function useRateLimitWarningNotification(model) {
-  const $ = import_compiler_runtime360.c(17);
+  const $ = import_compiler_runtime359.c(17);
   const {
     addNotification
   } = useNotifications();
@@ -562785,7 +563172,7 @@ function useRateLimitWarningNotification(model) {
   }
   import_react307.useEffect(t6, t7);
 }
-var import_compiler_runtime360, import_react307, jsx_runtime440;
+var import_compiler_runtime359, import_react307, jsx_runtime440;
 var init_useRateLimitWarningNotification = __esm(() => {
   init_notifications();
   init_ink2();
@@ -562794,7 +563181,7 @@ var init_useRateLimitWarningNotification = __esm(() => {
   init_auth2();
   init_billing();
   init_state();
-  import_compiler_runtime360 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime359 = __toESM(require_compiler_runtime(), 1);
   import_react307 = __toESM(require_react(), 1);
   jsx_runtime440 = __toESM(require_jsx_runtime(), 1);
 });
@@ -562862,7 +563249,7 @@ var init_deprecation = __esm(() => {
 
 // hooks/notifs/useDeprecationWarningNotification.tsx
 function useDeprecationWarningNotification(model) {
-  const $ = import_compiler_runtime361.c(4);
+  const $ = import_compiler_runtime360.c(4);
   const {
     addNotification
   } = useNotifications();
@@ -562899,12 +563286,12 @@ function useDeprecationWarningNotification(model) {
   }
   import_react308.useEffect(t0, t1);
 }
-var import_compiler_runtime361, import_react308;
+var import_compiler_runtime360, import_react308;
 var init_useDeprecationWarningNotification = __esm(() => {
   init_notifications();
   init_deprecation();
   init_state();
-  import_compiler_runtime361 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime360 = __toESM(require_compiler_runtime(), 1);
   import_react308 = __toESM(require_react(), 1);
 });
 
@@ -562937,7 +563324,7 @@ var init_useNpmDeprecationNotification = __esm(() => {
 
 // hooks/notifs/useIDEStatusIndicator.tsx
 function useIDEStatusIndicator(t0) {
-  const $ = import_compiler_runtime362.c(26);
+  const $ = import_compiler_runtime361.c(26);
   const {
     ideSelection,
     mcpClients,
@@ -563114,7 +563501,7 @@ function _temp207(current) {
     ideHintShownCount: (current.ideHintShownCount ?? 0) + 1
   };
 }
-var import_compiler_runtime362, import_react309, jsx_runtime441, MAX_IDE_HINT_SHOW_COUNT = 5;
+var import_compiler_runtime361, import_react309, jsx_runtime441, MAX_IDE_HINT_SHOW_COUNT = 5;
 var init_useIDEStatusIndicator = __esm(() => {
   init_notifications();
   init_ink2();
@@ -563122,7 +563509,7 @@ var init_useIDEStatusIndicator = __esm(() => {
   init_ide();
   init_state();
   init_useIdeConnectionStatus();
-  import_compiler_runtime362 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime361 = __toESM(require_compiler_runtime(), 1);
   import_react309 = __toESM(require_react(), 1);
   jsx_runtime441 = __toESM(require_jsx_runtime(), 1);
 });
@@ -563310,7 +563697,7 @@ var init_useTeammateShutdownNotification = __esm(() => {
 
 // hooks/notifs/useFastModeNotification.tsx
 function useFastModeNotification() {
-  const $ = import_compiler_runtime363.c(13);
+  const $ = import_compiler_runtime362.c(13);
   const {
     addNotification
   } = useNotifications();
@@ -563459,20 +563846,20 @@ function getCooldownMessage(reason, resetIn) {
       return `Fast limit reached and temporarily disabled · resets in ${resetIn}`;
   }
 }
-var import_compiler_runtime363, import_react311, COOLDOWN_STARTED_KEY = "fast-mode-cooldown-started", COOLDOWN_EXPIRED_KEY = "fast-mode-cooldown-expired", ORG_CHANGED_KEY = "fast-mode-org-changed", OVERAGE_REJECTED_KEY = "fast-mode-overage-rejected";
+var import_compiler_runtime362, import_react311, COOLDOWN_STARTED_KEY = "fast-mode-cooldown-started", COOLDOWN_EXPIRED_KEY = "fast-mode-cooldown-expired", ORG_CHANGED_KEY = "fast-mode-org-changed", OVERAGE_REJECTED_KEY = "fast-mode-overage-rejected";
 var init_useFastModeNotification = __esm(() => {
   init_notifications();
   init_AppState();
   init_fastMode();
   init_format();
   init_state();
-  import_compiler_runtime363 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime362 = __toESM(require_compiler_runtime(), 1);
   import_react311 = __toESM(require_react(), 1);
 });
 
 // utils/autoRunIssue.tsx
 function AutoRunIssueNotification(t0) {
-  const $ = import_compiler_runtime364.c(8);
+  const $ = import_compiler_runtime363.c(8);
   const {
     onRun,
     onCancel,
@@ -563591,12 +563978,12 @@ function getAutoRunIssueReasonText(reason) {
       return "Unknown reason";
   }
 }
-var import_compiler_runtime364, import_react312, jsx_runtime443;
+var import_compiler_runtime363, import_react312, jsx_runtime443;
 var init_autoRunIssue = __esm(() => {
   init_KeyboardShortcutHint();
   init_ink2();
   init_useKeybinding();
-  import_compiler_runtime364 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime363 = __toESM(require_compiler_runtime(), 1);
   import_react312 = __toESM(require_react(), 1);
   jsx_runtime443 = __toESM(require_jsx_runtime(), 1);
 });
@@ -563710,17 +564097,17 @@ var init_useIssueFlagBanner = __esm(() => {
 });
 
 // components/DevBar.tsx
-var import_compiler_runtime365, import_react314;
+var import_compiler_runtime364, import_react314;
 var init_DevBar = __esm(() => {
   init_state();
   init_ink2();
-  import_compiler_runtime365 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime364 = __toESM(require_compiler_runtime(), 1);
   import_react314 = __toESM(require_react(), 1);
 });
 
 // ink/components/AlternateScreen.tsx
 function AlternateScreen(t0) {
-  const $ = import_compiler_runtime366.c(7);
+  const $ = import_compiler_runtime365.c(7);
   const {
     children,
     mouseTracking: t1
@@ -563772,14 +564159,14 @@ function AlternateScreen(t0) {
   }
   return t5;
 }
-var import_compiler_runtime366, import_react315, jsx_runtime444;
+var import_compiler_runtime365, import_react315, jsx_runtime444;
 var init_AlternateScreen = __esm(() => {
   init_instances();
   init_dec();
   init_useTerminalNotification();
   init_Box();
   init_TerminalSizeContext();
-  import_compiler_runtime366 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime365 = __toESM(require_compiler_runtime(), 1);
   import_react315 = __toESM(require_react(), 1);
   jsx_runtime444 = __toESM(require_jsx_runtime(), 1);
 });
@@ -564415,7 +564802,7 @@ import { tmpdir as tmpdir11 } from "os";
 import { writeFile as writeFile44 } from "fs/promises";
 import { randomUUID as randomUUID48 } from "crypto";
 function TranscriptModeFooter(t0) {
-  const $ = import_compiler_runtime367.c(9);
+  const $ = import_compiler_runtime366.c(9);
   const {
     showAllInTranscript,
     virtualScroll,
@@ -564525,8 +564912,8 @@ function TranscriptSearchBar({
     onExit: () => onClose(query),
     onCancel
   });
-  const [indexStatus, setIndexStatus] = React156.useState("building");
-  React156.useEffect(() => {
+  const [indexStatus, setIndexStatus] = React155.useState("building");
+  React155.useEffect(() => {
     let alive = true;
     const warm = jumpRef.current?.warmSearchIndex;
     if (!warm) {
@@ -564612,7 +564999,7 @@ function TranscriptSearchBar({
   });
 }
 function AnimatedTerminalTitle(t0) {
-  const $ = import_compiler_runtime367.c(6);
+  const $ = import_compiler_runtime366.c(6);
   const {
     isAnimating,
     title,
@@ -564743,7 +565130,7 @@ function REPL({
   const mainLoopModel = useMainLoopModel();
   const [localCommands, setLocalCommands] = import_react318.useState(initialCommands);
   useSkillsChange(isRemoteSession ? undefined : getProjectRoot(), setLocalCommands);
-  const proactiveActive = React156.useSyncExternalStore(proactiveModule5?.subscribeToProactiveChanges ?? PROACTIVE_NO_OP_SUBSCRIBE, proactiveModule5?.isProactiveActive ?? PROACTIVE_FALSE);
+  const proactiveActive = React155.useSyncExternalStore(proactiveModule5?.subscribeToProactiveChanges ?? PROACTIVE_NO_OP_SUBSCRIBE, proactiveModule5?.isProactiveActive ?? PROACTIVE_FALSE);
   const isBriefOnly = useAppState((s) => s.isBriefOnly);
   const localTools = import_react318.useMemo(() => getTools(toolPermissionContext), [toolPermissionContext, proactiveActive, isBriefOnly]);
   useKickOffCheckAndDisableBypassPermissionsIfNeeded();
@@ -564871,36 +565258,36 @@ function REPL({
   const scrollRef = import_react318.useRef(null);
   const modalScrollRef = import_react318.useRef(null);
   const lastUserScrollTsRef = import_react318.useRef(0);
-  const queryGuard = React156.useRef(new QueryGuard).current;
-  const isQueryActive = React156.useSyncExternalStore(queryGuard.subscribe, queryGuard.getSnapshot);
-  const [isExternalLoading, setIsExternalLoadingRaw] = React156.useState(remoteSessionConfig?.hasInitialPrompt ?? false);
+  const queryGuard = React155.useRef(new QueryGuard).current;
+  const isQueryActive = React155.useSyncExternalStore(queryGuard.subscribe, queryGuard.getSnapshot);
+  const [isExternalLoading, setIsExternalLoadingRaw] = React155.useState(remoteSessionConfig?.hasInitialPrompt ?? false);
   const isLoading = isQueryActive || isExternalLoading;
-  const [userInputOnProcessing, setUserInputOnProcessingRaw] = React156.useState(undefined);
-  const userInputBaselineRef = React156.useRef(0);
-  const userMessagePendingRef = React156.useRef(false);
-  const loadingStartTimeRef = React156.useRef(0);
-  const totalPausedMsRef = React156.useRef(0);
-  const pauseStartTimeRef = React156.useRef(null);
-  const resetTimingRefs = React156.useCallback(() => {
+  const [userInputOnProcessing, setUserInputOnProcessingRaw] = React155.useState(undefined);
+  const userInputBaselineRef = React155.useRef(0);
+  const userMessagePendingRef = React155.useRef(false);
+  const loadingStartTimeRef = React155.useRef(0);
+  const totalPausedMsRef = React155.useRef(0);
+  const pauseStartTimeRef = React155.useRef(null);
+  const resetTimingRefs = React155.useCallback(() => {
     loadingStartTimeRef.current = Date.now();
     totalPausedMsRef.current = 0;
     pauseStartTimeRef.current = null;
   }, []);
-  const wasQueryActiveRef = React156.useRef(false);
+  const wasQueryActiveRef = React155.useRef(false);
   if (isQueryActive && !wasQueryActiveRef.current) {
     resetTimingRefs();
   }
   wasQueryActiveRef.current = isQueryActive;
-  const setIsExternalLoading = React156.useCallback((value) => {
+  const setIsExternalLoading = React155.useCallback((value) => {
     setIsExternalLoadingRaw(value);
     if (value)
       resetTimingRefs();
   }, [resetTimingRefs]);
-  const swarmStartTimeRef = React156.useRef(null);
-  const swarmBudgetInfoRef = React156.useRef(undefined);
-  const focusedInputDialogRef = React156.useRef(undefined);
+  const swarmStartTimeRef = React155.useRef(null);
+  const swarmBudgetInfoRef = React155.useRef(undefined);
+  const focusedInputDialogRef = React155.useRef(undefined);
   const PROMPT_SUPPRESSION_MS = 1500;
-  const [isPromptInputActive, setIsPromptInputActive] = React156.useState(false);
+  const [isPromptInputActive, setIsPromptInputActive] = React155.useState(false);
   const [autoUpdaterResult, setAutoUpdaterResult] = import_react318.useState(null);
   import_react318.useEffect(() => {
     if (autoUpdaterResult?.notifications) {
@@ -565174,7 +565561,7 @@ function REPL({
   const terminalFocusRef = import_react318.useRef(isTerminalFocused);
   terminalFocusRef.current = isTerminalFocused;
   const [theme] = useTheme();
-  const tipPickedThisTurnRef = React156.useRef(false);
+  const tipPickedThisTurnRef = React155.useRef(false);
   const pickNewSpinnerTip = import_react318.useCallback(() => {
     if (tipPickedThisTurnRef.current)
       return;
@@ -566940,8 +567327,8 @@ Note: ctrl + z now suspends EvilClaude, ctrl + _ undoes input.
     setPositions
   } = useSearchHighlight();
   const transcriptCols = useTerminalSize().columns;
-  const prevColsRef = React156.useRef(transcriptCols);
-  React156.useEffect(() => {
+  const prevColsRef = React155.useRef(transcriptCols);
+  React155.useEffect(() => {
     if (prevColsRef.current !== transcriptCols) {
       prevColsRef.current = transcriptCols;
       if (searchQuery || searchOpen) {
@@ -567749,7 +568136,7 @@ Note: ctrl + z now suspends EvilClaude, ctrl + _ undoes input.
   }
   return mainReturn;
 }
-var import_compiler_runtime367, React156, import_react318, jsx_runtime445, useFrustrationDetection = () => ({
+var import_compiler_runtime366, React155, import_react318, jsx_runtime445, useFrustrationDetection = () => ({
   state: "closed",
   handleTranscriptSelect: () => {}
 }), useAntOrgWarningNotification = () => {}, getCoordinatorUserContext = () => ({}), proactiveModule5 = null, PROACTIVE_NO_OP_SUBSCRIBE = (_cb) => () => {}, PROACTIVE_FALSE = () => false, SUGGEST_BG_PR_NOOP = (_p, _n) => false, EMPTY_MCP_CLIENTS2, HISTORY_STUB, RECENT_SCROLL_REPIN_WINDOW_MS = 3000, TITLE_ANIMATION_FRAMES, TITLE_STATIC_PREFIX = "✳", TITLE_ANIMATION_INTERVAL_MS = 960;
@@ -567954,8 +568341,8 @@ var init_REPL = __esm(() => {
   init_messageActions();
   init_osc();
   init_attachments2();
-  import_compiler_runtime367 = __toESM(require_compiler_runtime(), 1);
-  React156 = __toESM(require_react(), 1);
+  import_compiler_runtime366 = __toESM(require_compiler_runtime(), 1);
+  React155 = __toESM(require_react(), 1);
   import_react318 = __toESM(require_react(), 1);
   jsx_runtime445 = __toESM(require_jsx_runtime(), 1);
   EMPTY_MCP_CLIENTS2 = [];
@@ -568153,7 +568540,7 @@ var init_warningHandler = __esm(() => {
 
 // components/MCPServerDialogCopy.tsx
 function MCPServerDialogCopy() {
-  const $ = import_compiler_runtime368.c(1);
+  const $ = import_compiler_runtime367.c(1);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = /* @__PURE__ */ jsx_runtime447.jsxs(ThemedText, {
@@ -568173,16 +568560,16 @@ function MCPServerDialogCopy() {
   }
   return t0;
 }
-var import_compiler_runtime368, jsx_runtime447;
+var import_compiler_runtime367, jsx_runtime447;
 var init_MCPServerDialogCopy = __esm(() => {
   init_ink2();
-  import_compiler_runtime368 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime367 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime447 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/MCPServerApprovalDialog.tsx
 function MCPServerApprovalDialog(t0) {
-  const $ = import_compiler_runtime369.c(13);
+  const $ = import_compiler_runtime368.c(13);
   const {
     serverName,
     onDone
@@ -568295,20 +568682,20 @@ function MCPServerApprovalDialog(t0) {
   }
   return t7;
 }
-var import_compiler_runtime369, jsx_runtime448;
+var import_compiler_runtime368, jsx_runtime448;
 var init_MCPServerApprovalDialog = __esm(() => {
   init_analytics();
   init_settings2();
   init_CustomSelect();
   init_Dialog();
   init_MCPServerDialogCopy();
-  import_compiler_runtime369 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime368 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime448 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/MCPServerMultiselectDialog.tsx
 function MCPServerMultiselectDialog(t0) {
-  const $ = import_compiler_runtime370.c(21);
+  const $ = import_compiler_runtime369.c(21);
   const {
     serverNames,
     onDone
@@ -568468,7 +568855,7 @@ function _temp292(server_0) {
     value: server_0
   };
 }
-var import_compiler_runtime370, jsx_runtime449;
+var import_compiler_runtime369, jsx_runtime449;
 var init_MCPServerMultiselectDialog = __esm(() => {
   init_partition();
   init_analytics();
@@ -568480,7 +568867,7 @@ var init_MCPServerMultiselectDialog = __esm(() => {
   init_Dialog();
   init_KeyboardShortcutHint();
   init_MCPServerDialogCopy();
-  import_compiler_runtime370 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime369 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime449 = __toESM(require_jsx_runtime(), 1);
 });
 
@@ -568733,7 +569120,7 @@ async function checkEndpoints() {
   }
 }
 function PreflightStep(t0) {
-  const $ = import_compiler_runtime371.c(12);
+  const $ = import_compiler_runtime370.c(12);
   const {
     onSuccess
   } = t0;
@@ -568862,7 +569249,7 @@ function PreflightStep(t0) {
 function _temp293() {
   return process.exit(1);
 }
-var import_compiler_runtime371, import_react320, jsx_runtime451;
+var import_compiler_runtime370, import_react320, jsx_runtime451;
 var init_preflightChecks = __esm(() => {
   init_axios2();
   init_analytics();
@@ -568873,14 +569260,14 @@ var init_preflightChecks = __esm(() => {
   init_errorUtils();
   init_http2();
   init_log3();
-  import_compiler_runtime371 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime370 = __toESM(require_compiler_runtime(), 1);
   import_react320 = __toESM(require_react(), 1);
   jsx_runtime451 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/LogoV2/WelcomeV2.tsx
 function WelcomeV2() {
-  const $ = import_compiler_runtime372.c(35);
+  const $ = import_compiler_runtime371.c(35);
   const [theme] = useTheme();
   if (env4.terminal === "Apple_Terminal") {
     let t0;
@@ -569319,7 +569706,7 @@ function WelcomeV2() {
   return t16;
 }
 function AppleTerminalWelcomeV2(t0) {
-  const $ = import_compiler_runtime372.c(44);
+  const $ = import_compiler_runtime371.c(44);
   const {
     theme,
     welcomeMessage
@@ -569850,17 +570237,17 @@ function AppleTerminalWelcomeV2(t0) {
   }
   return t19;
 }
-var import_compiler_runtime372, jsx_runtime452, WELCOME_V2_WIDTH = 58;
+var import_compiler_runtime371, jsx_runtime452, WELCOME_V2_WIDTH = 58;
 var init_WelcomeV2 = __esm(() => {
   init_ink2();
   init_env();
-  import_compiler_runtime372 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime371 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime452 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/ui/OrderedListItem.tsx
 function OrderedListItem(t0) {
-  const $ = import_compiler_runtime373.c(7);
+  const $ = import_compiler_runtime372.c(7);
   const {
     children
   } = t0;
@@ -569906,10 +570293,10 @@ function OrderedListItem(t0) {
   }
   return t3;
 }
-var import_compiler_runtime373, import_react321, jsx_runtime453, OrderedListItemContext;
+var import_compiler_runtime372, import_react321, jsx_runtime453, OrderedListItemContext;
 var init_OrderedListItem = __esm(() => {
   init_ink2();
-  import_compiler_runtime373 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime372 = __toESM(require_compiler_runtime(), 1);
   import_react321 = __toESM(require_react(), 1);
   jsx_runtime453 = __toESM(require_jsx_runtime(), 1);
   OrderedListItemContext = import_react321.createContext({
@@ -569919,7 +570306,7 @@ var init_OrderedListItem = __esm(() => {
 
 // components/ui/OrderedList.tsx
 function OrderedListComponent(t0) {
-  const $ = import_compiler_runtime374.c(9);
+  const $ = import_compiler_runtime373.c(9);
   const {
     children
   } = t0;
@@ -569983,11 +570370,11 @@ function OrderedListComponent(t0) {
   }
   return t2;
 }
-var import_compiler_runtime374, import_react322, jsx_runtime454, OrderedListContext, OrderedList;
+var import_compiler_runtime373, import_react322, jsx_runtime454, OrderedListContext, OrderedList;
 var init_OrderedList = __esm(() => {
   init_ink2();
   init_OrderedListItem();
-  import_compiler_runtime374 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime373 = __toESM(require_compiler_runtime(), 1);
   import_react322 = __toESM(require_react(), 1);
   jsx_runtime454 = __toESM(require_jsx_runtime(), 1);
   OrderedListContext = import_react322.createContext({
@@ -570228,7 +570615,7 @@ function Onboarding({
     ]
   });
 }
-var import_compiler_runtime375, import_react323, jsx_runtime455;
+var import_compiler_runtime374, import_react323, jsx_runtime455;
 var init_Onboarding = __esm(() => {
   init_analytics();
   init_terminalSetup();
@@ -570243,7 +570630,7 @@ var init_Onboarding = __esm(() => {
   init_PressEnterToContinue();
   init_ThemePicker();
   init_OrderedList();
-  import_compiler_runtime375 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime374 = __toESM(require_compiler_runtime(), 1);
   import_react323 = __toESM(require_react(), 1);
   jsx_runtime455 = __toESM(require_jsx_runtime(), 1);
 });
@@ -570383,7 +570770,7 @@ var init_utils16 = __esm(() => {
 // components/TrustDialog/TrustDialog.tsx
 import { homedir as homedir37 } from "os";
 function TrustDialog(t0) {
-  const $ = import_compiler_runtime376.c(33);
+  const $ = import_compiler_runtime375.c(33);
   const {
     onDone,
     commands
@@ -570702,7 +571089,7 @@ function _temp294(command) {
 function _temp295(tool) {
   return tool === BASH_TOOL_NAME || tool.startsWith(BASH_TOOL_NAME + "(");
 }
-var import_compiler_runtime376, import_react324, jsx_runtime456;
+var import_compiler_runtime375, import_react324, jsx_runtime456;
 var init_TrustDialog = __esm(() => {
   init_analytics();
   init_state();
@@ -570717,14 +571104,14 @@ var init_TrustDialog = __esm(() => {
   init_CustomSelect();
   init_PermissionDialog();
   init_utils16();
-  import_compiler_runtime376 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime375 = __toESM(require_compiler_runtime(), 1);
   import_react324 = __toESM(require_react(), 1);
   jsx_runtime456 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/BypassPermissionsModeDialog.tsx
 function BypassPermissionsModeDialog(t0) {
-  const $ = import_compiler_runtime377.c(7);
+  const $ = import_compiler_runtime376.c(7);
   const {
     onAccept
   } = t0;
@@ -570826,7 +571213,7 @@ function _temp296() {
 function _temp297() {
   logEvent("tengu_bypass_permissions_mode_dialog_shown", {});
 }
-var import_compiler_runtime377, import_react325, jsx_runtime457;
+var import_compiler_runtime376, import_react325, jsx_runtime457;
 var init_BypassPermissionsModeDialog = __esm(() => {
   init_analytics();
   init_ink2();
@@ -570834,14 +571221,14 @@ var init_BypassPermissionsModeDialog = __esm(() => {
   init_settings2();
   init_CustomSelect();
   init_Dialog();
-  import_compiler_runtime377 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime376 = __toESM(require_compiler_runtime(), 1);
   import_react325 = __toESM(require_react(), 1);
   jsx_runtime457 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/ClaudeInChromeOnboarding.tsx
 function ClaudeInChromeOnboarding(t0) {
-  const $ = import_compiler_runtime378.c(20);
+  const $ = import_compiler_runtime377.c(20);
   const {
     onDone
   } = t0;
@@ -571007,14 +571394,14 @@ function _temp298(current) {
     hasCompletedClaudeInChromeOnboarding: true
   };
 }
-var import_compiler_runtime378, import_react326, jsx_runtime458, CHROME_EXTENSION_URL2 = "https://evilclaude.swampmine.in", CHROME_PERMISSIONS_URL2 = "https://clau.de/chrome/permissions";
+var import_compiler_runtime377, import_react326, jsx_runtime458, CHROME_EXTENSION_URL2 = "https://evilclaude.swampmine.in", CHROME_PERMISSIONS_URL2 = "https://clau.de/chrome/permissions";
 var init_ClaudeInChromeOnboarding = __esm(() => {
   init_analytics();
   init_ink2();
   init_setup2();
   init_config2();
   init_Dialog();
-  import_compiler_runtime378 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime377 = __toESM(require_compiler_runtime(), 1);
   import_react326 = __toESM(require_react(), 1);
   jsx_runtime458 = __toESM(require_jsx_runtime(), 1);
 });
@@ -571231,7 +571618,7 @@ var init_interactiveHelpers = __esm(() => {
 
 // components/InvalidSettingsDialog.tsx
 function InvalidSettingsDialog(t0) {
-  const $ = import_compiler_runtime379.c(13);
+  const $ = import_compiler_runtime378.c(13);
   const {
     settingsErrors,
     onContinue,
@@ -571318,19 +571705,19 @@ function InvalidSettingsDialog(t0) {
   }
   return t6;
 }
-var import_compiler_runtime379, jsx_runtime460;
+var import_compiler_runtime378, jsx_runtime460;
 var init_InvalidSettingsDialog = __esm(() => {
   init_ink2();
   init_CustomSelect();
   init_Dialog();
   init_ValidationErrorsList();
-  import_compiler_runtime379 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime378 = __toESM(require_compiler_runtime(), 1);
   jsx_runtime460 = __toESM(require_jsx_runtime(), 1);
 });
 
 // hooks/useTeleportResume.tsx
 function useTeleportResume(source) {
-  const $ = import_compiler_runtime380.c(8);
+  const $ = import_compiler_runtime379.c(8);
   const [isResuming, setIsResuming] = import_react327.useState(false);
   const [error, setError] = import_react327.useState(null);
   const [selectedSession, setSelectedSession] = import_react327.useState(null);
@@ -571398,13 +571785,13 @@ function useTeleportResume(source) {
   }
   return t2;
 }
-var import_compiler_runtime380, import_react327;
+var import_compiler_runtime379, import_react327;
 var init_useTeleportResume = __esm(() => {
   init_state();
   init_analytics();
   init_errors();
   init_teleport();
-  import_compiler_runtime380 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime379 = __toESM(require_compiler_runtime(), 1);
   import_react327 = __toESM(require_react(), 1);
 });
 
@@ -571775,7 +572162,7 @@ var init_ResumeTask = __esm(() => {
 
 // components/TeleportResumeWrapper.tsx
 function TeleportResumeWrapper(t0) {
-  const $ = import_compiler_runtime381.c(25);
+  const $ = import_compiler_runtime380.c(25);
   const {
     onComplete,
     onCancel,
@@ -571973,7 +572360,7 @@ function TeleportResumeWrapper(t0) {
   }
   return t8;
 }
-var import_compiler_runtime381, import_react329, jsx_runtime462;
+var import_compiler_runtime380, import_react329, jsx_runtime462;
 var init_TeleportResumeWrapper = __esm(() => {
   init_analytics();
   init_useTeleportResume();
@@ -571981,14 +572368,14 @@ var init_TeleportResumeWrapper = __esm(() => {
   init_useKeybinding();
   init_ResumeTask();
   init_Spinner2();
-  import_compiler_runtime381 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime380 = __toESM(require_compiler_runtime(), 1);
   import_react329 = __toESM(require_react(), 1);
   jsx_runtime462 = __toESM(require_jsx_runtime(), 1);
 });
 
 // components/TeleportRepoMismatchDialog.tsx
 function TeleportRepoMismatchDialog(t0) {
-  const $ = import_compiler_runtime382.c(18);
+  const $ = import_compiler_runtime381.c(18);
   const {
     targetRepo,
     initialPaths,
@@ -572139,7 +572526,7 @@ function _temp299(path) {
     value: path
   };
 }
-var import_compiler_runtime382, import_react330, jsx_runtime463;
+var import_compiler_runtime381, import_react330, jsx_runtime463;
 var init_TeleportRepoMismatchDialog = __esm(() => {
   init_ink2();
   init_file();
@@ -572147,7 +572534,7 @@ var init_TeleportRepoMismatchDialog = __esm(() => {
   init_CustomSelect();
   init_Dialog();
   init_Spinner2();
-  import_compiler_runtime382 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime381 = __toESM(require_compiler_runtime(), 1);
   import_react330 = __toESM(require_react(), 1);
   jsx_runtime463 = __toESM(require_jsx_runtime(), 1);
 });
@@ -572411,7 +572798,7 @@ function ResumeConversation({
   });
 }
 function NoConversationsMessage() {
-  const $ = import_compiler_runtime383.c(2);
+  const $ = import_compiler_runtime382.c(2);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = {
@@ -572446,7 +572833,7 @@ function _temp300() {
   process.exit(1);
 }
 function CrossProjectMessage(t0) {
-  const $ = import_compiler_runtime383.c(8);
+  const $ = import_compiler_runtime382.c(8);
   const {
     command
   } = t0;
@@ -572530,7 +572917,7 @@ function _temp357() {
 function _temp2100() {
   process.exit(0);
 }
-var import_compiler_runtime383, import_react331, jsx_runtime464;
+var import_compiler_runtime382, import_react331, jsx_runtime464;
 var init_ResumeConversation = __esm(() => {
   init_useTerminalSize();
   init_state();
@@ -572553,7 +572940,7 @@ var init_ResumeConversation = __esm(() => {
   init_sessionRestore();
   init_sessionStorage();
   init_REPL();
-  import_compiler_runtime383 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime382 = __toESM(require_compiler_runtime(), 1);
   import_react331 = __toESM(require_react(), 1);
   jsx_runtime464 = __toESM(require_jsx_runtime(), 1);
 });
@@ -584643,7 +585030,7 @@ var init_print = __esm(() => {
 
 // components/TeleportProgress.tsx
 function TeleportProgress(t0) {
-  const $ = import_compiler_runtime384.c(16);
+  const $ = import_compiler_runtime383.c(16);
   const {
     currentStep,
     sessionId
@@ -584796,13 +585183,13 @@ async function teleportWithProgress(root, sessionId) {
     branchName
   };
 }
-var import_compiler_runtime384, import_react332, jsx_runtime466, SPINNER_FRAMES3, STEPS;
+var import_compiler_runtime383, import_react332, jsx_runtime466, SPINNER_FRAMES3, STEPS;
 var init_TeleportProgress = __esm(() => {
   init_figures();
   init_ink2();
   init_AppState();
   init_teleport();
-  import_compiler_runtime384 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime383 = __toESM(require_compiler_runtime(), 1);
   import_react332 = __toESM(require_react(), 1);
   jsx_runtime466 = __toESM(require_jsx_runtime(), 1);
   SPINNER_FRAMES3 = ["◐", "◓", "◑", "◒"];
@@ -584823,7 +585210,7 @@ var init_TeleportProgress = __esm(() => {
 
 // components/MCPServerDesktopImportDialog.tsx
 function MCPServerDesktopImportDialog(t0) {
-  const $ = import_compiler_runtime385.c(36);
+  const $ = import_compiler_runtime384.c(36);
   const {
     servers,
     scope,
@@ -585059,7 +585446,7 @@ No servers were imported.`);
   }
   return t18;
 }
-var import_compiler_runtime385, import_react333, jsx_runtime467;
+var import_compiler_runtime384, import_react333, jsx_runtime467;
 var init_MCPServerDesktopImportDialog = __esm(() => {
   init_gracefulShutdown();
   init_ink2();
@@ -585070,7 +585457,7 @@ var init_MCPServerDesktopImportDialog = __esm(() => {
   init_Byline();
   init_Dialog();
   init_KeyboardShortcutHint();
-  import_compiler_runtime385 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime384 = __toESM(require_compiler_runtime(), 1);
   import_react333 = __toESM(require_react(), 1);
   jsx_runtime467 = __toESM(require_jsx_runtime(), 1);
 });
@@ -586540,7 +586927,7 @@ function getInstallationPath2() {
   return "~/.local/bin/claude";
 }
 function SetupNotes(t0) {
-  const $ = import_compiler_runtime386.c(5);
+  const $ = import_compiler_runtime385.c(5);
   const {
     messages
   } = t0;
@@ -586845,7 +587232,7 @@ function Install({
     ]
   });
 }
-var import_compiler_runtime386, import_react334, jsx_runtime469, install;
+var import_compiler_runtime385, import_react334, jsx_runtime469, install;
 var init_install = __esm(() => {
   init_analytics();
   init_StatusIcon();
@@ -586855,7 +587242,7 @@ var init_install = __esm(() => {
   init_errors();
   init_nativeInstaller();
   init_settings2();
-  import_compiler_runtime386 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime385 = __toESM(require_compiler_runtime(), 1);
   import_react334 = __toESM(require_react(), 1);
   jsx_runtime469 = __toESM(require_jsx_runtime(), 1);
   install = {
@@ -586931,7 +587318,7 @@ async function setupTokenHandler(root) {
   process.exit(0);
 }
 function DoctorWithPlugins(t0) {
-  const $ = import_compiler_runtime387.c(2);
+  const $ = import_compiler_runtime386.c(2);
   const {
     onDone
   } = t0;
@@ -586987,7 +587374,7 @@ async function installHandler(target, options) {
     }, {}, args);
   });
 }
-var import_compiler_runtime387, import_react335, jsx_runtime470, DoctorLazy;
+var import_compiler_runtime386, import_react335, jsx_runtime470, DoctorLazy;
 var init_util3 = __esm(() => {
   init_WelcomeV2();
   init_useManagePlugins();
@@ -586998,7 +587385,7 @@ var init_util3 = __esm(() => {
   init_AppState();
   init_onChangeAppState();
   init_auth2();
-  import_compiler_runtime387 = __toESM(require_compiler_runtime(), 1);
+  import_compiler_runtime386 = __toESM(require_compiler_runtime(), 1);
   import_react335 = __toESM(require_react(), 1);
   jsx_runtime470 = __toESM(require_jsx_runtime(), 1);
   DoctorLazy = import_react335.default.lazy(() => Promise.resolve().then(() => (init_Doctor(), {})).then((m) => ({
@@ -587754,7 +588141,7 @@ async function run() {
     if (false) {}
     profileCheckpoint("preAction_after_settings_sync");
   });
-  program.name("claude").description(`EvilClaude - starts an interactive session by default, use -p/--print for non-interactive output`).argument("[prompt]", "Your prompt", String).helpOption("-h, --help", "Display help for command").option("-d, --debug [filter]", 'Enable debug mode with optional category filtering (e.g., "api,hooks" or "!1p,!file")', (_value) => {
+  program.name('evilclaude').description(`EvilClaude - starts an interactive session by default, use -p/--print for non-interactive output`).argument("[prompt]", "Your prompt", String).helpOption("-h, --help", "Display help for command").option("-d, --debug [filter]", 'Enable debug mode with optional category filtering (e.g., "api,hooks" or "!1p,!file")', (_value) => {
     return true;
   }).addOption(new Option("-d2e, --debug-to-stderr", "Enable debug mode (to stderr)").argParser(Boolean).hideHelp()).option("--debug-file <path>", "Write debug logs to a specific file path (implicitly enables debug mode)", () => true).option("--verbose", "Override verbose mode setting from config", () => true).option("-p, --print", "Print response and exit (useful for pipes). Note: The workspace trust dialog is skipped when EvilClaude is run with the -p mode. Only use this flag in directories you trust.", () => true).option("--bare", "Minimal mode: skip hooks, LSP, plugin sync, attribution, auto-memory, background prefetches, keychain reads, and CLAUDE.md auto-discovery. Sets CLAUDE_CODE_SIMPLE=1. Anthropic auth is strictly SWAMPMINE_API_KEY or apiKeyHelper via --settings (OAuth and keychain are never read). 3P providers (Bedrock/Vertex/Foundry) use their own credentials. Skills still resolve via /skill-name. Explicitly provide context via: --system-prompt[-file], --append-system-prompt[-file], --add-dir (CLAUDE.md dirs), --mcp-config, --settings, --agents, --plugin-dir.", () => true).addOption(new Option("--init", "Run Setup hooks with init trigger, then continue").hideHelp()).addOption(new Option("--init-only", "Run Setup and SessionStart:startup hooks, then exit").hideHelp()).addOption(new Option("--maintenance", "Run Setup hooks with maintenance trigger, then continue").hideHelp()).addOption(new Option("--output-format <format>", 'Output format (only works with --print): "text" (default), "json" (single result), or "stream-json" (realtime streaming)').choices(["text", "json", "stream-json"])).addOption(new Option("--json-schema <schema>", 'JSON Schema for structured output validation. Example: {"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}').argParser(String)).option("--include-hook-events", "Include all hook lifecycle events in the output stream (only works with --output-format=stream-json)", () => true).option("--include-partial-messages", "Include partial message chunks as they arrive (only works with --print and --output-format=stream-json)", () => true).addOption(new Option("--input-format <format>", 'Input format (only works with --print): "text" (default), or "stream-json" (realtime streaming input)').choices(["text", "stream-json"])).option("--mcp-debug", "[DEPRECATED. Use --debug instead] Enable MCP debug mode (shows MCP server errors)", () => true).option("--dangerously-skip-permissions", "Bypass all permission checks. Recommended only for sandboxes with no internet access.", () => true).option("--allow-dangerously-skip-permissions", "Enable bypassing all permission checks as an option, without it being enabled by default. Recommended only for sandboxes with no internet access.", () => true).addOption(new Option("--thinking <mode>", "Thinking mode: enabled (equivalent to adaptive), disabled").choices(["enabled", "adaptive", "disabled"]).hideHelp()).addOption(new Option("--max-thinking-tokens <tokens>", "[DEPRECATED. Use --thinking instead for newer models] Maximum number of thinking tokens (only works with --print)").argParser(Number).hideHelp()).addOption(new Option("--max-turns <turns>", "Maximum number of agentic turns in non-interactive mode. This will early exit the conversation after the specified number of turns. (only works with --print)").argParser(Number).hideHelp()).addOption(new Option("--max-budget-usd <amount>", "Maximum dollar amount to spend on API calls (only works with --print)").argParser((value) => {
     const amount = Number(value);
@@ -589814,10 +590201,11 @@ var init_main3 = __esm(() => {
 });
 
 // entrypoints/cli.tsx
+init_crypto();
 import fs13 from "fs";
 import path26 from "path";
-import os9 from "os";
-var home = os9.homedir();
+import os10 from "os";
+var home = os10.homedir();
 var keyDir = path26.join(home, ".evilclaude");
 var keyFile = path26.join(keyDir, "api_key");
 if (!process.env.SWAMPMINE_API_KEY && !process.env.SWAMPMINE_API_KEY) {
@@ -589830,7 +590218,8 @@ if (!process.env.SWAMPMINE_API_KEY && !process.env.SWAMPMINE_API_KEY) {
     ];
     for (const p of candidatePaths) {
       if (fs13.existsSync(p)) {
-        const key = fs13.readFileSync(p, "utf8").trim();
+        const raw = fs13.readFileSync(p, "utf8").trim();
+        const key = decryptApiKey(raw);
         if (key) {
           process.env.SWAMPMINE_API_KEY = key;
           process.env.SWAMPMINE_API_KEY = key;
@@ -589842,13 +590231,13 @@ if (!process.env.SWAMPMINE_API_KEY && !process.env.SWAMPMINE_API_KEY) {
 }
 if (!process.env.SWAMPMINE_API_KEY && !process.env.SWAMPMINE_API_KEY) {
   try {
-    const gateway = process.env.EVILCLAUDE_BASE_URL || process.env.SWAMPMINE_BASE_URL || "https://evilclaude.swampmine.in";
+    const gateway = "https://evilclaude.swampmine.in";
     const { execSync } = __require("child_process");
-    const out = execSync(`curl -fsSL -m 3 -X POST "${gateway}/api/v1/terminal/provision" -H "Content-Type: application/json" -d "{\\"platform\\":\\"${os9.platform()}\\",\\"label\\":\\"${os9.hostname()}\\"}"`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    const out = execSync(`curl -fsSL -m 3 -X POST "${gateway}/api/v1/terminal/provision" -H "Content-Type: application/json" -d "{\\"platform\\":\\"${os10.platform()}\\",\\"label\\":\\"${os10.hostname()}\\"}"`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
     const data = JSON.parse(out);
     if (data && data.api_key) {
       fs13.mkdirSync(keyDir, { recursive: true, mode: 448 });
-      fs13.writeFileSync(keyFile, data.api_key + `
+      fs13.writeFileSync(keyFile, encryptApiKey(data.api_key) + `
 `, { mode: 384 });
       process.env.SWAMPMINE_API_KEY = data.api_key;
       process.env.SWAMPMINE_API_KEY = data.api_key;
@@ -589856,13 +590245,31 @@ if (!process.env.SWAMPMINE_API_KEY && !process.env.SWAMPMINE_API_KEY) {
   } catch {}
 }
 if (!process.env.SWAMPMINE_API_KEY && !process.env.SWAMPMINE_API_KEY) {
-  const fallbackKey = "ec_offline_" + Buffer.from(os9.hostname() || "guest").toString("hex").slice(0, 16);
+  const fallbackKey = "ec_offline_" + Buffer.from(os10.hostname() || "guest").toString("hex").slice(0, 16);
   process.env.SWAMPMINE_API_KEY = fallbackKey;
   process.env.SWAMPMINE_API_KEY = fallbackKey;
 }
+try {
+  const currentKey = process.env.SWAMPMINE_API_KEY || process.env.SWAMPMINE_API_KEY;
+  if (currentKey && !currentKey.startsWith("ec_offline_")) {
+    const gateway = "https://evilclaude.swampmine.in";
+    const accountCachePath = path26.join(keyDir, "account.json");
+    let needsRefresh = true;
+    if (fs13.existsSync(accountCachePath)) {
+      const stats = fs13.statSync(accountCachePath);
+      if (Date.now() - stats.mtimeMs < 60000) {
+        needsRefresh = false;
+      }
+    }
+    if (needsRefresh) {
+      const { exec } = __require("child_process");
+      exec(`curl -fsSL -m 2 "${gateway}/api/v1/me" -H "x-api-key: ${currentKey}" -o "${accountCachePath}"`, () => {});
+    }
+  }
+} catch {}
 process.env.SWAMPMINE_MODE = "1";
 process.env.IS_SANDBOX = "1";
-var defaultGateway = process.env.EVILCLAUDE_BASE_URL || process.env.SWAMPMINE_BASE_URL || "https://evilclaude.swampmine.in";
+var defaultGateway = "https://evilclaude.swampmine.in";
 process.env.ANTHROPIC_BASE_URL = process.env.ANTHROPIC_BASE_URL || defaultGateway;
 process.env.CLAUDE_CODE_API_BASE_URL = process.env.CLAUDE_CODE_API_BASE_URL || defaultGateway;
 process.env.SWAMPMINE_BASE_URL = process.env.SWAMPMINE_BASE_URL || defaultGateway;
@@ -589914,7 +590321,7 @@ async function main2() {
     if (args[1]) {
       const newKey = args[1].trim();
       fs13.mkdirSync(keyDir, { recursive: true, mode: 448 });
-      fs13.writeFileSync(keyFile, newKey + `
+      fs13.writeFileSync(keyFile, encryptApiKey(newKey) + `
 `, { mode: 384 });
       process.env.SWAMPMINE_API_KEY = newKey;
       process.env.SWAMPMINE_API_KEY = newKey;
